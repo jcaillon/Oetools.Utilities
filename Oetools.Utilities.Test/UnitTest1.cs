@@ -8,6 +8,7 @@ namespace Oetools.Utilities.Test
         [TestMethod]
         public void TestMethod1()
         {
+            Poc1.Hello();
         }
     }
 }
