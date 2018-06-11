@@ -34,6 +34,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Ftp {
     /*
@@ -771,7 +772,7 @@ namespace Oetools.Utilities.Ftp {
             foreach (var item in dirList)
                 if (!item.IsDirectory && (regex == null || regex.IsMatch(item.Name))) {
                     // Transfer file
-                    var localFilePath = GetUniquePath(paths, Path.Combine(currLocalDirectoryName, PathCheck.GetValidLocalFileName(item.Name)));
+                    var localFilePath = GetUniquePath(paths, Path.Combine(currLocalDirectoryName, item.Name.ToValidLocalFileName()));
                     var remoteFilePath = CombineRemotePath(currRemoteDirectoryName, item.Name);
                     GetFile(remoteFilePath, localFilePath, transferCallback);
                 }
@@ -780,7 +781,7 @@ namespace Oetools.Utilities.Ftp {
                 foreach (var item in dirList)
                     if (item.IsDirectory) {
                         // Recursion
-                        var localNextDirPath = GetUniquePath(paths, Path.Combine(currLocalDirectoryName, PathCheck.GetValidLocalFileName(item.Name)));
+                        var localNextDirPath = GetUniquePath(paths, Path.Combine(currLocalDirectoryName, item.Name.ToValidLocalFileName()));
                         var remoteNextDirPath = CombineRemotePath(currRemoteDirectoryName, item.Name);
                         GetFiles(remoteNextDirPath, localNextDirPath, filePattern, patternStyle, recursive, transferCallback, paths);
                     }

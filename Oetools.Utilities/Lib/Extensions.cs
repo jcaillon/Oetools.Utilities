@@ -23,7 +23,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Oetools.Utilities.Lib {
@@ -32,6 +34,19 @@ namespace Oetools.Utilities.Lib {
     /// This class regroups all the extension methods
     /// </summary>
     public static class Extensions {
+        
+        /// <summary>
+        /// Get the time elapsed in a human readable format
+        /// </summary>
+        public static string ConvertToHumanTime(this TimeSpan t) {
+            if (t.Hours > 0)
+                return string.Format("{0:D2}h:{1:D2}m:{2:D2}s", t.Hours, t.Minutes, t.Seconds);
+            if (t.Minutes > 0)
+                return string.Format("{0:D2}m:{1:D2}s", t.Minutes, t.Seconds);
+            if (t.Seconds > 0)
+                return string.Format("{0:D2}s", t.Seconds);
+            return string.Format("{0:D3}ms", t.Milliseconds);
+        }
 
         private static Dictionary<Type, List<Tuple<string, long>>> _enumTypeNameValueKeyPairs = new Dictionary<Type, List<Tuple<string, long>>>();
 
@@ -189,6 +204,22 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         public static bool IsValidFtpAdress(this string ftpUri) {
             return new Regex(@"^(ftps?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?)(\/.*)$").Match(ftpUri.Replace("\\", "/")).Success;
+        }
+
+        /// <summary>
+        ///     Replaces all invalid characters found in the provided name
+        /// </summary>
+        /// <param name="fileName">A file name without directory information</param>
+        /// <returns></returns>
+        public static string ToValidLocalFileName(this string fileName, char replacementChar = '_') {
+            return ReplaceAllChars(fileName, Path.GetInvalidFileNameChars(), replacementChar);
+        }
+
+        private static string ReplaceAllChars(string str, char[] oldChars, char newChar) {
+            var sb = new StringBuilder(str);
+            foreach (var c in oldChars)
+                sb.Replace(c, newChar);
+            return sb.ToString();
         }
     }
 }

@@ -32,6 +32,7 @@ namespace Oetools.Utilities.Lib {
     /// This class allows to copy a file or a folder asynchronously, with the possibility to cancel and see the progress
     /// </summary>
     public class ProgressCopy {
+        
         private Stack<FileToCopy> _filesToCopy;
 
         private long _total;

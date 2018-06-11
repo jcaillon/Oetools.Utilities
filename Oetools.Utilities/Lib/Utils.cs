@@ -31,6 +31,7 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     public static class Utils {
 
+        
         #region File manipulation wrappers
 
         /// <summary>
@@ -141,23 +142,26 @@ namespace Oetools.Utilities.Lib {
             Action<TextReader> action = reader => {
                 var i = 0;
                 while ((line = reader.ReadLine()) != null) {
-                    if (line.Length > 0 && line[0] != '#')
-                        toApplyOnEachLine(i, line);
+                    if (line.Length > 0) {
+                        var idx = line.IndexOf('#');
+                        toApplyOnEachLine(i, idx > -1 ? line.Substring(0, idx) : (idx == 0 ? string.Empty : line));
+                    }
                     i++;
                 }
             };
 
             // either read from the file or from the byte array
-            if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
-                using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) {
+            if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath)) {
+                using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)) {
                     using (var reader = new StreamReader(fileStream, encoding)) {
                         action(reader);
                     }
                 }
-            else
+            } else {
                 using (var reader = new StringReader(Encoding.Default.GetString(dataResources))) {
                     action(reader);
                 }
+            }
         }
 
         #endregion
