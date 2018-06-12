@@ -38,7 +38,11 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Get the time elapsed in a human readable format
         /// </summary>
-        public static string ConvertToHumanTime(this TimeSpan t) {
+        public static string ConvertToHumanTime(this TimeSpan? tn) {
+            if (tn == null) {
+                return String.Empty;
+            }
+            var t = (TimeSpan) tn;
             if (t.Hours > 0)
                 return string.Format("{0:D2}h:{1:D2}m:{2:D2}s", t.Hours, t.Minutes, t.Seconds);
             if (t.Minutes > 0)
