@@ -33,6 +33,7 @@ namespace Oetools.Utilities.Archive.Cab {
     ///     Allows to pack files into a cab
     /// </summary>
     public class CabPackager : CabInfo, IPackager {
+        
         public CabPackager(string path) : base(path) { }
 
         public void PackFileSet(IDictionary<string, IFileToDeployInPackage> files, CompressionLevel compLevel, EventHandler<ArchiveProgressEventArgs> progressHandler) {
