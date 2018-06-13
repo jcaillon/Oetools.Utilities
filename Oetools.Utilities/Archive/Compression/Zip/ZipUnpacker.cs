@@ -1,5 +1,4 @@
 #region header
-
 // ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ZipUnpacker.cs) is part of csdeployer.
@@ -17,53 +16,52 @@
 // You should have received a copy of the GNU General Public License
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
 #endregion
-
 using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Oetools.Utilities.Archive.Compression.Zip {
+namespace csdeployer.Lib.Compression.Zip {
     public partial class ZipEngine {
         /// <summary>
-        ///     Extracts files from a zip archive or archive chain.
+        /// Extracts files from a zip archive or archive chain.
         /// </summary>
-        /// <param name="streamContext">
-        ///     A context interface to handle opening
-        ///     and closing of archive and file streams.
-        /// </param>
-        /// <param name="fileFilter">
-        ///     An optional predicate that can determine
-        ///     which files to process.
-        /// </param>
-        /// <exception cref="ArchiveException">
-        ///     The archive provided
-        ///     by the stream context is not valid.
-        /// </exception>
+        /// <param name="streamContext">A context interface to handle opening
+        /// and closing of archive and file streams.</param>
+        /// <param name="fileFilter">An optional predicate that can determine
+        /// which files to process.</param>
+        /// <exception cref="ArchiveException">The archive provided
+        /// by the stream context is not valid.</exception>
         /// <remarks>
-        ///     The <paramref name="fileFilter" /> predicate takes an internal file
-        ///     path and returns true to include the file or false to exclude it.
+        /// The <paramref name="fileFilter"/> predicate takes an internal file
+        /// path and returns true to include the file or false to exclude it.
         /// </remarks>
         public override void Unpack(
             IUnpackStreamContext streamContext,
             Predicate<string> fileFilter) {
-            if (streamContext == null) throw new ArgumentNullException("streamContext");
+            if (streamContext == null) {
+                throw new ArgumentNullException("streamContext");
+            }
 
             lock (this) {
-                var allHeaders = GetCentralDirectory(streamContext);
-                if (allHeaders == null) throw new ZipException("Zip central directory not found.");
+                IList<ZipFileHeader> allHeaders = GetCentralDirectory(streamContext);
+                if (allHeaders == null) {
+                    throw new ZipException("Zip central directory not found.");
+                }
 
                 IList<ZipFileHeader> headers = new List<ZipFileHeader>(allHeaders.Count);
-                foreach (var header in allHeaders)
+                foreach (ZipFileHeader header in allHeaders) {
                     if (!header.IsDirectory &&
-                        (fileFilter == null || fileFilter(header.fileName))) headers.Add(header);
+                        (fileFilter == null || fileFilter(header.fileName))) {
+                        headers.Add(header);
+                    }
+                }
 
                 ResetProgressData();
 
                 // Count the total number of files and bytes to be compressed.
                 totalFiles = headers.Count;
-                foreach (var header in headers) {
+                foreach (ZipFileHeader header in headers) {
                     long compressedSize;
                     long uncompressedSize;
                     long localHeaderOffset;
@@ -77,21 +75,23 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
                         out crc);
 
                     totalFileBytes += uncompressedSize;
-                    if (archiveNumber >= totalArchives) totalArchives = (short) (archiveNumber + 1);
+                    if (archiveNumber >= totalArchives) {
+                        totalArchives = (short) (archiveNumber + 1);
+                    }
                 }
 
                 currentArchiveNumber = -1;
                 currentFileNumber = -1;
                 Stream archiveStream = null;
                 try {
-                    foreach (var header in headers) {
+                    foreach (ZipFileHeader header in headers) {
                         currentFileNumber++;
                         UnpackOneFile(streamContext, header, ref archiveStream);
                     }
                 } finally {
                     if (archiveStream != null) {
                         streamContext.CloseArchiveReadStream(
-                            0, string.Empty, archiveStream);
+                            0, String.Empty, archiveStream);
                         currentArchiveNumber--;
                         OnProgress(ArchiveProgressType.FinishArchive);
                     }
@@ -100,7 +100,7 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         /// <summary>
-        ///     Unpacks a single file from an archive or archive chain.
+        /// Unpacks a single file from an archive or archive chain.
         /// </summary>
         private void UnpackOneFile(
             IUnpackStreamContext streamContext,
@@ -111,7 +111,10 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             try {
                 Converter<Stream, Stream> compressionStreamCreator;
                 if (!decompressionStreamCreators.TryGetValue(
-                    header.compressionMethod, out compressionStreamCreator)) return;
+                    header.compressionMethod, out compressionStreamCreator)) {
+                    // Silently skip files of an unsupported compression method.
+                    return;
+                }
 
                 long compressedSize;
                 long uncompressedSize;
@@ -129,7 +132,7 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
                     if (archiveStream != null) {
                         streamContext.CloseArchiveReadStream(
                             currentArchiveNumber,
-                            string.Empty,
+                            String.Empty,
                             archiveStream);
                         archiveStream = null;
 
@@ -144,8 +147,8 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
                     archiveStream = OpenArchive(
                         streamContext, currentArchiveNumber);
 
-                    var archiveFileStream = archiveStream as FileStream;
-                    currentArchiveName = archiveFileStream != null ? Path.GetFileName(archiveFileStream.Name) : null;
+                    FileStream archiveFileStream = archiveStream as FileStream;
+                    currentArchiveName = (archiveFileStream != null ? Path.GetFileName(archiveFileStream.Name) : null);
 
                     currentArchiveTotalBytes = archiveStream.Length;
                     currentArchiveNumber--;
@@ -155,10 +158,10 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
 
                 archiveStream.Seek(localHeaderOffset, SeekOrigin.Begin);
 
-                var localHeader = new ZipFileHeader();
+                ZipFileHeader localHeader = new ZipFileHeader();
                 if (!localHeader.Read(archiveStream, false) ||
                     !AreFilePathsEqual(localHeader.fileName, header.fileName)) {
-                    var msg = "Could not read file: " + header.fileName;
+                    string msg = "Could not read file: " + header.fileName;
                     throw new ZipException(msg);
                 }
 
@@ -203,7 +206,7 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         /// <summary>
-        ///     Compares two internal file paths while ignoring case and slash differences.
+        /// Compares two internal file paths while ignoring case and slash differences.
         /// </summary>
         /// <param name="path1">The first path to compare.</param>
         /// <param name="path2">The second path to compare.</param>
@@ -211,24 +214,27 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         private static bool AreFilePathsEqual(string path1, string path2) {
             path1 = path1.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
             path2 = path2.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
-            return string.Compare(path1, path2, StringComparison.OrdinalIgnoreCase) == 0;
+            return String.Compare(path1, path2, StringComparison.OrdinalIgnoreCase) == 0;
         }
 
         private Stream OpenArchive(IUnpackStreamContext streamContext, int archiveNumber) {
-            var archiveStream = streamContext.OpenArchiveReadStream(
-                archiveNumber, string.Empty, this);
-            if (archiveStream == null && archiveNumber != 0)
+            Stream archiveStream = streamContext.OpenArchiveReadStream(
+                archiveNumber, String.Empty, this);
+            if (archiveStream == null && archiveNumber != 0) {
                 archiveStream = streamContext.OpenArchiveReadStream(
-                    0, string.Empty, this);
+                    0, String.Empty, this);
+            }
 
-            if (archiveStream == null) throw new FileNotFoundException("Archive stream not provided.");
+            if (archiveStream == null) {
+                throw new FileNotFoundException("Archive stream not provided.");
+            }
 
             return archiveStream;
         }
 
         /// <summary>
-        ///     Decompresses bytes for one file from an archive or archive chain,
-        ///     checking the crc at the end.
+        /// Decompresses bytes for one file from an archive or archive chain,
+        /// checking the crc at the end.
         /// </summary>
         private void UnpackFileBytes(
             IUnpackStreamContext streamContext,
@@ -239,14 +245,14 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             Stream fileStream,
             Converter<Stream, Stream> compressionStreamCreator,
             ref Stream archiveStream) {
-            var crcStream = new CrcStream(fileStream);
+            CrcStream crcStream = new CrcStream(fileStream);
 
-            var concatStream = new ConcatStream(
+            ConcatStream concatStream = new ConcatStream(
                 delegate(ConcatStream s) {
                     currentArchiveBytesProcessed = s.Source.Position;
                     streamContext.CloseArchiveReadStream(
                         currentArchiveNumber,
-                        string.Empty,
+                        String.Empty,
                         s.Source);
 
                     currentArchiveNumber--;
@@ -258,8 +264,8 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
 
                     s.Source = OpenArchive(streamContext, currentArchiveNumber);
 
-                    var archiveFileStream = s.Source as FileStream;
-                    currentArchiveName = archiveFileStream != null ? Path.GetFileName(archiveFileStream.Name) : null;
+                    FileStream archiveFileStream = s.Source as FileStream;
+                    currentArchiveName = (archiveFileStream != null ? Path.GetFileName(archiveFileStream.Name) : null);
 
                     currentArchiveTotalBytes = s.Source.Length;
                     currentArchiveNumber--;
@@ -270,14 +276,14 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             concatStream.Source = archiveStream;
             concatStream.SetLength(compressedSize);
 
-            var decompressionStream = compressionStreamCreator(concatStream);
+            Stream decompressionStream = compressionStreamCreator(concatStream);
 
             try {
-                var buf = new byte[4096];
-                var bytesRemaining = uncompressedSize;
-                var counter = 0;
+                byte[] buf = new byte[4096];
+                long bytesRemaining = uncompressedSize;
+                int counter = 0;
                 while (bytesRemaining > 0) {
-                    var count = (int) Math.Min(buf.Length, bytesRemaining);
+                    int count = (int) Math.Min(buf.Length, bytesRemaining);
                     count = decompressionStream.Read(buf, 0, count);
                     crcStream.Write(buf, 0, count);
                     bytesRemaining -= count;
@@ -299,7 +305,9 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
 
             crcStream.Flush();
 
-            if (crcStream.Crc != crc) throw new ZipException("CRC check failed for file: " + fileName);
+            if (crcStream.Crc != crc) {
+                throw new ZipException("CRC check failed for file: " + fileName);
+            }
         }
     }
 }

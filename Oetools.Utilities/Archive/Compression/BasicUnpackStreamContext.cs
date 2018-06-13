@@ -1,5 +1,4 @@
 #region header
-
 // ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (BasicUnpackStreamContext.cs) is part of csdeployer.
@@ -17,28 +16,22 @@
 // You should have received a copy of the GNU General Public License
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
 #endregion
-
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
-namespace Oetools.Utilities.Archive.Compression {
+namespace csdeployer.Lib.Compression {
     /// <summary>
-    ///     Stream context used to extract a single file from an archive into a memory stream.
+    /// Stream context used to extract a single file from an archive into a memory stream.
     /// </summary>
     [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
     public class BasicUnpackStreamContext : IUnpackStreamContext {
         private Stream archiveStream;
+        private Stream fileStream;
 
         /// <summary>
-        ///     Gets the stream for the extracted file, or null if no file was extracted.
-        /// </summary>
-        public Stream FileStream { get; private set; }
-
-        /// <summary>
-        ///     Creates a new BasicExtractStreamContext that reads from the specified archive stream.
+        /// Creates a new BasicExtractStreamContext that reads from the specified archive stream.
         /// </summary>
         /// <param name="archiveStream">Archive stream to read from.</param>
         public BasicUnpackStreamContext(Stream archiveStream) {
@@ -46,8 +39,15 @@ namespace Oetools.Utilities.Archive.Compression {
         }
 
         /// <summary>
-        ///     Opens the archive stream for reading. Returns a DuplicateStream instance,
-        ///     so the stream may be virtually opened multiple times.
+        /// Gets the stream for the extracted file, or null if no file was extracted.
+        /// </summary>
+        public Stream FileStream {
+            get { return fileStream; }
+        }
+
+        /// <summary>
+        /// Opens the archive stream for reading. Returns a DuplicateStream instance,
+        /// so the stream may be virtually opened multiple times.
         /// </summary>
         /// <param name="archiveNumber">The archive number to open (ignored; 0 is assumed).</param>
         /// <param name="archiveName">The name of the archive being opened.</param>
@@ -58,8 +58,8 @@ namespace Oetools.Utilities.Archive.Compression {
         }
 
         /// <summary>
-        ///     Does *not* close the stream. The archive stream should be managed by
-        ///     the code that invokes the archive extraction.
+        /// Does *not* close the stream. The archive stream should be managed by
+        /// the code that invokes the archive extraction.
         /// </summary>
         /// <param name="archiveNumber">The archive number of the stream to close.</param>
         /// <param name="archiveName">The name of the archive being closed.</param>
@@ -69,21 +69,21 @@ namespace Oetools.Utilities.Archive.Compression {
         }
 
         /// <summary>
-        ///     Opens a stream for writing extracted file bytes. The returned stream is a MemoryStream
-        ///     instance, so the file is extracted straight into memory.
+        /// Opens a stream for writing extracted file bytes. The returned stream is a MemoryStream
+        /// instance, so the file is extracted straight into memory.
         /// </summary>
         /// <param name="path">Path of the file within the archive.</param>
         /// <param name="fileSize">The uncompressed size of the file to be extracted.</param>
         /// <param name="lastWriteTime">The last write time of the file.</param>
         /// <returns>A stream where extracted file bytes are to be written.</returns>
         public Stream OpenFileWriteStream(string path, long fileSize, DateTime lastWriteTime) {
-            FileStream = new MemoryStream(new byte[fileSize], 0, (int) fileSize, true, true);
-            return FileStream;
+            fileStream = new MemoryStream(new byte[fileSize], 0, (int) fileSize, true, true);
+            return fileStream;
         }
 
         /// <summary>
-        ///     Does *not* close the file stream. The file stream is saved in memory so it can
-        ///     be read later.
+        /// Does *not* close the file stream. The file stream is saved in memory so it can
+        /// be read later.
         /// </summary>
         /// <param name="path">Path of the file within the archive.</param>
         /// <param name="stream">The file stream to be closed.</param>

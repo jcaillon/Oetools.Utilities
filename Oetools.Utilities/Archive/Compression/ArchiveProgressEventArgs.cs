@@ -22,6 +22,7 @@
 
 using System;
 using System.Globalization;
+using csdeployer.Lib.Compression;
 
 namespace Oetools.Utilities.Archive.Compression {
     /// <summary>

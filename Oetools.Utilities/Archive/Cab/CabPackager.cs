@@ -23,9 +23,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using csdeployer.Lib.Compression;
+using csdeployer.Lib.Compression.Cab;
 using Oetools.Utilities.Archive.Compression;
-using Oetools.Utilities.Archive.Compression.Cab;
-using CompressionLevel = Oetools.Utilities.Archive.Compression.CompressionLevel;
 
 namespace Oetools.Utilities.Archive.Cab {
     
@@ -36,9 +36,13 @@ namespace Oetools.Utilities.Archive.Cab {
         
         public CabPackager(string path) : base(path) { }
 
-        public void PackFileSet(IDictionary<string, IFileToDeployInPackage> files, CompressionLevel compLevel, EventHandler<ArchiveProgressEventArgs> progressHandler) {
-            var filesDic = files.ToDictionary(kpv => kpv.Key, kpv => kpv.Value.From);
-            PackFileSet(filesDic, compLevel, progressHandler);
+        public void PackFileSet(List<IFileToDeployInPackage> files, CompressionLvl compLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
+            var filesDic = files.ToDictionary(file => file.RelativePathInPack, file => file.From);
+            PackFileSet(filesDic, CompressionLevel.None, (sender, args) => {
+                if (args.ProgressType == ArchiveProgressType.FinishFile) {
+                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(args.CurrentFileName, args.TreatmentException, args.CannotCancel));
+                }
+            });
         }
     }
 }

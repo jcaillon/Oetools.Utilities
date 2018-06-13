@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Oetools.Utilities.Archive.Compression;
 
 namespace Oetools.Utilities.Archive {
 
@@ -12,7 +11,7 @@ namespace Oetools.Utilities.Archive {
         /// <param name="files">A mapping from internal file paths to external file paths.</param>
         /// <param name="compLevel">The compression level used when creating the pack</param>
         /// <param name="progressHandler">Handler for receiving progress information; this may be null if progress is not desired.</param>
-        void PackFileSet(IDictionary<string, IFileToDeployInPackage> files, CompressionLevel compLevel, EventHandler<ArchiveProgressEventArgs> progressHandler);
+        void PackFileSet(List<IFileToDeployInPackage> files, CompressionLvl compLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler);
     }
 
 }

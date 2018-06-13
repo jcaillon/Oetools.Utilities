@@ -24,10 +24,10 @@ using System.IO;
 namespace Oetools.Utilities.Test {
     public static class TestHelper {
         
-        private static readonly string _testFolder = Path.Combine(AppContext.BaseDirectory, "Tests");
+        private static readonly string TestFolder = Path.Combine(AppContext.BaseDirectory, "Tests");
 
         public static string GetTestFolder(string testName) {
-            var path = Path.Combine(_testFolder, testName);
+            var path = Path.Combine(TestFolder, testName);
             Directory.CreateDirectory(path);
             return path;
         }

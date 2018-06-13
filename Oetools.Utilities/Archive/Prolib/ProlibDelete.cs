@@ -25,7 +25,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Oetools.Utilities.Archive.Compression;
 using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Archive.Prolib {
@@ -37,8 +36,8 @@ namespace Oetools.Utilities.Archive.Prolib {
         
         #region Private
 
-        private ProcessIo _prolibExe;
         private string _archivePath;
+        private string _prolibExePath;
 
         #endregion
         
@@ -46,58 +45,60 @@ namespace Oetools.Utilities.Archive.Prolib {
 
         public ProlibDelete(string archivePath, string prolibExePath) {
             _archivePath = archivePath;
-            _prolibExe = new ProcessIo(prolibExePath);
+            _prolibExePath = prolibExePath;
         }
 
         #endregion
 
         #region Methods
 
-        public void PackFileSet(IDictionary<string, IFileToDeployInPackage> files, CompressionLevel compLevel, EventHandler<ArchiveProgressEventArgs> progressHandler) {
-            var archiveFolder = Path.GetDirectoryName(_archivePath);
-            if (!string.IsNullOrEmpty(archiveFolder))
-                _prolibExe.StartInfo.WorkingDirectory = archiveFolder;
+        public void PackFileSet(List<IFileToDeployInPackage> files, CompressionLvl compLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
+            using (var prolibExe = new ProcessIo(_prolibExePath)) {
+                var archiveFolder = Path.GetDirectoryName(_archivePath);
+                if (!string.IsNullOrEmpty(archiveFolder))
+                    prolibExe.StartInfo.WorkingDirectory = archiveFolder;
 
-            // for files containing a space, we don't have a choice, call delete for each...
-            foreach (var file in files.Values.Where(deploy => deploy.RelativePathInPack.ContainsFast(" "))) {
-                _prolibExe.Arguments = _archivePath.Quoter() + " -delete " + file.RelativePathInPack.Quoter();
-                var isOk = _prolibExe.TryDoWait(true);
-                if (progressHandler != null)
-                    progressHandler(this, new ArchiveProgressEventArgs(ArchiveProgressType.FinishFile, file.RelativePathInPack, isOk ? null : new Exception(_prolibExe.ErrorOutput.ToString())));
-            }
-
-            var remainingFiles = files.Values.Where(deploy => !deploy.RelativePathInPack.ContainsFast(" ")).ToList();
-            if (remainingFiles.Count > 0) {
-                // for the other files, we can use the -pf parameter
-                var pfContent = new StringBuilder();
-                pfContent.AppendLine("-delete");
-                foreach (var file in remainingFiles) {
-                    pfContent.AppendLine(file.RelativePathInPack);
-                }
-                
-                Exception ex = null;
-                var pfPath = _archivePath + "~" + Path.GetRandomFileName() + ".pf";
-
-                try {
-                    File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
-                } catch (Exception e) {
-                    ex = e;
+                // for files containing a space, we don't have a choice, call delete for each...
+                foreach (var file in files.Where(deploy => deploy.RelativePathInPack.ContainsFast(" "))) {
+                    prolibExe.Arguments = _archivePath.Quoter() + " -delete " + file.RelativePathInPack.Quoter();
+                    var isOk = prolibExe.TryDoWait(true);
+                    if (progressHandler != null)
+                        progressHandler(this, new ArchiveProgressionEventArgs(file.RelativePathInPack, isOk ? null : new Exception(prolibExe.ErrorOutput.ToString())));
                 }
 
-                _prolibExe.Arguments = _archivePath.Quoter() + " -pf " + pfPath.Quoter();
-                var isOk = _prolibExe.TryDoWait(true);
-
-                try {
-                    if (ex == null) {
-                        File.Delete(pfPath);
+                var remainingFiles = files.Where(deploy => !deploy.RelativePathInPack.ContainsFast(" ")).ToList();
+                if (remainingFiles.Count > 0) {
+                    // for the other files, we can use the -pf parameter
+                    var pfContent = new StringBuilder();
+                    pfContent.AppendLine("-delete");
+                    foreach (var file in remainingFiles) {
+                        pfContent.AppendLine(file.RelativePathInPack);
                     }
-                } catch (Exception e) {
-                    ex = e;
-                }
 
-                if (progressHandler != null) {
-                    foreach (var file in files.Values.Where(deploy => !deploy.RelativePathInPack.ContainsFast(" "))) {
-                        progressHandler(this, new ArchiveProgressEventArgs(ArchiveProgressType.FinishFile, file.RelativePathInPack, ex ?? (isOk ? null : new Exception(_prolibExe.ErrorOutput.ToString()))));
+                    Exception ex = null;
+                    var pfPath = _archivePath + "~" + Path.GetRandomFileName() + ".pf";
+
+                    try {
+                        File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
+                    } catch (Exception e) {
+                        ex = e;
+                    }
+
+                    prolibExe.Arguments = _archivePath.Quoter() + " -pf " + pfPath.Quoter();
+                    var isOk = prolibExe.TryDoWait(true);
+
+                    try {
+                        if (ex == null) {
+                            File.Delete(pfPath);
+                        }
+                    } catch (Exception e) {
+                        ex = e;
+                    }
+
+                    if (progressHandler != null) {
+                        foreach (var file in files.Where(deploy => !deploy.RelativePathInPack.ContainsFast(" "))) {
+                            progressHandler(this, new ArchiveProgressionEventArgs(file.RelativePathInPack, ex ?? (isOk ? null : new Exception(prolibExe.ErrorOutput.ToString()))));
+                        }
                     }
                 }
             }

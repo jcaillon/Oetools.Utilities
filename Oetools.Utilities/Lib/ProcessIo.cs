@@ -26,7 +26,7 @@ using System.Text;
 
 namespace Oetools.Utilities.Lib {
 
-    public class ProcessIo {
+    public class ProcessIo : IDisposable {
 
         #region public fields
 
@@ -68,13 +68,17 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        ///     Desctructor
+        ///     Destructor
         /// </summary>
         ~ProcessIo() {
-            Kill();
-            Close();
+            Dispose();
+        }
+
+        public void Dispose() {
             try {
-                _process.Dispose();
+                _process?.Close();
+                _process?.Dispose();
+                _process = null;
             } catch (Exception) {
                 // ignored
             }
@@ -125,6 +129,12 @@ namespace Oetools.Utilities.Lib {
             }
 
             _process.Start();
+            
+            // Asynchronously read the standard output of the spawned process
+            // This raises OutputDataReceived events for each line of output
+            _process.BeginOutputReadLine();
+            _process.BeginErrorReadLine();
+            
             _process.WaitForExit();
 
             ExitCode = _process.ExitCode;
@@ -134,15 +144,7 @@ namespace Oetools.Utilities.Lib {
 
         public void Kill() {
             try {
-                _process.Kill();
-            } catch (Exception) {
-                //ignored
-            }
-        }
-
-        public void Close() {
-            try {
-                _process.Close();
+                _process?.Kill();
             } catch (Exception) {
                 //ignored
             }

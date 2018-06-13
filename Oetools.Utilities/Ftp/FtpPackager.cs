@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using Oetools.Utilities.Archive;
-using Oetools.Utilities.Archive.Compression;
 using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Ftp {
@@ -38,14 +37,14 @@ namespace Oetools.Utilities.Ftp {
         /// <summary>
         ///     Send files to a FTP server
         /// </summary>
-        public void PackFileSet(IDictionary<string, IFileToDeployInPackage> files, CompressionLevel compLevel, EventHandler<ArchiveProgressEventArgs> progressHandler) {
+        public void PackFileSet(List<IFileToDeployInPackage> files, CompressionLvl compLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
             var ftp = FtpsClient.Instance.Get(_uri);
 
             // try to connect!
             if (!ftp.Connected)
                 ConnectFtp(ftp, _userName, _passWord, _host, _port);
 
-            foreach (var file in files.Values) {
+            foreach (var file in files) {
                 try {
                     ftp.PutFile(file.From, file.RelativePathInPack);
                 } catch (Exception) {
@@ -63,7 +62,7 @@ namespace Oetools.Utilities.Ftp {
                 }
 
                 if (progressHandler != null)
-                    progressHandler(this, new ArchiveProgressEventArgs(ArchiveProgressType.FinishFile, file.RelativePathInPack, null));
+                    progressHandler(this, new ArchiveProgressionEventArgs(file.RelativePathInPack, null));
             }
         }
 

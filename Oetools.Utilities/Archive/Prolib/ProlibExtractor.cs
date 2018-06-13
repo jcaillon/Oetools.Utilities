@@ -36,7 +36,7 @@ namespace Oetools.Utilities.Archive.Prolib {
         
         #region Private
 
-        private ProcessIo _prolibExe;
+        private string _prolibExePath;
         private string _archivePath;
         private string _plExtractionFolder;
 
@@ -47,7 +47,7 @@ namespace Oetools.Utilities.Archive.Prolib {
         public ProlibExtractor(string archivePath, string prolibExePath, string plExtractionFolder) {
             _archivePath = archivePath;
             _plExtractionFolder = plExtractionFolder;
-            _prolibExe = new ProcessIo(prolibExePath);
+            _prolibExePath = prolibExePath;
         }
 
         #endregion
@@ -59,35 +59,39 @@ namespace Oetools.Utilities.Archive.Prolib {
         /// </summary>
         /// <param name="files"></param>
         public void ExtractFiles(List<string> files) {
-            _prolibExe.StartInfo.WorkingDirectory = _plExtractionFolder;
+            using (var prolibExe = new ProcessIo(_prolibExePath)) {
+                prolibExe.StartInfo.WorkingDirectory = _plExtractionFolder;
 
-            // create the subfolders needed to extract each file
-            foreach (var folder in files.Select(Path.GetDirectoryName).Distinct(StringComparer.CurrentCultureIgnoreCase)) Directory.CreateDirectory(Path.Combine(_plExtractionFolder, folder));
+                // create the subfolders needed to extract each file
+                foreach (var folder in files.Select(Path.GetDirectoryName).Distinct(StringComparer.CurrentCultureIgnoreCase))
+                    Directory.CreateDirectory(Path.Combine(_plExtractionFolder, folder));
 
-            // for files containing a space, we don't have a choice, call delete for each...
-            foreach (var file in files.Where(deploy => deploy.ContainsFast(" "))) {
-                _prolibExe.Arguments = _archivePath.Quoter() + " -extract " + file.Quoter();
-                if (!_prolibExe.TryDoWait(true)) 
-                    throw new Exception("Error while extracting a file from a .pl", new Exception(_prolibExe.ErrorOutput.ToString()));
-            }
+                // for files containing a space, we don't have a choice, call extract for each...
+                foreach (var file in files.Where(deploy => deploy.ContainsFast(" "))) {
+                    prolibExe.Arguments = _archivePath.Quoter() + " -extract " + file.Quoter();
+                    if (!prolibExe.TryDoWait(true))
+                        throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.ErrorOutput.ToString()));
+                }
 
-            var remainingFiles = files.Where(deploy => !deploy.ContainsFast(" ")).ToList();
-            if (remainingFiles.Count > 0) {
-                // for the other files, we can use the -pf parameter
-                var pfContent = new StringBuilder();
-                pfContent.AppendLine("-extract");
-                foreach (var file in remainingFiles) pfContent.AppendLine(file);
+                var remainingFiles = files.Where(deploy => !deploy.ContainsFast(" ")).ToList();
+                if (remainingFiles.Count > 0) {
+                    // for the other files, we can use the -pf parameter
+                    var pfContent = new StringBuilder();
+                    pfContent.AppendLine("-extract");
+                    foreach (var file in remainingFiles)
+                        pfContent.AppendLine(file);
 
-                var pfPath = _plExtractionFolder + Path.GetFileName(_archivePath) + "~" + Path.GetRandomFileName() + ".pf";
+                    var pfPath = _plExtractionFolder + Path.GetFileName(_archivePath) + "~" + Path.GetRandomFileName() + ".pf";
 
-                File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
+                    File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
 
-                _prolibExe.Arguments = _archivePath.Quoter() + " -pf " + pfPath.Quoter();
-                if (!_prolibExe.TryDoWait(true)) 
-                    throw new Exception("Error while extracting a file from a .pl", new Exception(_prolibExe.ErrorOutput.ToString()));
+                    prolibExe.Arguments = _archivePath.Quoter() + " -pf " + pfPath.Quoter();
+                    if (!prolibExe.TryDoWait(true))
+                        throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.ErrorOutput.ToString()));
 
-                if (File.Exists(pfPath))
-                    File.Delete(pfPath);
+                    if (File.Exists(pfPath))
+                        File.Delete(pfPath);
+                }
             }
         }
 

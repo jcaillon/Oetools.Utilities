@@ -1,5 +1,4 @@
 #region header
-
 // ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ConcatStream.cs) is part of csdeployer.
@@ -17,23 +16,34 @@
 // You should have received a copy of the GNU General Public License
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
 #endregion
-
 using System;
 using System.IO;
 
-namespace Oetools.Utilities.Archive.Compression.Zip {
+namespace csdeployer.Lib.Compression.Zip {
     /// <summary>
-    ///     Used to trick a DeflateStream into reading from or writing to
-    ///     a series of (chunked) streams instead of a single steream.
+    /// Used to trick a DeflateStream into reading from or writing to
+    /// a series of (chunked) streams instead of a single steream.
     /// </summary>
     internal class ConcatStream : Stream {
+        private Stream source;
+        private long position;
         private long length;
         private Action<ConcatStream> nextStreamHandler;
-        private long position;
 
-        public Stream Source { get; set; }
+        public ConcatStream(Action<ConcatStream> nextStreamHandler) {
+            if (nextStreamHandler == null) {
+                throw new ArgumentNullException("nextStreamHandler");
+            }
+
+            this.nextStreamHandler = nextStreamHandler;
+            length = Int64.MaxValue;
+        }
+
+        public Stream Source {
+            get { return source; }
+            set { source = value; }
+        }
 
         public override bool CanRead {
             get { return true; }
@@ -56,31 +66,28 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             set { throw new NotSupportedException(); }
         }
 
-        public ConcatStream(Action<ConcatStream> nextStreamHandler) {
-            if (nextStreamHandler == null) throw new ArgumentNullException("nextStreamHandler");
-
-            this.nextStreamHandler = nextStreamHandler;
-            length = long.MaxValue;
-        }
-
         public override int Read(byte[] buffer, int offset, int count) {
-            if (Source == null) nextStreamHandler(this);
+            if (source == null) {
+                nextStreamHandler(this);
+            }
 
             count = (int) Math.Min(count, length - position);
 
-            var bytesRemaining = count;
+            int bytesRemaining = count;
             while (bytesRemaining > 0) {
-                if (Source == null) throw new InvalidOperationException();
+                if (source == null) {
+                    throw new InvalidOperationException();
+                }
 
-                var partialCount = (int) Math.Min(bytesRemaining,
-                    Source.Length - Source.Position);
+                int partialCount = (int) Math.Min(bytesRemaining,
+                    source.Length - source.Position);
 
                 if (partialCount == 0) {
                     nextStreamHandler(this);
                     continue;
                 }
 
-                partialCount = Source.Read(
+                partialCount = source.Read(
                     buffer, offset + count - bytesRemaining, partialCount);
                 bytesRemaining -= partialCount;
                 position += partialCount;
@@ -90,21 +97,25 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         public override void Write(byte[] buffer, int offset, int count) {
-            if (Source == null) nextStreamHandler(this);
+            if (source == null) {
+                nextStreamHandler(this);
+            }
 
-            var bytesRemaining = count;
+            int bytesRemaining = count;
             while (bytesRemaining > 0) {
-                if (Source == null) throw new InvalidOperationException();
+                if (source == null) {
+                    throw new InvalidOperationException();
+                }
 
-                var partialCount = (int) Math.Min(bytesRemaining,
-                    Math.Max(0, length - Source.Position));
+                int partialCount = (int) Math.Min(bytesRemaining,
+                    Math.Max(0, length - source.Position));
 
                 if (partialCount == 0) {
                     nextStreamHandler(this);
                     continue;
                 }
 
-                Source.Write(
+                source.Write(
                     buffer, offset + count - bytesRemaining, partialCount);
                 bytesRemaining -= partialCount;
                 position += partialCount;
@@ -112,7 +123,9 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         public override void Flush() {
-            if (Source != null) Source.Flush();
+            if (source != null) {
+                source.Flush();
+            }
         }
 
         public override long Seek(long offset, SeekOrigin origin) {
@@ -124,7 +137,9 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         public override void Close() {
-            if (Source != null) Source.Close();
+            if (source != null) {
+                source.Close();
+            }
         }
     }
 }

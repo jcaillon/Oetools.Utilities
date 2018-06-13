@@ -1,5 +1,4 @@
 #region header
-
 // ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (CabPacker.cs) is part of csdeployer.
@@ -17,9 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
 #endregion
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -29,49 +26,42 @@ using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Text;
 
-namespace Oetools.Utilities.Archive.Compression.Cab {
+namespace csdeployer.Lib.Compression.Cab {
     internal class CabPacker : CabWorker {
         private const string TempStreamName = "%%TEMP%%";
 
-        private IPackStreamContext context;
-        private bool dontUseTempFiles;
+        private NativeMethods.FCI.Handle fciHandle;
 
         // These delegates need to be saved as member variables
         // so that they don't get GC'd.
         private NativeMethods.FCI.PFNALLOC fciAllocMemHandler;
 
-        private NativeMethods.FCI.PFNCLOSE fciCloseStreamHandler;
-        private NativeMethods.FCI.PFNSTATUS fciCreateStatus;
-        private NativeMethods.FCI.PFNDELETE fciDeleteFileHandler;
-        private NativeMethods.FCI.PFNFILEPLACED fciFilePlacedHandler;
-
         private NativeMethods.FCI.PFNFREE fciFreeMemHandler;
-
-        private NativeMethods.FCI.PFNGETNEXTCABINET fciGetNextCabinet;
-        private NativeMethods.FCI.PFNGETOPENINFO fciGetOpenInfo;
-        private NativeMethods.FCI.PFNGETTEMPFILE fciGetTempFileHandler;
-
-        private NativeMethods.FCI.Handle fciHandle;
         private NativeMethods.FCI.PFNOPEN fciOpenStreamHandler;
         private NativeMethods.FCI.PFNREAD fciReadStreamHandler;
-        private NativeMethods.FCI.PFNSEEK fciSeekStreamHandler;
         private NativeMethods.FCI.PFNWRITE fciWriteStreamHandler;
+        private NativeMethods.FCI.PFNCLOSE fciCloseStreamHandler;
+        private NativeMethods.FCI.PFNSEEK fciSeekStreamHandler;
+        private NativeMethods.FCI.PFNFILEPLACED fciFilePlacedHandler;
+        private NativeMethods.FCI.PFNDELETE fciDeleteFileHandler;
+        private NativeMethods.FCI.PFNGETTEMPFILE fciGetTempFileHandler;
+
+        private NativeMethods.FCI.PFNGETNEXTCABINET fciGetNextCabinet;
+        private NativeMethods.FCI.PFNSTATUS fciCreateStatus;
+        private NativeMethods.FCI.PFNGETOPENINFO fciGetOpenInfo;
+
+        private IPackStreamContext context;
 
         private FileAttributes fileAttributes;
         private DateTime fileLastWriteTime;
 
         private int maxCabBytes;
-        private IList<Stream> tempStreams;
 
         private long totalFolderBytesProcessedInCurrentCab;
 
-        public bool UseTempFiles {
-            get { return !dontUseTempFiles; }
-
-            set { dontUseTempFiles = !value; }
-        }
-
-        public CompressionLevel CompressionLevel { get; set; }
+        private CompressionLevel compressionLevel;
+        private bool dontUseTempFiles;
+        private IList<Stream> tempStreams;
 
         public CabPacker(CabEngine cabEngine)
             : base(cabEngine) {
@@ -89,31 +79,47 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
             fciCreateStatus = CabCreateStatus;
             fciGetOpenInfo = CabGetOpenInfo;
             tempStreams = new List<Stream>();
-            CompressionLevel = CompressionLevel.Normal;
+            compressionLevel = CompressionLevel.Normal;
+        }
+
+        public bool UseTempFiles {
+            get { return !dontUseTempFiles; }
+
+            set { dontUseTempFiles = !value; }
+        }
+
+        public CompressionLevel CompressionLevel {
+            get { return compressionLevel; }
+
+            set { compressionLevel = value; }
         }
 
         [SuppressMessage("Microsoft.Security", "CA2122:DoNotIndirectlyExposeMethodsWithLinkDemands")]
         private void CreateFci(long maxArchiveSize) {
-            var ccab = new NativeMethods.FCI.CCAB();
-            if (maxArchiveSize > 0 && maxArchiveSize < ccab.cb)
+            NativeMethods.FCI.CCAB ccab = new NativeMethods.FCI.CCAB();
+            if (maxArchiveSize > 0 && maxArchiveSize < ccab.cb) {
                 ccab.cb = Math.Max(
                     NativeMethods.FCI.MIN_DISK, (int) maxArchiveSize);
+            }
 
-            var maxFolderSizeOption = context.GetOption(
+            object maxFolderSizeOption = context.GetOption(
                 "maxFolderSize", null);
             if (maxFolderSizeOption != null) {
-                var maxFolderSize = Convert.ToInt64(
+                long maxFolderSize = Convert.ToInt64(
                     maxFolderSizeOption, CultureInfo.InvariantCulture);
-                if (maxFolderSize > 0 && maxFolderSize < ccab.cbFolderThresh) ccab.cbFolderThresh = (int) maxFolderSize;
+                if (maxFolderSize > 0 && maxFolderSize < ccab.cbFolderThresh) {
+                    ccab.cbFolderThresh = (int) maxFolderSize;
+                }
             }
 
             maxCabBytes = ccab.cb;
             ccab.szCab = context.GetArchiveName(0);
-            if (ccab.szCab == null)
+            if (ccab.szCab == null) {
                 throw new FileNotFoundException(
                     "Cabinet name not provided by stream context.");
+            }
             ccab.setID = (short) new Random().Next(
-                short.MinValue, short.MaxValue + 1);
+                Int16.MinValue, Int16.MaxValue + 1);
             CabNumbers[ccab.szCab] = 0;
             currentArchiveName = ccab.szCab;
             totalArchives = 1;
@@ -144,9 +150,13 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
             IPackStreamContext streamContext,
             IEnumerable<string> files,
             long maxArchiveSize) {
-            if (streamContext == null) throw new ArgumentNullException("streamContext");
+            if (streamContext == null) {
+                throw new ArgumentNullException("streamContext");
+            }
 
-            if (files == null) throw new ArgumentNullException("files");
+            if (files == null) {
+                throw new ArgumentNullException("files");
+            }
 
             lock (this) {
                 try {
@@ -156,10 +166,10 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
 
                     CreateFci(maxArchiveSize);
 
-                    foreach (var file in files) {
+                    foreach (string file in files) {
                         FileAttributes attributes;
                         DateTime lastWriteTime;
-                        var fileStream = context.OpenFileReadStream(
+                        Stream fileStream = context.OpenFileReadStream(
                             file,
                             out attributes,
                             out lastWriteTime);
@@ -173,30 +183,33 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
                     long uncompressedBytesInFolder = 0;
                     currentFileNumber = -1;
 
-                    foreach (var file in files) {
+                    foreach (string file in files) {
                         FileAttributes attributes;
                         DateTime lastWriteTime;
-                        var fileStream = context.OpenFileReadStream(
+                        Stream fileStream = context.OpenFileReadStream(
                             file, out attributes, out lastWriteTime);
-                        if (fileStream == null) continue;
+                        if (fileStream == null) {
+                            continue;
+                        }
 
-                        if (fileStream.Length >= NativeMethods.FCI.MAX_FOLDER)
-                            throw new NotSupportedException(string.Format(
+                        if (fileStream.Length >= NativeMethods.FCI.MAX_FOLDER) {
+                            throw new NotSupportedException(String.Format(
                                 CultureInfo.InvariantCulture,
                                 "File {0} exceeds maximum file size " +
                                 "for cabinet format.",
                                 file));
+                        }
 
                         if (uncompressedBytesInFolder > 0) {
                             // Automatically create a new folder if this file
                             // won't fit in the current folder.
-                            var nextFolder = uncompressedBytesInFolder
-                                             + fileStream.Length >= NativeMethods.FCI.MAX_FOLDER;
+                            bool nextFolder = uncompressedBytesInFolder
+                                              + fileStream.Length >= NativeMethods.FCI.MAX_FOLDER;
 
                             // Otherwise ask the client if it wants to
                             // move to the next folder.
                             if (!nextFolder) {
-                                var nextFolderOption = streamContext.GetOption(
+                                object nextFolderOption = streamContext.GetOption(
                                     "nextFolder",
                                     new object[] {file, currentFolderNumber});
                                 nextFolder = Convert.ToBoolean(
@@ -261,16 +274,17 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
 
         internal override int CabOpenStreamEx(string path, int openFlags, int shareMode, out int err, IntPtr pv) {
             if (CabNumbers.ContainsKey(path)) {
-                var stream = CabStream;
+                Stream stream = CabStream;
                 if (stream == null) {
-                    var cabNumber = CabNumbers[path];
+                    short cabNumber = CabNumbers[path];
 
                     currentFolderTotalBytes = 0;
 
                     stream = context.OpenArchiveWriteStream(cabNumber, path, true, CabEngine);
-                    if (stream == null)
+                    if (stream == null) {
                         throw new FileNotFoundException(
-                            string.Format(CultureInfo.InvariantCulture, "Cabinet {0} not provided.", cabNumber));
+                            String.Format(CultureInfo.InvariantCulture, "Cabinet {0} not provided.", cabNumber));
+                    }
                     currentArchiveName = path;
 
                     currentArchiveTotalBytes = Math.Min(
@@ -285,7 +299,7 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
                 // Opening memory stream for a temp file.
                 Stream stream = new MemoryStream();
                 tempStreams.Add(stream);
-                var streamHandle = StreamHandles.AllocHandle(stream);
+                int streamHandle = StreamHandles.AllocHandle(stream);
                 err = 0;
                 return streamHandle;
             } else if (path != CabStreamName) {
@@ -294,7 +308,7 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
                 Stream stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite);
                 tempStreams.Add(stream);
                 stream = new DuplicateStream(stream);
-                var streamHandle = StreamHandles.AllocHandle(stream);
+                int streamHandle = StreamHandles.AllocHandle(stream);
                 err = 0;
                 return streamHandle;
             }
@@ -302,25 +316,27 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
         }
 
         internal override int CabWriteStreamEx(int streamHandle, IntPtr memory, int cb, out int err, IntPtr pv) {
-            var count = base.CabWriteStreamEx(streamHandle, memory, cb, out err, pv);
+            int count = base.CabWriteStreamEx(streamHandle, memory, cb, out err, pv);
             if (count > 0 && err == 0) {
-                var stream = StreamHandles[streamHandle];
+                Stream stream = StreamHandles[streamHandle];
                 if (DuplicateStream.OriginalStream(stream) ==
                     DuplicateStream.OriginalStream(CabStream)) {
                     currentArchiveBytesProcessed += cb;
-                    if (currentArchiveBytesProcessed > currentArchiveTotalBytes) currentArchiveBytesProcessed = currentArchiveTotalBytes;
+                    if (currentArchiveBytesProcessed > currentArchiveTotalBytes) {
+                        currentArchiveBytesProcessed = currentArchiveTotalBytes;
+                    }
                 }
             }
             return count;
         }
 
         internal override int CabCloseStreamEx(int streamHandle, out int err, IntPtr pv) {
-            var stream = DuplicateStream.OriginalStream(StreamHandles[streamHandle]);
+            Stream stream = DuplicateStream.OriginalStream(StreamHandles[streamHandle]);
 
             if (stream == DuplicateStream.OriginalStream(FileStream)) {
                 context.CloseFileReadStream(currentFileName, stream);
                 FileStream = null;
-                var remainder = currentFileTotalBytes - currentFileBytesProcessed;
+                long remainder = currentFileTotalBytes - currentFileBytesProcessed;
                 currentFileBytesProcessed += remainder;
                 fileBytesProcessed += remainder;
                 OnProgress(ArchiveProgressType.FinishFile);
@@ -329,7 +345,9 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
                 currentFileBytesProcessed = 0;
                 currentFileName = null;
             } else if (stream == DuplicateStream.OriginalStream(CabStream)) {
-                if (stream.CanWrite) stream.Flush();
+                if (stream.CanWrite) {
+                    stream.Flush();
+                }
 
                 currentArchiveBytesProcessed = currentArchiveTotalBytes;
                 OnProgress(ArchiveProgressType.FinishArchive);
@@ -355,34 +373,37 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
         }
 
         /// <summary>
-        ///     Disposes of resources allocated by the cabinet engine.
+        /// Disposes of resources allocated by the cabinet engine.
         /// </summary>
-        /// <param name="disposing">
-        ///     If true, the method has been called directly or indirectly by a user's code,
-        ///     so managed and unmanaged resources will be disposed. If false, the method has been called by the
-        ///     runtime from inside the finalizer, and only unmanaged resources will be disposed.
-        /// </param>
+        /// <param name="disposing">If true, the method has been called directly or indirectly by a user's code,
+        /// so managed and unmanaged resources will be disposed. If false, the method has been called by the 
+        /// runtime from inside the finalizer, and only unmanaged resources will be disposed.</param>
         [SuppressMessage("Microsoft.Security", "CA2122:DoNotIndirectlyExposeMethodsWithLinkDemands")]
         protected override void Dispose(bool disposing) {
             try {
-                if (disposing)
+                if (disposing) {
                     if (fciHandle != null) {
                         fciHandle.Dispose();
                         fciHandle = null;
                     }
+                }
             } finally {
                 base.Dispose(disposing);
             }
         }
 
         private static NativeMethods.FCI.TCOMP GetCompressionType(CompressionLevel compLevel) {
-            if (compLevel < CompressionLevel.Min) return NativeMethods.FCI.TCOMP.TYPE_NONE;
-            if (compLevel > CompressionLevel.Max) compLevel = CompressionLevel.Max;
+            if (compLevel < CompressionLevel.Min) {
+                return NativeMethods.FCI.TCOMP.TYPE_NONE;
+            }
+            if (compLevel > CompressionLevel.Max) {
+                compLevel = CompressionLevel.Max;
+            }
 
-            var lzxWindowMax =
+            int lzxWindowMax =
                 ((int) NativeMethods.FCI.TCOMP.LZX_WINDOW_HI >> (int) NativeMethods.FCI.TCOMP.SHIFT_LZX_WINDOW) -
                 ((int) NativeMethods.FCI.TCOMP.LZX_WINDOW_LO >> (int) NativeMethods.FCI.TCOMP.SHIFT_LZX_WINDOW);
-            var lzxWindow = lzxWindowMax *
+            int lzxWindow = lzxWindowMax *
                             (compLevel - CompressionLevel.Min) / (CompressionLevel.Max - CompressionLevel.Min);
 
             return (NativeMethods.FCI.TCOMP) ((int) NativeMethods.FCI.TCOMP.TYPE_LZX |
@@ -404,17 +425,17 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
             fileLastWriteTime = lastWriteTime;
             currentFileName = name;
 
-            var tcomp = GetCompressionType(compLevel);
+            NativeMethods.FCI.TCOMP tcomp = GetCompressionType(compLevel);
 
-            var namePtr = IntPtr.Zero;
+            IntPtr namePtr = IntPtr.Zero;
             try {
-                var nameEncoding = Encoding.ASCII;
+                Encoding nameEncoding = Encoding.ASCII;
                 if (Encoding.UTF8.GetByteCount(name) > name.Length) {
                     nameEncoding = Encoding.UTF8;
                     fileAttributes |= FileAttributes.Normal; // _A_NAME_IS_UTF
                 }
 
-                var nameBytes = nameEncoding.GetBytes(name);
+                byte[] nameBytes = nameEncoding.GetBytes(name);
                 namePtr = Marshal.AllocHGlobal(nameBytes.Length + 1);
                 Marshal.Copy(nameBytes, 0, namePtr, nameBytes.Length);
                 Marshal.WriteByte(namePtr, nameBytes.Length, 0);
@@ -422,7 +443,7 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
                 Erf.Clear();
                 NativeMethods.FCI.AddFile(
                     fciHandle,
-                    string.Empty,
+                    String.Empty,
                     namePtr,
                     execute,
                     fciGetNextCabinet,
@@ -430,7 +451,9 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
                     fciGetOpenInfo,
                     tcomp);
             } finally {
-                if (namePtr != IntPtr.Zero) Marshal.FreeHGlobal(namePtr);
+                if (namePtr != IntPtr.Zero) {
+                    Marshal.FreeHGlobal(namePtr);
+                }
             }
 
             CheckError(false);
@@ -460,9 +483,9 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
             CompressionEngine.DateTimeToDosDateAndTime(fileLastWriteTime, out date, out time);
             attribs = (short) fileAttributes;
 
-            var stream = FileStream;
+            Stream stream = FileStream;
             FileStream = new DuplicateStream(stream);
-            var streamHandle = StreamHandles.AllocHandle(stream);
+            int streamHandle = StreamHandles.AllocHandle(stream);
             err = 0;
             return streamHandle;
         }
@@ -477,10 +500,10 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
         }
 
         private int CabGetNextCabinet(IntPtr pccab, uint prevCabSize, IntPtr pv) {
-            var nextCcab = new NativeMethods.FCI.CCAB();
+            NativeMethods.FCI.CCAB nextCcab = new NativeMethods.FCI.CCAB();
             Marshal.PtrToStructure(pccab, nextCcab);
 
-            nextCcab.szDisk = string.Empty;
+            nextCcab.szDisk = String.Empty;
             nextCcab.szCab = context.GetArchiveName(nextCcab.iCab);
             CabNumbers[nextCcab.szCab] = (short) nextCcab.iCab;
             NextCabinetName = nextCcab.szCab;
@@ -493,7 +516,9 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
             switch (typeStatus) {
                 case NativeMethods.FCI.STATUS.FILE:
                     if (cb2 > 0 && currentFileBytesProcessed < currentFileTotalBytes) {
-                        if (currentFileBytesProcessed + cb2 > currentFileTotalBytes) cb2 = (uint) currentFileTotalBytes - (uint) currentFileBytesProcessed;
+                        if (currentFileBytesProcessed + cb2 > currentFileTotalBytes) {
+                            cb2 = (uint) currentFileTotalBytes - (uint) currentFileBytesProcessed;
+                        }
                         currentFileBytesProcessed += cb2;
                         fileBytesProcessed += cb2;
 
@@ -518,11 +543,16 @@ namespace Oetools.Utilities.Archive.Compression.Cab {
 
         private int CabGetTempFile(IntPtr tempNamePtr, int tempNameSize, IntPtr pv) {
             string tempFileName;
-            if (UseTempFiles) tempFileName = Path.GetFileName(Path.GetTempFileName());
-            else tempFileName = TempStreamName;
+            if (UseTempFiles) {
+                tempFileName = Path.GetFileName(Path.GetTempFileName());
+            } else {
+                tempFileName = TempStreamName;
+            }
 
-            var tempNameBytes = Encoding.ASCII.GetBytes(tempFileName);
-            if (tempNameBytes.Length >= tempNameSize) return -1;
+            byte[] tempNameBytes = Encoding.ASCII.GetBytes(tempFileName);
+            if (tempNameBytes.Length >= tempNameSize) {
+                return -1;
+            }
 
             Marshal.Copy(tempNameBytes, 0, tempNamePtr, tempNameBytes.Length);
             Marshal.WriteByte(tempNamePtr, tempNameBytes.Length, 0); // null-terminator

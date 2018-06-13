@@ -24,7 +24,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Oetools.Utilities.Archive.Compression;
 using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Archive.Prolib {
@@ -36,7 +35,7 @@ namespace Oetools.Utilities.Archive.Prolib {
         
         #region Private
 
-        private ProcessIo _prolibExe;
+        private string _prolibExePath;
         private string _archivePath;
 
         #endregion
@@ -45,14 +44,14 @@ namespace Oetools.Utilities.Archive.Prolib {
 
         public ProlibPackager(string archivePath, string prolibExePath) {
             _archivePath = archivePath;
-            _prolibExe = new ProcessIo(prolibExePath);
+            _prolibExePath = prolibExePath;
         }
 
         #endregion
 
         #region Methods
 
-        public void PackFileSet(IDictionary<string, IFileToDeployInPackage> files, CompressionLevel compLevel, EventHandler<ArchiveProgressEventArgs> progressHandler) {
+        public void PackFileSet(List<IFileToDeployInPackage> files, CompressionLvl compLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
             
             // check that the folder to the archive exists
             var archiveFolder = Path.GetDirectoryName(_archivePath);
@@ -72,7 +71,7 @@ namespace Oetools.Utilities.Archive.Prolib {
             var subFolders = new Dictionary<string, List<FilesToMove>>();
 
             foreach (var file in files) {
-                var subFolderPath = Path.GetDirectoryName(Path.Combine(uniqueTempFolder, file.Key));
+                var subFolderPath = Path.GetDirectoryName(Path.Combine(uniqueTempFolder, file.RelativePathInPack));
                 if (!string.IsNullOrEmpty(subFolderPath)) {
                     if (!subFolders.ContainsKey(subFolderPath)) {
                         subFolders.Add(subFolderPath, new List<FilesToMove>());
@@ -81,16 +80,21 @@ namespace Oetools.Utilities.Archive.Prolib {
                         }
                     }
 
-                    subFolders[subFolderPath].Add(new FilesToMove(file.Value.From, Path.Combine(uniqueTempFolder, file.Key), file.Key));
+                    subFolders[subFolderPath].Add(new FilesToMove(file.From, Path.Combine(uniqueTempFolder, file.RelativePathInPack), file.RelativePathInPack));
                 }
             }
 
-            _prolibExe.StartInfo.WorkingDirectory = uniqueTempFolder;
+            var prolibExe = new ProcessIo(_prolibExePath) {
+                StartInfo = {
+                    WorkingDirectory = uniqueTempFolder
+                }
+            };
+
 
             foreach (var subFolder in subFolders) {
                 Exception libException = null;
 
-                _prolibExe.Arguments = _archivePath.Quoter() + " -create -nowarn -add " + Path.Combine(subFolder.Key.Replace(uniqueTempFolder, "").TrimStart('\\'), "*").Quoter();
+                prolibExe.Arguments = _archivePath.Quoter() + " -create -nowarn -add " + Path.Combine(subFolder.Key.Replace(uniqueTempFolder, "").TrimStart('\\'), "*").Quoter();
 
                 // move files to the temp subfolder
                 Parallel.ForEach(subFolder.Value, file => {
@@ -106,12 +110,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                 });
 
                 // now we just need to add the content of temp folders into the .pl
-                var prolibOk = false;
-                try {
-                    prolibOk = _prolibExe.TryDoWait(true);
-                } catch (Exception e) {
-                    libException = e;
-                }
+                var prolibOk = prolibExe.TryDoWait(true);
 
                 // move files from the temp subfolder
                 Parallel.ForEach(subFolder.Value, file => {
@@ -127,9 +126,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                     }
 
                     try {
-                        if (progressHandler != null) {
-                            progressHandler(this, new ArchiveProgressEventArgs(ArchiveProgressType.FinishFile, file.RelativePath, libException ?? ex ?? (prolibOk ? null : new Exception(_prolibExe.ErrorOutput.ToString()))));
-                        }
+                        progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(file.RelativePath, ex ?? (prolibOk ? null : new Exception(prolibExe.ErrorOutput.ToString()))));
                     } catch (Exception) {
                         // ignored
                     }
@@ -137,9 +134,10 @@ namespace Oetools.Utilities.Archive.Prolib {
             }
 
             // compress .pl
-            _prolibExe.Arguments = _archivePath.Quoter() + " -compress -nowarn";
-            _prolibExe.TryDoWait(true);
-
+            prolibExe.Arguments = _archivePath.Quoter() + " -compress -nowarn";
+            prolibExe.TryDoWait(true);
+            prolibExe.Dispose();
+            
             // delete temp folder
             Directory.Delete(uniqueTempFolder, true);
         }

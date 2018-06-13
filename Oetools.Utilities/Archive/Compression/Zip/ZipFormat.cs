@@ -1,5 +1,4 @@
 #region header
-
 // ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ZipFormat.cs) is part of csdeployer.
@@ -17,9 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
 #endregion
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -27,7 +24,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace Oetools.Utilities.Archive.Compression.Zip {
+namespace csdeployer.Lib.Compression.Zip {
     [Flags]
     internal enum ZipFileFlags : ushort {
         None = 0x0000,
@@ -55,32 +52,24 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
 
         public const uint LFH_FIXEDSIZE = 30;
         public const uint CFH_FIXEDSIZE = 46;
-        public uint compressedSize;
-        public ZipCompressionMethod compressionMethod;
-        public uint crc32;
-        public ushort diskStart;
-        public uint externalFileAttrs;
-        public ZipExtraFileField[] extraFields;
-        public string fileComment;
-        public string fileName;
-        public ZipFileFlags flags;
-        public ushort internalFileAttrs;
-        public short lastModDate;
-        public short lastModTime;
-        public uint localHeaderOffset;
-        public uint uncompressedSize;
 
         public ushort versionMadeBy;
         public ushort versionNeeded;
+        public ZipFileFlags flags;
+        public ZipCompressionMethod compressionMethod;
+        public short lastModTime;
+        public short lastModDate;
+        public uint crc32;
+        public uint compressedSize;
+        public uint uncompressedSize;
+        public ushort diskStart;
+        public ushort internalFileAttrs;
+        public uint externalFileAttrs;
+        public uint localHeaderOffset;
+        public string fileName;
+        public ZipExtraFileField[] extraFields;
+        public string fileComment;
         public bool zip64;
-
-        public bool IsDirectory {
-            get {
-                return fileName != null &&
-                       (fileName.EndsWith("/", StringComparison.Ordinal) ||
-                        fileName.EndsWith("\\", StringComparison.Ordinal));
-            }
-        }
 
         public ZipFileHeader() {
             versionMadeBy = 20;
@@ -97,12 +86,12 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             this.zip64 = zip64;
 
             if (this.zip64) {
-                compressedSize = uint.MaxValue;
-                uncompressedSize = uint.MaxValue;
-                diskStart = ushort.MaxValue;
+                compressedSize = UInt32.MaxValue;
+                uncompressedSize = UInt32.MaxValue;
+                diskStart = UInt16.MaxValue;
                 versionMadeBy = 45;
                 versionNeeded = 45;
-                var field = new ZipExtraFileField();
+                ZipExtraFileField field = new ZipExtraFileField();
                 field.fieldType = ZipExtraFileFieldType.ZIP64;
                 field.SetZip64Data(
                     fileInfo.CompressedLength,
@@ -130,19 +119,22 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             this.crc32 = crc32;
 
             if (zip64) {
-                this.compressedSize = uint.MaxValue;
-                this.uncompressedSize = uint.MaxValue;
-                this.localHeaderOffset = uint.MaxValue;
-                diskStart = ushort.MaxValue;
+                this.compressedSize = UInt32.MaxValue;
+                this.uncompressedSize = UInt32.MaxValue;
+                this.localHeaderOffset = UInt32.MaxValue;
+                diskStart = UInt16.MaxValue;
 
-                if (extraFields != null)
-                    foreach (var field in extraFields)
-                        if (field.fieldType == ZipExtraFileFieldType.ZIP64)
+                if (extraFields != null) {
+                    foreach (ZipExtraFileField field in extraFields) {
+                        if (field.fieldType == ZipExtraFileFieldType.ZIP64) {
                             field.SetZip64Data(
                                 compressedSize,
                                 uncompressedSize,
                                 localHeaderOffset,
                                 archiveNumber);
+                        }
+                    }
+                }
             } else {
                 this.compressedSize = (uint) compressedSize;
                 this.uncompressedSize = (uint) uncompressedSize;
@@ -152,19 +144,27 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         public bool Read(Stream stream, bool central) {
-            var startPos = stream.Position;
+            long startPos = stream.Position;
 
             if (stream.Length - startPos <
-                (central ? CFH_FIXEDSIZE : LFH_FIXEDSIZE)) return false;
+                (central ? CFH_FIXEDSIZE : LFH_FIXEDSIZE)) {
+                return false;
+            }
 
-            var reader = new BinaryReader(stream);
-            var sig = reader.ReadUInt32();
+            BinaryReader reader = new BinaryReader(stream);
+            uint sig = reader.ReadUInt32();
 
-            if (sig == SPANSIG || sig == SPANSIG2) sig = reader.ReadUInt32();
+            if (sig == SPANSIG || sig == SPANSIG2) {
+                // Spanned zip files may optionally begin with a special marker.
+                // Just ignore it and move on.
+                sig = reader.ReadUInt32();
+            }
 
-            if (sig != (central ? CFHSIG : LFHSIG)) return false;
+            if (sig != (central ? CFHSIG : LFHSIG)) {
+                return false;
+            }
 
-            versionMadeBy = central ? reader.ReadUInt16() : (ushort) 0;
+            versionMadeBy = (central ? reader.ReadUInt16() : (ushort) 0);
             versionNeeded = reader.ReadUInt16();
             flags = (ZipFileFlags) reader.ReadUInt16();
             compressionMethod = (ZipCompressionMethod) reader.ReadUInt16();
@@ -174,7 +174,7 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             compressedSize = reader.ReadUInt32();
             uncompressedSize = reader.ReadUInt32();
 
-            zip64 = uncompressedSize == uint.MaxValue;
+            zip64 = uncompressedSize == UInt32.MaxValue;
 
             int fileNameLength = reader.ReadUInt16();
             int extraFieldLength = reader.ReadUInt16();
@@ -196,43 +196,53 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             }
 
             if (stream.Length - stream.Position <
-                fileNameLength + extraFieldLength + fileCommentLength) return false;
+                fileNameLength + extraFieldLength + fileCommentLength) {
+                return false;
+            }
 
-            var headerEncoding = (flags | ZipFileFlags.UTF8) != 0 ? Encoding.UTF8 : Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
+            Encoding headerEncoding = ((flags | ZipFileFlags.UTF8) != 0 ? Encoding.UTF8 : Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage));
 
-            var fileNameBytes = reader.ReadBytes(fileNameLength);
+            byte[] fileNameBytes = reader.ReadBytes(fileNameLength);
             fileName = headerEncoding.GetString(fileNameBytes).Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 
-            var fields = new List<ZipExtraFileField>();
+            List<ZipExtraFileField> fields = new List<ZipExtraFileField>();
             while (extraFieldLength > 0) {
-                var field = new ZipExtraFileField();
-                if (!field.Read(stream, ref extraFieldLength)) return false;
+                ZipExtraFileField field = new ZipExtraFileField();
+                if (!field.Read(stream, ref extraFieldLength)) {
+                    return false;
+                }
                 fields.Add(field);
-                if (field.fieldType == ZipExtraFileFieldType.ZIP64) zip64 = true;
+                if (field.fieldType == ZipExtraFileFieldType.ZIP64) {
+                    zip64 = true;
+                }
             }
             extraFields = fields.ToArray();
 
-            var fileCommentBytes = reader.ReadBytes(fileCommentLength);
+            byte[] fileCommentBytes = reader.ReadBytes(fileCommentLength);
             fileComment = headerEncoding.GetString(fileCommentBytes);
 
             return true;
         }
 
         public void Write(Stream stream, bool central) {
-            var fileNameBytes = fileName != null
+            byte[] fileNameBytes = (fileName != null
                 ? Encoding.UTF8.GetBytes(fileName)
-                : new byte[0];
-            var fileCommentBytes = fileComment != null
+                : new byte[0]);
+            byte[] fileCommentBytes = (fileComment != null
                 ? Encoding.UTF8.GetBytes(fileComment)
-                : new byte[0];
-            var useUtf8 =
-                fileName != null && fileNameBytes.Length > fileName.Length ||
-                fileComment != null && fileCommentBytes.Length > fileComment.Length;
-            if (useUtf8) flags |= ZipFileFlags.UTF8;
+                : new byte[0]);
+            bool useUtf8 =
+                (fileName != null && fileNameBytes.Length > fileName.Length) ||
+                (fileComment != null && fileCommentBytes.Length > fileComment.Length);
+            if (useUtf8) {
+                flags |= ZipFileFlags.UTF8;
+            }
 
-            var writer = new BinaryWriter(stream);
+            BinaryWriter writer = new BinaryWriter(stream);
             writer.Write(central ? CFHSIG : LFHSIG);
-            if (central) writer.Write(versionMadeBy);
+            if (central) {
+                writer.Write(versionMadeBy);
+            }
             writer.Write(versionNeeded);
             writer.Write((ushort) flags);
             writer.Write((ushort) compressionMethod);
@@ -243,7 +253,13 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             writer.Write(uncompressedSize);
 
             ushort extraFieldLength = 0;
-            if (extraFields != null) foreach (var field in extraFields) if (field.data != null) extraFieldLength += (ushort) (4 + field.data.Length);
+            if (extraFields != null) {
+                foreach (ZipExtraFileField field in extraFields) {
+                    if (field.data != null) {
+                        extraFieldLength += (ushort) (4 + field.data.Length);
+                    }
+                }
+            }
 
             writer.Write((ushort) fileNameBytes.Length);
             writer.Write(extraFieldLength);
@@ -259,9 +275,17 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
 
             writer.Write(fileNameBytes);
 
-            if (extraFields != null) foreach (var field in extraFields) if (field.data != null) field.Write(stream);
+            if (extraFields != null) {
+                foreach (ZipExtraFileField field in extraFields) {
+                    if (field.data != null) {
+                        field.Write(stream);
+                    }
+                }
+            }
 
-            if (central) writer.Write(fileCommentBytes);
+            if (central) {
+                writer.Write(fileCommentBytes);
+            }
         }
 
         [SuppressMessage("Microsoft.Maintainability", "CA1500:VariableNamesShouldNotMatchFieldNames", MessageId = "compressedSize")]
@@ -280,17 +304,19 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             archiveNumber = diskStart;
             crc = crc32;
 
-            foreach (var field in extraFields)
-                if (field.fieldType == ZipExtraFileFieldType.ZIP64)
+            foreach (ZipExtraFileField field in extraFields) {
+                if (field.fieldType == ZipExtraFileFieldType.ZIP64) {
                     field.GetZip64Data(
                         out compressedSize,
                         out uncompressedSize,
                         out localHeaderOffset,
                         out archiveNumber);
+                }
+            }
         }
 
         public ZipFileInfo ToZipFileInfo() {
-            var name = fileName;
+            string name = fileName;
 
             long compressedSizeL;
             long uncompressedSizeL;
@@ -309,29 +335,43 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
                 lastModDate,
                 lastModTime,
                 out dateTime);
-            var attrs = FileAttributes.Normal;
+            FileAttributes attrs = FileAttributes.Normal;
             // TODO: look for attrs or times in extra fields
 
             return new ZipFileInfo(name, archiveNumberL, attrs, dateTime,
                 uncompressedSizeL, compressedSizeL, compressionMethod);
         }
 
-        public int GetSize(bool central) {
-            var size = 30;
+        public bool IsDirectory {
+            get {
+                return fileName != null &&
+                       (fileName.EndsWith("/", StringComparison.Ordinal) ||
+                        fileName.EndsWith("\\", StringComparison.Ordinal));
+            }
+        }
 
-            var fileNameSize = fileName != null
+        public int GetSize(bool central) {
+            int size = 30;
+
+            int fileNameSize = (fileName != null
                 ? Encoding.UTF8.GetByteCount(fileName)
-                : 0;
+                : 0);
             size += fileNameSize;
 
-            if (extraFields != null) foreach (var field in extraFields) if (field.data != null) size += 4 + field.data.Length;
+            if (extraFields != null) {
+                foreach (ZipExtraFileField field in extraFields) {
+                    if (field.data != null) {
+                        size += 4 + field.data.Length;
+                    }
+                }
+            }
 
             if (central) {
                 size += 16;
 
-                var fileCommentSize = fileComment != null
+                int fileCommentSize = (fileComment != null
                     ? Encoding.UTF8.GetByteCount(fileComment)
-                    : 0;
+                    : 0);
                 size += fileCommentSize;
             }
 
@@ -340,19 +380,23 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
     }
 
     internal class ZipExtraFileField {
-        public byte[] data;
         public ZipExtraFileFieldType fieldType;
+        public byte[] data;
 
         public bool Read(Stream stream, ref int bytesRemaining) {
-            if (bytesRemaining < 4) return false;
+            if (bytesRemaining < 4) {
+                return false;
+            }
 
-            var reader = new BinaryReader(stream);
+            BinaryReader reader = new BinaryReader(stream);
 
             fieldType = (ZipExtraFileFieldType) reader.ReadUInt16();
-            var dataSize = reader.ReadUInt16();
+            ushort dataSize = reader.ReadUInt16();
             bytesRemaining -= 4;
 
-            if (bytesRemaining < dataSize) return false;
+            if (bytesRemaining < dataSize) {
+                return false;
+            }
 
             data = reader.ReadBytes(dataSize);
             bytesRemaining -= dataSize;
@@ -361,10 +405,10 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         public void Write(Stream stream) {
-            var writer = new BinaryWriter(stream);
+            BinaryWriter writer = new BinaryWriter(stream);
             writer.Write((ushort) fieldType);
 
-            var dataBytes = data != null ? data : new byte[0];
+            byte[] dataBytes = (data != null ? data : new byte[0]);
             writer.Write((ushort) dataBytes.Length);
             writer.Write(dataBytes);
         }
@@ -380,10 +424,12 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             diskStart = 0;
 
             if (fieldType != ZipExtraFileFieldType.ZIP64 ||
-                data == null || data.Length != 28) return false;
+                data == null || data.Length != 28) {
+                return false;
+            }
 
-            using (var dataStream = new MemoryStream(data)) {
-                var reader = new BinaryReader(dataStream);
+            using (MemoryStream dataStream = new MemoryStream(data)) {
+                BinaryReader reader = new BinaryReader(dataStream);
                 uncompressedSize = reader.ReadInt64();
                 compressedSize = reader.ReadInt64();
                 localHeaderOffset = reader.ReadInt64();
@@ -398,10 +444,12 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
             long uncompressedSize,
             long localHeaderOffset,
             int diskStart) {
-            if (fieldType != ZipExtraFileFieldType.ZIP64) return false;
+            if (fieldType != ZipExtraFileFieldType.ZIP64) {
+                return false;
+            }
 
-            using (var dataStream = new MemoryStream()) {
-                var writer = new BinaryWriter(dataStream);
+            using (MemoryStream dataStream = new MemoryStream()) {
+                BinaryWriter writer = new BinaryWriter(dataStream);
                 writer.Write(uncompressedSize);
                 writer.Write(compressedSize);
                 writer.Write(localHeaderOffset);
@@ -419,16 +467,16 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
 
         public const uint EOCD_RECORD_FIXEDSIZE = 22;
         public const uint EOCD64_RECORD_FIXEDSIZE = 56;
-        public string comment;
-        public long dirOffset;
-        public long dirSize;
-        public uint dirStartDiskNumber;
-        public uint diskNumber;
-        public long entriesOnDisk;
-        public long totalEntries;
 
         public ushort versionMadeBy;
         public ushort versionNeeded;
+        public uint diskNumber;
+        public uint dirStartDiskNumber;
+        public long entriesOnDisk;
+        public long totalEntries;
+        public long dirSize;
+        public long dirOffset;
+        public string comment;
         public bool zip64;
 
         public ZipEndOfCentralDirectory() {
@@ -437,22 +485,30 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         public bool Read(Stream stream) {
-            var startPos = stream.Position;
+            long startPos = stream.Position;
 
-            if (stream.Length - startPos < EOCD_RECORD_FIXEDSIZE) return false;
+            if (stream.Length - startPos < EOCD_RECORD_FIXEDSIZE) {
+                return false;
+            }
 
-            var reader = new BinaryReader(stream);
-            var sig = reader.ReadUInt32();
+            BinaryReader reader = new BinaryReader(stream);
+            uint sig = reader.ReadUInt32();
 
             zip64 = false;
-            if (sig != EOCDSIG)
-                if (sig == EOCD64SIG) zip64 = true;
-                else return false;
+            if (sig != EOCDSIG) {
+                if (sig == EOCD64SIG) {
+                    zip64 = true;
+                } else {
+                    return false;
+                }
+            }
 
             if (zip64) {
-                if (stream.Length - startPos < EOCD64_RECORD_FIXEDSIZE) return false;
+                if (stream.Length - startPos < EOCD64_RECORD_FIXEDSIZE) {
+                    return false;
+                }
 
-                var recordSize = reader.ReadInt64();
+                long recordSize = reader.ReadInt64();
                 versionMadeBy = reader.ReadUInt16();
                 versionNeeded = reader.ReadUInt16();
                 diskNumber = reader.ReadUInt32();
@@ -463,9 +519,11 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
                 dirOffset = reader.ReadInt64();
 
                 // Ignore any extended zip64 eocd data.
-                var exDataSize = recordSize + 12 - EOCD64_RECORD_FIXEDSIZE;
+                long exDataSize = recordSize + 12 - EOCD64_RECORD_FIXEDSIZE;
 
-                if (stream.Length - stream.Position < exDataSize) return false;
+                if (stream.Length - stream.Position < exDataSize) {
+                    return false;
+                }
 
                 stream.Seek(exDataSize, SeekOrigin.Current);
 
@@ -480,9 +538,11 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
 
                 int commentLength = reader.ReadUInt16();
 
-                if (stream.Length - stream.Position < commentLength) return false;
+                if (stream.Length - stream.Position < commentLength) {
+                    return false;
+                }
 
-                var commentBytes = reader.ReadBytes(commentLength);
+                byte[] commentBytes = reader.ReadBytes(commentLength);
                 comment = Encoding.UTF8.GetString(commentBytes);
             }
 
@@ -490,7 +550,7 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         public void Write(Stream stream) {
-            var writer = new BinaryWriter(stream);
+            BinaryWriter writer = new BinaryWriter(stream);
 
             if (zip64) {
                 writer.Write(EOCD64SIG);
@@ -505,26 +565,28 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
                 writer.Write(dirOffset);
             } else {
                 writer.Write(EOCDSIG);
-                writer.Write((ushort) Math.Min(ushort.MaxValue, diskNumber));
-                writer.Write((ushort) Math.Min(ushort.MaxValue, dirStartDiskNumber));
-                writer.Write((ushort) Math.Min(ushort.MaxValue, entriesOnDisk));
-                writer.Write((ushort) Math.Min(ushort.MaxValue, totalEntries));
-                writer.Write((uint) Math.Min(uint.MaxValue, dirSize));
-                writer.Write((uint) Math.Min(uint.MaxValue, dirOffset));
+                writer.Write((ushort) Math.Min(UInt16.MaxValue, diskNumber));
+                writer.Write((ushort) Math.Min(UInt16.MaxValue, dirStartDiskNumber));
+                writer.Write((ushort) Math.Min(UInt16.MaxValue, entriesOnDisk));
+                writer.Write((ushort) Math.Min(UInt16.MaxValue, totalEntries));
+                writer.Write((uint) Math.Min(UInt32.MaxValue, dirSize));
+                writer.Write((uint) Math.Min(UInt32.MaxValue, dirOffset));
 
-                var commentBytes = comment != null
+                byte[] commentBytes = (comment != null
                     ? Encoding.UTF8.GetBytes(comment)
-                    : new byte[0];
+                    : new byte[0]);
                 writer.Write((ushort) commentBytes.Length);
                 writer.Write(commentBytes);
             }
         }
 
         public int GetSize(bool zip64Size) {
-            if (zip64Size) return 56;
-            var commentSize = comment != null
+            if (zip64Size) {
+                return 56;
+            }
+            int commentSize = (comment != null
                 ? Encoding.UTF8.GetByteCount(comment)
-                : 0;
+                : 0);
             return 22 + commentSize;
         }
     }
@@ -533,19 +595,23 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         public const uint EOCDL64SIG = 0x07064B50;
 
         public const uint EOCDL64_SIZE = 20;
-        public long dirOffset;
 
         public uint dirStartDiskNumber;
+        public long dirOffset;
         public uint totalDisks;
 
         public bool Read(Stream stream) {
-            var startPos = stream.Position;
-            if (stream.Length - startPos < EOCDL64_SIZE) return false;
+            long startPos = stream.Position;
+            if (stream.Length - startPos < EOCDL64_SIZE) {
+                return false;
+            }
 
-            var reader = new BinaryReader(stream);
-            var sig = reader.ReadUInt32();
+            BinaryReader reader = new BinaryReader(stream);
+            uint sig = reader.ReadUInt32();
 
-            if (sig != EOCDL64SIG) return false;
+            if (sig != EOCDL64SIG) {
+                return false;
+            }
 
             dirStartDiskNumber = reader.ReadUInt32();
             dirOffset = reader.ReadInt64();
@@ -555,7 +621,7 @@ namespace Oetools.Utilities.Archive.Compression.Zip {
         }
 
         public void Write(Stream stream) {
-            var writer = new BinaryWriter(stream);
+            BinaryWriter writer = new BinaryWriter(stream);
             writer.Write(EOCDL64SIG);
             writer.Write(dirStartDiskNumber);
             writer.Write(dirOffset);
