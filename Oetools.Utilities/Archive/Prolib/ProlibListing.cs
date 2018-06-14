@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
 
@@ -57,18 +58,19 @@ namespace Oetools.Utilities.Archive.Prolib {
                     throw new Exception("Error while listing files from a .pl", new Exception(prolibExe.ErrorOutput.ToString()));
 
                 var outputList = new List<ProlibFile>();
-                var shit = prolibExe.StandardOutput.ToString();
-                var matches = new Regex(@"(.+)\s+(\d+)\s+(\w+)\s+(\d+)\s+(\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2})\s(\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2})", RegexOptions.Multiline).Matches(prolibExe.StandardOutput.ToString());
-
+                var matches = new Regex(@"^(.+)\s+(\d+)\s+(\w+)\s+(\d+)\s+(\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2})\s(\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2})", RegexOptions.Multiline).Matches(prolibExe.StandardOutput.ToString());
                 foreach (Match match in matches) {
-                    outputList.Add(new ProlibFile {
-                        RelativePathInPack = match.Groups[1].Value,
-                        SizeInBytes = int.Parse(match.Groups[2].Value),
+                    var newFile = new ProlibFile {
+                        RelativePathInPack = match.Groups[1].Value.TrimEnd(),
+                        SizeInBytes = long.Parse(match.Groups[2].Value),
                         Type = match.Groups[3].Value,
-                        Offset = int.Parse(match.Groups[4].Value),
-                        //DateAdded = DateTime.Parse(match.Groups[5].Value),
-                        //DateModified = DateTime.Parse(match.Groups[6].Value)
-                    });
+                    };
+                    if (DateTime.TryParseExact(match.Groups[5].Value, @"dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) {
+                        newFile.DateAdded = date;
+                    }
+                    if (DateTime.TryParseExact(match.Groups[6].Value, @"dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out date)) {
+                        newFile.DateModified = date;
+                    }
                 }
 
                 return outputList;

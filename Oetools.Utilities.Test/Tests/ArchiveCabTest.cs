@@ -1,7 +1,6 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Security.Cryptography;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Cab;
@@ -30,40 +29,20 @@ namespace Oetools.Utilities.Test.Tests {
         [TestMethod]
         public void CreateCab() {
             
-            var cabPath = Path.Combine(TestFolder, "out.cab");
-            IPackager packager = new CabPackager(cabPath);
-            var listFiles = new List<IFileToDeployInPackage>();
-
-            var fileName = "file1.txt";
-            var filePath = Path.Combine(TestFolder, fileName);
-            File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToDeployInPackage {
-                From = filePath,
-                PackPath = cabPath,
-                RelativePathInPack = fileName
-            });
-            
-            fileName = "file2.txt";
-            filePath = Path.Combine(TestFolder, fileName);
-            File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToDeployInPackage {
-                From = filePath, 
-                PackPath = cabPath,
-                RelativePathInPack = Path.Combine("subfolder1", fileName)
-            });
-            
+            CabPackager packager = new CabPackager();
+            List<IFileToDeployInPackage> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.cab");
+            TestHelper.CreateSourceFiles(listFiles);           
             packager.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
-
-            string smd5;
-            using (var md5 = MD5.Create()) {
-                using (var stream = File.OpenRead(cabPath)) {
-                    smd5 = Convert.ToBase64String(md5.ComputeHash(stream));
+            
+            // verify
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.PackPath)) {
+                var files = packager.ListFiles(groupedFiles.Key);
+                foreach (var file in files) {
+                    Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInPack.Equals(file.RelativePathInPack)));
                 }
+                Assert.AreEqual(groupedFiles.ToList().Count, files.Count);
             }
             
-            File.WriteAllText(Path.Combine(_testFolder, "md5sum.txt"), smd5);
-            
-            Assert.AreEqual("v/cIRcdAofMUNMNDFB+o6A==", smd5);
         }
 
         private void ProgressHandler(object sender, ArchiveProgressionEventArgs e) {

@@ -30,24 +30,7 @@ namespace Oetools.Utilities.Lib {
     ///     Class that exposes utility methods
     /// </summary>
     public static class Utils {
-
-        
         #region File manipulation wrappers
-
-        /// <summary>
-        ///     Reads all the line of either the filePath (if the file exists) or from byte array dataResources,
-        ///     Apply the action toApplyOnEachLine(int lineNumber, string lineString) to each line
-        ///     Uses encoding as the Encoding to read the file or convert the byte array to a string
-        ///     Uses the char # as a comment in the file (must be the first char of a line)
-        /// </summary>
-        public static void ForEachLine(string filePath, byte[] dataResources, Action<int, string> toApplyOnEachLine, Encoding encoding = null) {
-            try {
-                var ex = new Exception("Undetermined");
-                if (!ForEachLine(filePath, dataResources, toApplyOnEachLine, encoding ?? TextEncodingDetect.GetFileEncoding(filePath), exception => ex = exception)) throw new Exception("Couldn't read the file " + filePath.Quoter(), ex);
-            } catch (Exception e) {
-                throw new Exception("Couldn't read the internal resource", e);
-            }
-        }
 
         /// <summary>
         ///     Read all the text of a file in one go, same as File.ReadAllText expect it's truly a read only function
@@ -86,6 +69,7 @@ namespace Oetools.Utilities.Lib {
             } catch (Exception e) {
                 throw new Exception("Couldn't create the folder " + path.Quoter(), e);
             }
+
             return true;
         }
 
@@ -95,9 +79,12 @@ namespace Oetools.Utilities.Lib {
         public static IEnumerable<string> EnumerateFolders(string folderPath, string pattern, SearchOption options) {
             var hiddenDirList = new List<string>();
             foreach (var dir in Directory.EnumerateDirectories(folderPath, pattern, options)) {
-                if (new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.Hidden)) hiddenDirList.Add(dir);
+                if (new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.Hidden))
+                    hiddenDirList.Add(dir);
                 var hidden = false;
-                foreach (var hiddenDir in hiddenDirList) if (dir.StartsWith(hiddenDir)) hidden = true;
+                foreach (var hiddenDir in hiddenDirList)
+                    if (dir.StartsWith(hiddenDir))
+                        hidden = true;
                 if (!hidden)
                     yield return dir;
             }
@@ -107,11 +94,100 @@ namespace Oetools.Utilities.Lib {
         ///     Same as Directory.EnumerateFiles but doesn't list files in hidden folders
         /// </summary>
         public static IEnumerable<string> EnumerateFiles(string folderPath, string pattern, SearchOption options) {
-            foreach (var file in Directory.EnumerateFiles(folderPath, pattern, SearchOption.TopDirectoryOnly)) yield return file;
-            if (options == SearchOption.AllDirectories) foreach (var folder in EnumerateFolders(folderPath, "*", SearchOption.AllDirectories)) foreach (var file in Directory.EnumerateFiles(folder, pattern, SearchOption.TopDirectoryOnly)) yield return file;
+            foreach (var file in Directory.EnumerateFiles(folderPath, pattern, SearchOption.TopDirectoryOnly))
+                yield return file;
+            if (options == SearchOption.AllDirectories)
+                foreach (var folder in EnumerateFolders(folderPath, "*", SearchOption.AllDirectories))
+                    foreach (var file in Directory.EnumerateFiles(folder, pattern, SearchOption.TopDirectoryOnly))
+                        yield return file;
         }
 
         #endregion
+
+        public static string GetConnectionStringFromPfFile(string pfPath) {
+            if (!File.Exists(pfPath))
+                return string.Empty;
+
+            var connectionString = new StringBuilder();
+            ForEachLine(pfPath, new byte[0], (nb, line) => {
+                if (!string.IsNullOrEmpty(line)) {
+                    connectionString.Append(" ");
+                    connectionString.Append(line);
+                }
+            });
+            connectionString.Append(" ");
+            return connectionString.CompactWhitespaces().ToString();
+        }
+
+        public static string CleanConnectionString(this string connectionString) {
+            return connectionString.Replace("\n", " ").Replace("\r", "").Replace("  ", " ").Trim();
+        }
+
+        /// <summary>
+        /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
+        /// and all whitespaces are replaced to space char (so we have uniform space separator)
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        public static string CompactWhitespaces(this string s) {
+            return new StringBuilder(s).CompactWhitespaces().ToString();
+        }
+
+        /// <summary>
+        /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
+        /// and all whitespaces are replaced to space char (so we have uniform space separator)
+        /// </summary>
+        /// <param name="sb"></param>
+        public static StringBuilder CompactWhitespaces(this StringBuilder sb) {
+            if (sb == null)
+                return null;
+            if (sb.Length == 0)
+                return sb;
+
+            // set [start] to first not-whitespace char or to sb.Length
+            int start = 0;
+            while (start < sb.Length) {
+                if (char.IsWhiteSpace(sb[start]))
+                    start++;
+                else
+                    break;
+            }
+
+            // if [sb] has only whitespaces, then return empty string
+            if (start == sb.Length) {
+                sb.Length = 0;
+                return sb;
+            }
+
+            // set [end] to last not-whitespace char
+            int end = sb.Length - 1;
+            while (end >= 0) {
+                if (char.IsWhiteSpace(sb[end]))
+                    end--;
+                else
+                    break;
+            }
+
+            // compact string
+            int dest = 0;
+            bool previousIsWhitespace = false;
+            for (int i = start; i <= end; i++) {
+                if (char.IsWhiteSpace(sb[i])) {
+                    if (!previousIsWhitespace) {
+                        previousIsWhitespace = true;
+                        sb[dest] = ' ';
+                        dest++;
+                    }
+                } else {
+                    previousIsWhitespace = false;
+                    sb[dest] = sb[i];
+                    dest++;
+                }
+            }
+
+            sb.Length = dest;
+            return sb;
+        }
 
         #region Read a configuration file
 
@@ -121,50 +197,53 @@ namespace Oetools.Utilities.Lib {
         ///     Uses encoding as the Encoding to read the file or convert the byte array to a string
         ///     Uses the char # as a comment in the file
         /// </summary>
-        public static bool ForEachLine(string filePath, byte[] dataResources, Action<int, string> toApplyOnEachLine, Encoding encoding, Action<Exception> onException) {
+        public static bool ForEachLine(string filePath, byte[] dataResources, Action<int, string> toApplyOnEachLine, Encoding encoding = null, Action<Exception> onException = null) {
+            encoding = encoding ?? TextEncodingDetect.GetFileEncoding(filePath);
             var wentOk = true;
             try {
                 SubForEachLine(filePath, dataResources, toApplyOnEachLine, encoding);
             } catch (Exception e) {
                 wentOk = false;
-                onException(e);
+                onException?.Invoke(e);
 
                 // read default file, if it fails then we can't do much but to throw an exception anyway...
-                if (dataResources != null)
+                if (dataResources != null) {
                     SubForEachLine(null, dataResources, toApplyOnEachLine, encoding);
+                }
             }
+
             return wentOk;
         }
 
         private static void SubForEachLine(string filePath, byte[] dataResources, Action<int, string> toApplyOnEachLine, Encoding encoding) {
-            string line;
             // to apply on each line
-            Action<TextReader> action = reader => {
+            void Action(TextReader reader) {
                 var i = 0;
+                string line;
                 while ((line = reader.ReadLine()) != null) {
                     if (line.Length > 0) {
                         var idx = line.IndexOf('#');
                         toApplyOnEachLine(i, idx > -1 ? line.Substring(0, idx) : (idx == 0 ? string.Empty : line));
                     }
+
                     i++;
                 }
-            };
+            }
 
             // either read from the file or from the byte array
             if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath)) {
                 using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)) {
                     using (var reader = new StreamReader(fileStream, encoding)) {
-                        action(reader);
+                        Action(reader);
                     }
                 }
             } else {
                 using (var reader = new StringReader(Encoding.Default.GetString(dataResources))) {
-                    action(reader);
+                    Action(reader);
                 }
             }
         }
 
         #endregion
-
     }
 }

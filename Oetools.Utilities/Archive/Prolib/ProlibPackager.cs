@@ -136,6 +136,7 @@ namespace Oetools.Utilities.Archive.Prolib {
             // compress .pl
             prolibExe.Arguments = _archivePath.Quoter() + " -compress -nowarn";
             prolibExe.TryDoWait(true);
+            prolibExe.Kill();
             prolibExe.Dispose();
             
             // delete temp folder

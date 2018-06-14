@@ -31,16 +31,18 @@ namespace Oetools.Utilities.Archive.Zip {
     /// <summary>
     ///     Allows to pack files into zip
     /// </summary>
-    public class ZipPackager : ZipInfo, IPackager {
-        public ZipPackager(string path) : base(path) { }
+    public class ZipPackager : IPackager {
 
         public void PackFileSet(List<IFileToDeployInPackage> files, CompressionLvl compLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
-            var filesDic = files.ToDictionary(file => file.RelativePathInPack, file => file.From);
-            PackFileSet(filesDic, CompressionLevel.None, (sender, args) => {
-                if (args.ProgressType == ArchiveProgressType.FinishFile) {
-                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(args.CurrentFileName, args.TreatmentException, args.CannotCancel));
-                }
-            });
+            foreach (var cabGroupedFiles in files.GroupBy(f => f.PackPath)) {
+                var zipInfo = new ZipInfo(cabGroupedFiles.Key);
+                var filesDic = cabGroupedFiles.ToDictionary(file => file.RelativePathInPack, file => file.From);
+                zipInfo.PackFileSet(filesDic, CompressionLevel.None, (sender, args) => {
+                    if (args.ProgressType == ArchiveProgressType.FinishFile) {
+                        progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(args.CurrentFileName, args.TreatmentException, args.CannotCancel));
+                    }
+                });
+            }
             
             // TODO : use ZipFile/ZipArchive... introduce in 4.5
             

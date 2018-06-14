@@ -1,4 +1,5 @@
 ﻿#region header
+
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (TestHelper.cs) is part of Oetools.Utilities.Test.
@@ -16,14 +17,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
+
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using Oetools.Utilities.Archive;
 
 namespace Oetools.Utilities.Test {
     public static class TestHelper {
-        
         private static readonly string TestFolder = Path.Combine(AppContext.BaseDirectory, "Tests");
 
         public static string GetTestFolder(string testName) {
@@ -31,6 +34,31 @@ namespace Oetools.Utilities.Test {
             Directory.CreateDirectory(path);
             return path;
         }
-        
+
+        public static void CreateSourceFiles(List<IFileToDeployInPackage> listFiles) {
+            foreach (var file in listFiles) {
+                File.WriteAllText(file.From, file.From);
+            }
+        }
+
+        public static List<IFileToDeployInPackage> GetPackageTestFilesList(string testFolder, string outCab) {
+            return new List<IFileToDeployInPackage> {
+                new FileToDeployInPackage {
+                    From = Path.Combine(testFolder, "file1.txt"),
+                    PackPath = Path.Combine(testFolder, outCab),
+                    RelativePathInPack = "file1.txt"
+                },
+                new FileToDeployInPackage {
+                    From = Path.Combine(testFolder, "file2.txt"),
+                    PackPath = Path.Combine(testFolder, outCab),
+                    RelativePathInPack = Path.Combine("subfolder1", "file2.txt")
+                },
+                new FileToDeployInPackage {
+                    From = Path.Combine(testFolder, "file1.txt"),
+                    PackPath = Path.Combine(testFolder, $"_{outCab}"),
+                    RelativePathInPack = Path.Combine("subfolder1", "bla", "file3.txt")
+                }
+            };
+        }
     }
 }

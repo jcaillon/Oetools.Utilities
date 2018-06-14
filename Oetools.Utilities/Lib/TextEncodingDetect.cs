@@ -56,7 +56,8 @@ namespace Oetools.Utilities.Lib {
         public static Encoding GetFileEncoding(string srcFile) {
             var encoding = Encoding.Default;
 
-            if (string.IsNullOrEmpty(srcFile) || !File.Exists(srcFile)) return encoding;
+            if (string.IsNullOrEmpty(srcFile) || !File.Exists(srcFile)) 
+                return encoding;
 
             // Read in the file in binary
             byte[] buffer;

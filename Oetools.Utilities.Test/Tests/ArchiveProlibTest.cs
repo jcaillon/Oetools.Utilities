@@ -30,8 +30,7 @@ namespace Oetools.Utilities.Test.Tests {
         [TestMethod]
         public void CreatePl() {
 
-            //var dlcPath = Environment.GetEnvironmentVariable("dlc");
-            var dlcPath = @"C:\progress\client\v117x_dv\dlc";
+            var dlcPath = Environment.GetEnvironmentVariable("dlc");
             if (string.IsNullOrEmpty(dlcPath)) {
                 return;
             }
@@ -73,17 +72,6 @@ namespace Oetools.Utilities.Test.Tests {
             foreach (var prolibFile in listedFiles) {
                 Assert.IsTrue(listFiles.Exists(f => f.RelativePathInPack.Equals(prolibFile.RelativePathInPack)));
             }
-            
-            string smd5;
-            using (var md5 = MD5.Create()) {
-                using (var stream = File.OpenRead(cabPath)) {
-                    smd5 = Convert.ToBase64String(md5.ComputeHash(stream));
-                }
-            }
-            
-            File.WriteAllText(Path.Combine(_testFolder, "md5sum.txt"), smd5);
-            
-            Assert.AreEqual("5tBnBYbzpeZwsGpSXl1Mew==", smd5);
         }
 
         private void ProgressHandler(object sender, ArchiveProgressionEventArgs e) {

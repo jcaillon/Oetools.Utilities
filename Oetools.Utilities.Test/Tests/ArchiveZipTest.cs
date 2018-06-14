@@ -1,9 +1,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
+using csdeployer.Lib.Compression;
+using csdeployer.Lib.Compression.Zip;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Zip;
+using CompressionLevel = System.IO.Compression.CompressionLevel;
 
 namespace Oetools.Utilities.Test.Tests {
     
@@ -28,41 +32,22 @@ namespace Oetools.Utilities.Test.Tests {
 
         [TestMethod]
         public void CreateZip() {
-            var zipPath = Path.Combine(TestFolder, "out.zip");
-            IPackager packager = new ZipPackager(zipPath);
-            var listFiles = new List<IFileToDeployInPackage>();
-
-            var fileName = "file1.txt";
-            var filePath = Path.Combine(TestFolder, fileName);
-            File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToDeployInPackage {
-                From = filePath,
-                PackPath = zipPath,
-                RelativePathInPack = fileName
-            });
-
-            fileName = "file2.txt";
-            filePath = Path.Combine(TestFolder, fileName);
-            File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToDeployInPackage {
-                From = Path.Combine(TestFolder, fileName),
-                PackPath = zipPath,
-                RelativePathInPack = Path.Combine("subfolder1", fileName)
-            });
-
+            
+            // creates the .zip
+            IPackager packager = new ZipPackager();
+            List<IFileToDeployInPackage> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.zip");
+            TestHelper.CreateSourceFiles(listFiles);           
             packager.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
 
-            var zipList = new List<string>();
-            using (ZipArchive archive = ZipFile.OpenRead(zipPath)) {
-                foreach (ZipArchiveEntry entry in archive.Entries) {
-                    zipList.Add(entry.FullName);
+            // verify
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.PackPath)) {
+                using (ZipArchive archive = ZipFile.OpenRead(groupedFiles.Key)) {
+                    foreach (ZipArchiveEntry entry in archive.Entries) {
+                        Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInPack.Equals(entry.FullName)));
+                    }
+                    Assert.AreEqual(groupedFiles.ToList().Count, archive.Entries.Count);
                 }
             }
-
-            foreach (var zippedFile in zipList) {
-                Assert.IsTrue(listFiles.Exists(f => f.RelativePathInPack.Equals(zippedFile)));
-            }
-            Assert.AreEqual(listFiles.Count, zipList.Count);
         }
 
         /*

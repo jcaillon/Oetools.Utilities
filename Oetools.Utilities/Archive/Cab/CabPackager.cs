@@ -22,27 +22,38 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using csdeployer.Lib.Compression;
 using csdeployer.Lib.Compression.Cab;
-using Oetools.Utilities.Archive.Compression;
 
 namespace Oetools.Utilities.Archive.Cab {
     
     /// <summary>
     ///     Allows to pack files into a cab
     /// </summary>
-    public class CabPackager : CabInfo, IPackager {
+    public class CabPackager : IPackager {
         
-        public CabPackager(string path) : base(path) { }
-
         public void PackFileSet(List<IFileToDeployInPackage> files, CompressionLvl compLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
-            var filesDic = files.ToDictionary(file => file.RelativePathInPack, file => file.From);
-            PackFileSet(filesDic, CompressionLevel.None, (sender, args) => {
-                if (args.ProgressType == ArchiveProgressType.FinishFile) {
-                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(args.CurrentFileName, args.TreatmentException, args.CannotCancel));
-                }
-            });
+            foreach (var cabGroupedFiles in files.GroupBy(f => f.PackPath)) {
+                var cabInfo = new CabInfo(cabGroupedFiles.Key);
+                var filesDic = cabGroupedFiles.ToDictionary(file => file.RelativePathInPack, file => file.From);
+                cabInfo.PackFileSet(filesDic, CompressionLevel.None, (sender, args) => {
+                    if (args.ProgressType == ArchiveProgressType.FinishFile) {
+                        progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(args.CurrentFileName, args.TreatmentException, args.CannotCancel));
+                    }
+                });
+            }
+        }
+
+        public List<IFilePackaged> ListFiles(string archivePath) {
+            var cabInfo = new CabInfo(archivePath);
+            return cabInfo.GetFiles().Select(info => new CabFilePackaged {
+                RelativePathInPack = Path.Combine(info.Path, info.Name),
+                SizeInBytes = info.Length,
+                DateAdded = info.LastWriteTime,
+                DateModified = info.LastWriteTime
+            }).Cast<IFilePackaged>().ToList();
         }
     }
 }
