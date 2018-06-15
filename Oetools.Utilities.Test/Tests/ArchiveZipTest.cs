@@ -34,10 +34,10 @@ namespace Oetools.Utilities.Test.Tests {
         public void CreateZip() {
             
             // creates the .zip
-            IPackager packager = new ZipPackager();
-            List<IFileToDeployInPackage> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.zip");
+            IArchiver archiver = new ZipArchiver();
+            List<IFileToArchive> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.zip");
             TestHelper.CreateSourceFiles(listFiles);           
-            packager.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
+            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
 
             // verify
             foreach (var groupedFiles in listFiles.GroupBy(f => f.PackPath)) {

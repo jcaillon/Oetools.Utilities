@@ -40,16 +40,16 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         public static string ConvertToHumanTime(this TimeSpan? tn) {
             if (tn == null) {
-                return String.Empty;
+                return string.Empty;
             }
             var t = (TimeSpan) tn;
             if (t.Hours > 0)
-                return string.Format("{0:D2}h:{1:D2}m:{2:D2}s", t.Hours, t.Minutes, t.Seconds);
+                return $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s";
             if (t.Minutes > 0)
-                return string.Format("{0:D2}m:{1:D2}s", t.Minutes, t.Seconds);
+                return $"{t.Minutes:D2}m:{t.Seconds:D2}s";
             if (t.Seconds > 0)
-                return string.Format("{0:D2}s", t.Seconds);
-            return string.Format("{0:D3}ms", t.Milliseconds);
+                return $"{t.Seconds:D2}s";
+            return $"{t.Milliseconds:D3}ms";
         }
 
         private static Dictionary<Type, List<Tuple<string, long>>> _enumTypeNameValueKeyPairs = new Dictionary<Type, List<Tuple<string, long>>>();
@@ -123,7 +123,7 @@ namespace Oetools.Utilities.Lib {
                 return ".*";
             var startStar = pattern[0].Equals('*');
             var endStar = pattern[pattern.Length - 1].Equals('*');
-            return (!startStar ? (endStar ? "^" : "") : "") + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + (!endStar ? (startStar ? "$" : "") : "");
+            return $"{(!startStar ? (endStar ? "^" : "") : "")}{Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".")}{(!endStar ? (startStar ? "$" : "") : "")}";
         }
 
         /// <summary>
@@ -153,22 +153,14 @@ namespace Oetools.Utilities.Lib {
             var regex = new Regex(regexString, options);
             return regex.Replace(source, replacementStr);
         }
-
-        /// <summary>
-        ///     Allows to replace a string with a regular expression, uses the IgnoreCase option by default
-        /// </summary>
-        public static string RegexReplace(this string source, string regexString, MatchEvaluator matchEvaluator, RegexOptions options = RegexOptions.IgnoreCase) {
-            var regex = new Regex(regexString, options);
-            return regex.Replace(source, matchEvaluator);
-        }
-
+        
         /// <summary>
         ///     Replaces " by "", replaces new lines by spaces and add extra " at the start and end of the string
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
         public static string Quoter(this string text) {
-            return "\"" + (text ?? "").Replace("\"", "\"\"").Replace("\n", " ").Replace("\r", "") + "\"";
+            return $"\"{(text ?? "").Replace("\"", "\"\"").Replace("\n", " ").Replace("\r", "")}\"";
         }
 
         /// <summary>
@@ -177,7 +169,7 @@ namespace Oetools.Utilities.Lib {
         /// <param name="text"></param>
         /// <returns></returns>
         private static string ProQuoter(this string text) {
-            return "\"" + (text ?? "").Replace("\"", "~\"").Replace("\\", "~\\").Replace("/", "~/").Replace("*", "~*").Replace("\n", "~n").Replace("\r", "~r") + "\"";
+            return $"\"{text?.Replace("\"", "~\"").Replace("\\", "~\\").Replace("/", "~/").Replace("*", "~*").Replace("\n", "~n").Replace("\r", "~r") ?? ""}\"";
         }
 
         /// <summary>
@@ -193,7 +185,7 @@ namespace Oetools.Utilities.Lib {
         ///     Make sure the directory finished with "\"
         /// </summary>
         public static string CorrectDirPath(this string path) {
-            return path.TrimEnd('\\') + @"\";
+            return $@"{path.TrimEnd('\\')}\";
         }
 
         /// <summary>
@@ -203,17 +195,49 @@ namespace Oetools.Utilities.Lib {
             return obj == null ? new List<T>() : obj.ToList();
         }
 
+        private static Regex _regex;
+
+        private static Regex FtpUriRegex => _regex ?? (_regex = new Regex(@"^(ftps?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?)(\/.*)$", RegexOptions.Compiled));
+        
         /// <summary>
         ///     Returns true if the ftp uri is valid
         /// </summary>
-        public static bool IsValidFtpAdress(this string ftpUri) {
-            return new Regex(@"^(ftps?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?)(\/.*)$").Match(ftpUri.Replace("\\", "/")).Success;
+        public static bool IsValidFtpAddress(this string ftpUri) {
+            return FtpUriRegex.Match(ftpUri.Replace("\\", "/")).Success;
+        }
+
+        public static bool ParseFtpAddress(this string ftpUri, out string ftpBaseUri, out string userName, out string passWord, out string host, out int port, out string relativePath) {
+            var match = FtpUriRegex.Match(ftpUri.Replace("\\", "/"));
+            if (match.Success) {
+                ftpBaseUri = match.Groups[1].Value;
+                relativePath = match.Groups[6].Value;
+                if (match.Groups[4].Success) {
+                    userName = match.Groups[2].Value;
+                    passWord = match.Groups[3].Value.Substring(1);
+                    host = match.Groups[4].Value.Substring(1);
+                    int.TryParse(match.Groups[5].Value.Substring(1), out port);
+                } else {
+                    userName = null;
+                    passWord = null;
+                    host = match.Groups[2].Value;
+                    int.TryParse(match.Groups[3].Value.Substring(1), out port);
+                }
+            } else {
+                ftpBaseUri = null;
+                relativePath = null;
+                userName = null;
+                passWord = null;
+                host = null;
+                port = 0;
+            }
+            return match.Success;
         }
 
         /// <summary>
         ///     Replaces all invalid characters found in the provided name
         /// </summary>
         /// <param name="fileName">A file name without directory information</param>
+        /// <param name="replacementChar"></param>
         /// <returns></returns>
         public static string ToValidLocalFileName(this string fileName, char replacementChar = '_') {
             return ReplaceAllChars(fileName, Path.GetInvalidFileNameChars(), replacementChar);
@@ -224,6 +248,72 @@ namespace Oetools.Utilities.Lib {
             foreach (var c in oldChars)
                 sb.Replace(c, newChar);
             return sb.ToString();
+        }
+        
+        /// <summary>
+        /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
+        /// and all whitespaces are replaced to space char (so we have uniform space separator)
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        public static string CompactWhitespaces(this string s) {
+            return new StringBuilder(s).CompactWhitespaces().ToString();
+        }
+
+        /// <summary>
+        /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
+        /// and all whitespaces are replaced to space char (so we have uniform space separator)
+        /// </summary>
+        /// <param name="sb"></param>
+        public static StringBuilder CompactWhitespaces(this StringBuilder sb) {
+            if (sb == null)
+                return null;
+            if (sb.Length == 0)
+                return sb;
+
+            // set [start] to first not-whitespace char or to sb.Length
+            int start = 0;
+            while (start < sb.Length) {
+                if (char.IsWhiteSpace(sb[start]))
+                    start++;
+                else
+                    break;
+            }
+
+            // if [sb] has only whitespaces, then return empty string
+            if (start == sb.Length) {
+                sb.Length = 0;
+                return sb;
+            }
+
+            // set [end] to last not-whitespace char
+            int end = sb.Length - 1;
+            while (end >= 0) {
+                if (char.IsWhiteSpace(sb[end]))
+                    end--;
+                else
+                    break;
+            }
+
+            // compact string
+            int dest = 0;
+            bool previousIsWhitespace = false;
+            for (int i = start; i <= end; i++) {
+                if (char.IsWhiteSpace(sb[i])) {
+                    if (!previousIsWhitespace) {
+                        previousIsWhitespace = true;
+                        sb[dest] = ' ';
+                        dest++;
+                    }
+                } else {
+                    previousIsWhitespace = false;
+                    sb[dest] = sb[i];
+                    dest++;
+                }
+            }
+
+            sb.Length = dest;
+            return sb;
         }
     }
 }

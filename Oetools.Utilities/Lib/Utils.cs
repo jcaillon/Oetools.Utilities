@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Oetools.Utilities.Lib {
@@ -30,6 +31,7 @@ namespace Oetools.Utilities.Lib {
     ///     Class that exposes utility methods
     /// </summary>
     public static class Utils {
+        
         #region File manipulation wrappers
 
         /// <summary>
@@ -103,7 +105,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         #endregion
-
+        
         public static string GetConnectionStringFromPfFile(string pfPath) {
             if (!File.Exists(pfPath))
                 return string.Empty;
@@ -119,75 +121,16 @@ namespace Oetools.Utilities.Lib {
             return connectionString.CompactWhitespaces().ToString();
         }
 
-        public static string CleanConnectionString(this string connectionString) {
-            return connectionString.Replace("\n", " ").Replace("\r", "").Replace("  ", " ").Trim();
+        public static bool IsRuntimeWindowsPlatform {
+            get {
+#if WINDOWSONLYBUILD
+                return true;
+#else
+                return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+#endif
+            }
         }
-
-        /// <summary>
-        /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
-        /// and all whitespaces are replaced to space char (so we have uniform space separator)
-        /// </summary>
-        /// <param name="s"></param>
-        /// <returns></returns>
-        public static string CompactWhitespaces(this string s) {
-            return new StringBuilder(s).CompactWhitespaces().ToString();
-        }
-
-        /// <summary>
-        /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
-        /// and all whitespaces are replaced to space char (so we have uniform space separator)
-        /// </summary>
-        /// <param name="sb"></param>
-        public static StringBuilder CompactWhitespaces(this StringBuilder sb) {
-            if (sb == null)
-                return null;
-            if (sb.Length == 0)
-                return sb;
-
-            // set [start] to first not-whitespace char or to sb.Length
-            int start = 0;
-            while (start < sb.Length) {
-                if (char.IsWhiteSpace(sb[start]))
-                    start++;
-                else
-                    break;
-            }
-
-            // if [sb] has only whitespaces, then return empty string
-            if (start == sb.Length) {
-                sb.Length = 0;
-                return sb;
-            }
-
-            // set [end] to last not-whitespace char
-            int end = sb.Length - 1;
-            while (end >= 0) {
-                if (char.IsWhiteSpace(sb[end]))
-                    end--;
-                else
-                    break;
-            }
-
-            // compact string
-            int dest = 0;
-            bool previousIsWhitespace = false;
-            for (int i = start; i <= end; i++) {
-                if (char.IsWhiteSpace(sb[i])) {
-                    if (!previousIsWhitespace) {
-                        previousIsWhitespace = true;
-                        sb[dest] = ' ';
-                        dest++;
-                    }
-                } else {
-                    previousIsWhitespace = false;
-                    sb[dest] = sb[i];
-                    dest++;
-                }
-            }
-
-            sb.Length = dest;
-            return sb;
-        }
+        
 
         #region Read a configuration file
 

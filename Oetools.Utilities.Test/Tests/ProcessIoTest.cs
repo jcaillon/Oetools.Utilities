@@ -18,37 +18,26 @@
 // ========================================================================
 #endregion
 
-using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Test.Tests {
     
     [TestClass]
-    public class UtilsTest {
+    public class ProcessIoTest {
         
         private static string _testFolder;
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UtilsTest)));
 
-
         [TestMethod]
-        [DataRow(@"   -db test
-# comment line  
-   -ld   logicalname #other comment
--H     localhost   -S portnumber", @"-db test -ld logicalname -H localhost -S portnumber")]
-        [DataRow(@"", @"")]
-        [DataRow(@"    ", @"")]
-        public void GetConnectionStringFromPfFile_IsOk(string pfFileContent, string expected) {
-            var pfPath = Path.Combine(TestFolder, "test.pf");
-            File.WriteAllText(pfPath, pfFileContent);
-
-            var connectionString = Utils.GetConnectionStringFromPfFile(pfPath);
-            if (File.Exists(pfPath)) {
-                File.Delete(pfPath);
+        [DataRow(@"    ", @" ")]
+        public void ProcessIo_IsOk(string input, string expected) {
+            using (var process = new ProcessIo(@"C:\Windows\System32\net.exe")) {
+                process.Arguments = "use * /delete";
+                process.DoWait();
             }
-
-            Assert.AreEqual(expected, connectionString);
+            
         }
     }
 }

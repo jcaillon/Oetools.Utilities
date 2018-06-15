@@ -27,6 +27,7 @@ using Oetools.Utilities.Archive;
 
 namespace Oetools.Utilities.Test {
     public static class TestHelper {
+        
         private static readonly string TestFolder = Path.Combine(AppContext.BaseDirectory, "Tests");
 
         public static string GetTestFolder(string testName) {
@@ -35,25 +36,25 @@ namespace Oetools.Utilities.Test {
             return path;
         }
 
-        public static void CreateSourceFiles(List<IFileToDeployInPackage> listFiles) {
+        public static void CreateSourceFiles(List<IFileToArchive> listFiles) {
             foreach (var file in listFiles) {
                 File.WriteAllText(file.From, file.From);
             }
         }
 
-        public static List<IFileToDeployInPackage> GetPackageTestFilesList(string testFolder, string outCab) {
-            return new List<IFileToDeployInPackage> {
-                new FileToDeployInPackage {
+        public static List<IFileToArchive> GetPackageTestFilesList(string testFolder, string outCab) {
+            return new List<IFileToArchive> {
+                new FileToArchive {
                     From = Path.Combine(testFolder, "file1.txt"),
                     PackPath = Path.Combine(testFolder, outCab),
                     RelativePathInPack = "file1.txt"
                 },
-                new FileToDeployInPackage {
+                new FileToArchive {
                     From = Path.Combine(testFolder, "file2.txt"),
                     PackPath = Path.Combine(testFolder, outCab),
                     RelativePathInPack = Path.Combine("subfolder1", "file2.txt")
                 },
-                new FileToDeployInPackage {
+                new FileToArchive {
                     From = Path.Combine(testFolder, "file1.txt"),
                     PackPath = Path.Combine(testFolder, $"_{outCab}"),
                     RelativePathInPack = Path.Combine("subfolder1", "bla", "file3.txt")

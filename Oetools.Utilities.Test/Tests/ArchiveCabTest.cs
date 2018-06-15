@@ -29,14 +29,14 @@ namespace Oetools.Utilities.Test.Tests {
         [TestMethod]
         public void CreateCab() {
             
-            CabPackager packager = new CabPackager();
-            List<IFileToDeployInPackage> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.cab");
+            CabArchiver archiver = new CabArchiver();
+            List<IFileToArchive> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.cab");
             TestHelper.CreateSourceFiles(listFiles);           
-            packager.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
+            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
             
             // verify
             foreach (var groupedFiles in listFiles.GroupBy(f => f.PackPath)) {
-                var files = packager.ListFiles(groupedFiles.Key);
+                var files = archiver.ListFiles(groupedFiles.Key);
                 foreach (var file in files) {
                     Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInPack.Equals(file.RelativePathInPack)));
                 }

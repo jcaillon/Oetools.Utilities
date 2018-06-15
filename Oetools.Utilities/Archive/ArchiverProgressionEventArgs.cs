@@ -41,10 +41,13 @@ namespace Oetools.Utilities.Archive {
         ///     is currently at the stream or archive level.
         /// </value>
         public string CurrentFileName { get; private set; }
+        
+        public string ArchivedFileName { get; private set; }
 
         public Exception TreatmentException { get; private set; }
 
-        public ArchiveProgressionEventArgs(string currentFileName, Exception treatmentException, bool cannotCancel = true) {
+        public ArchiveProgressionEventArgs(string archiveFileName, string currentFileName, Exception treatmentException, bool cannotCancel = false) {
+            ArchivedFileName = archiveFileName;
             CurrentFileName = currentFileName;
             TreatmentException = treatmentException;
             CannotCancel = cannotCancel;

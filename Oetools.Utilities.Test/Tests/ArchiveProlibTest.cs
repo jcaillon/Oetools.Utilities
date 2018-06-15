@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Security.Cryptography;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Prolib;
@@ -40,14 +40,31 @@ namespace Oetools.Utilities.Test.Tests {
                 return;
             }
             
+            ProlibArchiver archiver = new ProlibArchiver(prolib);
+            List<IFileToArchive> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.pl");
+            TestHelper.CreateSourceFiles(listFiles);           
+            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
+            
+            // verify
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.PackPath)) {
+                var files = archiver.ListFiles(groupedFiles.Key);
+                foreach (var file in files) {
+                    Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInPack.Equals(file.RelativePathInPack)));
+                }
+                Assert.AreEqual(groupedFiles.ToList().Count, files.Count);
+            }
+            
+            /*
+            
+            
             var cabPath = Path.Combine(TestFolder, "out.pl");
-            IPackager packager = new ProlibPackager(cabPath, prolib);
-            var listFiles = new List<IFileToDeployInPackage>();
+            IArchiver archiver = new ProlibArchiver(prolib);
+            var listFiles = new List<IFileToArchive>();
 
             var fileName = "file1.txt";
             var filePath = Path.Combine(TestFolder, fileName);
             File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToDeployInPackage {
+            listFiles.Add(new FileToArchive {
                 From = filePath,
                 PackPath = cabPath,
                 RelativePathInPack = fileName
@@ -56,22 +73,22 @@ namespace Oetools.Utilities.Test.Tests {
             fileName = "file2 with spaces.txt";
             filePath = Path.Combine(TestFolder, fileName);
             File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToDeployInPackage {
+            listFiles.Add(new FileToArchive {
                 From = filePath, 
                 PackPath = cabPath,
                 RelativePathInPack = Path.Combine("subfolder1", fileName)
             });
             
-            packager.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
+            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
 
-            var lister = new ProlibListing(cabPath, prolib);
-            var listedFiles = lister.ListFiles();
+            var listedFiles = archiver.ListFiles(cabPath);
             
             Assert.AreEqual(listFiles.Count, listedFiles.Count);
 
             foreach (var prolibFile in listedFiles) {
                 Assert.IsTrue(listFiles.Exists(f => f.RelativePathInPack.Equals(prolibFile.RelativePathInPack)));
             }
+            */
         }
 
         private void ProgressHandler(object sender, ArchiveProgressionEventArgs e) {

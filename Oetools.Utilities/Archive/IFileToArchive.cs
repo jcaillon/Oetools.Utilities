@@ -1,5 +1,5 @@
 ﻿namespace Oetools.Utilities.Archive {
-    public interface IFileToDeployInPackage {
+    public interface IFileToArchive {
         
         /// <summary>
         ///     Need to deploy this file FROM this path

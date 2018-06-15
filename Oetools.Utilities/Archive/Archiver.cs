@@ -1,7 +1,7 @@
 ﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IFilePackaged.cs) is part of Oetools.Utilities.
+// This file (Archiver.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,28 +19,26 @@
 #endregion
 
 using System;
+using System.IO;
 
 namespace Oetools.Utilities.Archive {
-    public interface IFilePackaged {
-        
+    public abstract class Archiver {
+
         /// <summary>
-        /// Give the relative path of the file in the archive/package
+        /// Creates the folder so that the given archive file can be created, returns the folder path
         /// </summary>
-        string RelativePathInPack { get; set; }
-        
-        /// <summary>
-        /// File size in bytes
-        /// </summary>
-        long SizeInBytes { get; set; }
-        
-        /// <summary>
-        /// Date last modified
-        /// </summary>
-        DateTime DateModified { get; set; }
-        
-        /// <summary>
-        /// Date added to the archive/package
-        /// </summary>
-        DateTime DateAdded { get; set; }
+        /// <param name="archivePath"></param>
+        /// <exception cref="Exception"></exception>
+        protected string CreateArchivePath(string archivePath) {
+            // check that the folder to the archive exists
+            var archiveFolder = Path.GetDirectoryName(archivePath);
+            if (string.IsNullOrEmpty(archiveFolder)) {
+                throw new Exception($"Could not find the folder for {archivePath ?? "null"}");
+            }
+            if (!Directory.Exists(archiveFolder)) {
+                Directory.CreateDirectory(archiveFolder);
+            }
+            return archiveFolder;
+        }
     }
 }

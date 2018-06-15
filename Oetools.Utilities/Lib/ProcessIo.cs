@@ -28,20 +28,24 @@ namespace Oetools.Utilities.Lib {
 
     public class ProcessIo : IDisposable {
 
+        
         #region public fields
 
         public string Arguments { get; set; }
+        
+        public string WorkingDirectory { get; set; }
 
-        public StringBuilder StandardOutput { get; private set; }
+        public StringBuilder StandardOutput { get; }
 
-        public StringBuilder ErrorOutput { get; private set; }
+        public StringBuilder ErrorOutput { get; }
 
         public int ExitCode { get; private set; }
 
-        public ProcessStartInfo StartInfo { get; set; }
+        public ProcessStartInfo StartInfo { get; }
 
         #endregion
 
+        
         #region private fields
 
         private Process _process;
@@ -49,6 +53,7 @@ namespace Oetools.Utilities.Lib {
         private int _nbExecution;
 
         #endregion
+        
 
         #region Life and death
 
@@ -58,12 +63,12 @@ namespace Oetools.Utilities.Lib {
         public ProcessIo(string executable) {
             StandardOutput = new StringBuilder();
             ErrorOutput = new StringBuilder();
-
             StartInfo = new ProcessStartInfo {
                 FileName = executable,
                 UseShellExecute = false,
                 RedirectStandardError = true,
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                RedirectStandardInput = true
             };
         }
 
@@ -85,6 +90,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         #endregion
+        
 
         #region public methods
 
@@ -112,11 +118,17 @@ namespace Oetools.Utilities.Lib {
                 StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
             }
 
-            if (!string.IsNullOrEmpty(Arguments))
+            if (!string.IsNullOrEmpty(Arguments)) {
                 StartInfo.Arguments = Arguments;
+            }
 
-            if (_nbExecution > 0)
+            if (!string.IsNullOrEmpty(WorkingDirectory)) {
+                StartInfo.WorkingDirectory = WorkingDirectory;
+            }
+
+            if (_nbExecution > 0) {
                 Kill();
+            }
 
             _nbExecution++;
 
@@ -124,10 +136,10 @@ namespace Oetools.Utilities.Lib {
                 _process = new Process {
                     StartInfo = StartInfo
                 };
-                _process.OutputDataReceived += (sender, args) => StandardOutput.AppendLine(args.Data);
-                _process.ErrorDataReceived += (sender, args) => ErrorOutput.AppendLine(args.Data);
+                _process.OutputDataReceived += OnProcessOnOutputDataReceived;
+                _process.ErrorDataReceived += OnProcessOnErrorDataReceived;
             }
-
+            
             _process.Start();
             
             // Asynchronously read the standard output of the spawned process
@@ -135,11 +147,20 @@ namespace Oetools.Utilities.Lib {
             _process.BeginOutputReadLine();
             _process.BeginErrorReadLine();
             
+            
             _process.WaitForExit();
 
             ExitCode = _process.ExitCode;
 
             return ExitCode == 0;
+        }
+
+        private void OnProcessOnErrorDataReceived(object sender, DataReceivedEventArgs args) {
+            ErrorOutput.AppendLine(args.Data);
+        }
+
+        private void OnProcessOnOutputDataReceived(object sender, DataReceivedEventArgs args) {
+            StandardOutput.AppendLine(args.Data);
         }
 
         public void Kill() {
