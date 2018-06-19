@@ -18,27 +18,26 @@
 // ========================================================================
 #endregion
 
-using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Test.Tests {
     
     [TestClass]
-    public class ExtensionTest {
+    public class StringBuilderExtensionsTest {
         
         private static string _testFolder;
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UtilsTest)));
 
         [TestMethod]
-        [DataRow(@"ftps:\\user:pwd@localhost:666\my\path", "ftp://user:pwd@localhost:666", "user", "pwd", "localhost", 666, "/my/path", true)]
+        [DataRow(@"ftps:\\user:pwd@localhost:666\my\path", "ftps://user:pwd@localhost:666", "user", "pwd", "localhost", 666, "/my/path", true)]
         [DataRow(@"ftp://user:pwd@localhost:666/my/path", "ftp://user:pwd@localhost:666", "user", "pwd", "localhost", 666, "/my/path", true)]
-        [DataRow(@"ftp://user@localhost:666/my/path", "ftp://user:pwd@localhost:666", "user", "", "localhost", 666, "/my/path", true)]
-        [DataRow(@"ftp://localhost:666/my/path", "ftp://user:pwd@localhost:666", null, null, "localhost", 666, "/my/path", true)]
-        [DataRow(@"ftp://localhost:666/", "ftp://user:pwd@localhost:666", null, null, "localhost", 666, "/", true)]
-        [DataRow(@"ftp://localhost/", "ftp://user:pwd@localhost:666", null, null, "localhost", 0, "/", true)]
-        [DataRow(@"ftpa://localhost/", null, null, null, null, 0, "/", false)]
+        [DataRow(@"ftp://user@localhost:666/my/path", "ftp://user@localhost:666", "user", null, "localhost", 666, "/my/path", true)]
+        [DataRow(@"ftp://localhost:666/my/path", "ftp://localhost:666", null, null, "localhost", 666, "/my/path", true)]
+        [DataRow(@"ftp://localhost:666/", "ftp://localhost:666", null, null, "localhost", 666, "/", true)]
+        [DataRow(@"ftp://localhost/", "ftp://localhost", null, null, "localhost", 0, "/", true)]
+        [DataRow(@"ftpa://localhost/", null, null, null, null, 0, null, false)]
         public void ParseFtpAddress_IsOk(string input, string eftpBaseUri, string euserName, string epassWord, string ehost, int eport, string erelativePath, bool ok) {
             Assert.AreEqual(ok, input.ParseFtpAddress(out var ftpBaseUri, out var name, out var passWord, out var host, out var port, out var relativePath));
             Assert.AreEqual(eftpBaseUri, ftpBaseUri);
@@ -50,7 +49,7 @@ namespace Oetools.Utilities.Test.Tests {
         }
         
         [TestMethod]
-        [DataRow(@"    ", @" ")]
+        [DataRow(@"    ", @"")]
         [DataRow(null, @"")]
         [DataRow(" mot     \t deux \n\r\n\rtrois     end     \t", @"mot deux trois end")]
         public void CompactWhitespaces_IsOk(string input, string expected) {

@@ -2,12 +2,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using csdeployer.Lib.Compression;
-using csdeployer.Lib.Compression.Zip;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Zip;
-using CompressionLevel = System.IO.Compression.CompressionLevel;
 
 namespace Oetools.Utilities.Test.Tests {
     
@@ -31,22 +28,30 @@ namespace Oetools.Utilities.Test.Tests {
         }
 
         [TestMethod]
-        public void CreateZip() {
-            
+        public void CreateZip_noCompression() {
             // creates the .zip
             IArchiver archiver = new ZipArchiver();
             List<IFileToArchive> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.zip");
-            TestHelper.CreateSourceFiles(listFiles);           
+            listFiles.AddRange(TestHelper.GetPackageTestFilesList(TestFolder, "out2.zip"));
+            
+            TestHelper.CreateSourceFiles(listFiles);
             archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
 
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out.zip")));
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out2.zip")));
+            
             // verify
-            foreach (var groupedFiles in listFiles.GroupBy(f => f.PackPath)) {
-                using (ZipArchive archive = ZipFile.OpenRead(groupedFiles.Key)) {
-                    foreach (ZipArchiveEntry entry in archive.Entries) {
-                        Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInPack.Equals(entry.FullName)));
-                    }
-                    Assert.AreEqual(groupedFiles.ToList().Count, archive.Entries.Count);
+            ListZip(listFiles);
+        }
+
+        private void ListZip(List<IFileToArchive> listFiles) {
+            IArchiver archiver = new ZipArchiver();
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
+                var files = archiver.ListFiles(groupedFiles.Key);
+                foreach (var file in files) {
+                    Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInArchive.Equals(file.RelativePathInArchive)));
                 }
+                Assert.AreEqual(groupedFiles.ToList().Count, files.Count);
             }
         }
 

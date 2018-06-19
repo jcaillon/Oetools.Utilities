@@ -35,18 +35,18 @@ namespace Oetools.Utilities.Archive.Cab {
     public class CabArchiver : Archiver, IArchiver {
         
         public void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
-            foreach (var cabGroupedFiles in files.GroupBy(f => f.PackPath)) {
+            foreach (var cabGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 try {
-                    CreateArchivePath(cabGroupedFiles.Key);
+                    CreateArchiveFolder(cabGroupedFiles.Key);
                     var cabInfo = new CabInfo(cabGroupedFiles.Key);
-                    var filesDic = cabGroupedFiles.ToDictionary(file => file.RelativePathInPack, file => file.From);
+                    var filesDic = cabGroupedFiles.ToDictionary(file => file.RelativePathInArchive, file => file.SourcePath);
                     cabInfo.PackFileSet(filesDic, CompressionLevel.None, (sender, args) => {
                         if (args.ProgressType == ArchiveProgressType.FinishFile) {
-                            progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(args.CurrentArchiveName, args.CurrentFileName, args.TreatmentException, args.CannotCancel));
+                            progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, args.CurrentArchiveName, args.CurrentFileName, args.TreatmentException));
                         }
                     });
                 } catch (Exception e) {
-                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(cabGroupedFiles.Key, null, e));
+                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, cabGroupedFiles.Key, null, e));
                 }
             }
         }
@@ -55,10 +55,10 @@ namespace Oetools.Utilities.Archive.Cab {
             return new CabInfo(archivePath)
                 .GetFiles()
                 .Select(info => new CabFileArchived {
-                    RelativePathInPack = Path.Combine(info.Path, info.Name),
+                    RelativePathInArchive = Path.Combine(info.Path, info.Name),
                     SizeInBytes = (ulong) info.Length,
                     LastWriteTime = info.LastWriteTime,
-                    PackPath = archivePath
+                    ArchivePath = archivePath
                 } as IFileArchived)
                 .ToList();
         }

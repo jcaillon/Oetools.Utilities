@@ -23,15 +23,13 @@
 using System;
 using System.Diagnostics;
 using System.Text;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
 
-    public class ProcessIo : IDisposable {
-
+    public class ProcessIo {
         
         #region public fields
-
-        public string Arguments { get; set; }
         
         public string WorkingDirectory { get; set; }
 
@@ -44,23 +42,13 @@ namespace Oetools.Utilities.Lib {
         public ProcessStartInfo StartInfo { get; }
 
         #endregion
-
-        
-        #region private fields
-
-        private Process _process;
-
-        private int _nbExecution;
-
-        #endregion
-        
-
+       
         #region Life and death
 
         /// <summary>
         ///     Constructor
         /// </summary>
-        public ProcessIo(string executable) {
+        public ProcessIo(string executable, bool hidden = true) {
             StandardOutput = new StringBuilder();
             ErrorOutput = new StringBuilder();
             StartInfo = new ProcessStartInfo {
@@ -70,22 +58,9 @@ namespace Oetools.Utilities.Lib {
                 RedirectStandardOutput = true,
                 RedirectStandardInput = true
             };
-        }
-
-        /// <summary>
-        ///     Destructor
-        /// </summary>
-        ~ProcessIo() {
-            Dispose();
-        }
-
-        public void Dispose() {
-            try {
-                _process?.Close();
-                _process?.Dispose();
-                _process = null;
-            } catch (Exception) {
-                // ignored
+            if (hidden) {
+                StartInfo.CreateNoWindow = true;
+                StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
             }
         }
 
@@ -95,11 +70,11 @@ namespace Oetools.Utilities.Lib {
         #region public methods
 
         /// <summary>
-        ///     Start the process synchronously, catch the exceptions
+        /// Start the process synchronously, catch the exceptions
         /// </summary>
-        public bool TryDoWait(bool hidden = false) {
+        public bool TryExecute(string arguments = null) {
             try {
-                return DoWait(hidden);
+                return Execute(arguments);
             } catch (Exception e) {
                 ErrorOutput.AppendLine(e.Message);
                 return false;
@@ -107,51 +82,42 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        ///     Start the process synchronously
+        /// Start the process synchronously
         /// </summary>
-        public bool DoWait(bool hidden = false) {
+        public bool Execute(string arguments = null) {
             StandardOutput.Clear();
             ErrorOutput.Clear();
 
-            if (hidden) {
-                StartInfo.CreateNoWindow = true;
-                StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            if (!string.IsNullOrEmpty(arguments)) {
+                StartInfo.Arguments = arguments;
             }
-
-            if (!string.IsNullOrEmpty(Arguments)) {
-                StartInfo.Arguments = Arguments;
-            }
-
             if (!string.IsNullOrEmpty(WorkingDirectory)) {
                 StartInfo.WorkingDirectory = WorkingDirectory;
             }
 
-            if (_nbExecution > 0) {
-                Kill();
+            using (var process = new Process {
+                StartInfo = StartInfo
+            }) {
+                process.OutputDataReceived += OnProcessOnOutputDataReceived;
+                process.ErrorDataReceived += OnProcessOnErrorDataReceived;
+                
+                process.Start();
+            
+                // Asynchronously read the standard output of the spawned process
+                // This raises OutputDataReceived events for each line of output
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+            
+                process.WaitForExit();
+                
+                ExitCode = process.ExitCode;
+                
+                process.Close();
             }
-
-            _nbExecution++;
-
-            if (_process == null) {
-                _process = new Process {
-                    StartInfo = StartInfo
-                };
-                _process.OutputDataReceived += OnProcessOnOutputDataReceived;
-                _process.ErrorDataReceived += OnProcessOnErrorDataReceived;
-            }
             
-            _process.Start();
+            ErrorOutput.TrimEnd();
+            StandardOutput.TrimEnd();
             
-            // Asynchronously read the standard output of the spawned process
-            // This raises OutputDataReceived events for each line of output
-            _process.BeginOutputReadLine();
-            _process.BeginErrorReadLine();
-            
-            
-            _process.WaitForExit();
-
-            ExitCode = _process.ExitCode;
-
             return ExitCode == 0;
         }
 
@@ -161,14 +127,6 @@ namespace Oetools.Utilities.Lib {
 
         private void OnProcessOnOutputDataReceived(object sender, DataReceivedEventArgs args) {
             StandardOutput.AppendLine(args.Data);
-        }
-
-        public void Kill() {
-            try {
-                _process?.Kill();
-            } catch (Exception) {
-                //ignored
-            }
         }
 
         #endregion

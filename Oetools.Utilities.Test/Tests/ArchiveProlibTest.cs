@@ -7,19 +7,17 @@ using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Prolib;
 
 namespace Oetools.Utilities.Test.Tests {
-    
     [TestClass]
     public class ArchiveProlibTest {
-
         private static string _testFolder;
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ArchiveProlibTest)));
 
         [ClassInitialize]
-        public static void Init(TestContext context) {           
+        public static void Init(TestContext context) {
             Cleanup();
             Directory.CreateDirectory(TestFolder);
         }
-        
+
         [ClassCleanup]
         public static void Cleanup() {
             if (Directory.Exists(TestFolder)) {
@@ -29,7 +27,6 @@ namespace Oetools.Utilities.Test.Tests {
 
         [TestMethod]
         public void CreatePl() {
-
             var dlcPath = Environment.GetEnvironmentVariable("dlc");
             if (string.IsNullOrEmpty(dlcPath)) {
                 return;
@@ -39,60 +36,49 @@ namespace Oetools.Utilities.Test.Tests {
             if (!File.Exists(prolib)) {
                 return;
             }
-            
+
             ProlibArchiver archiver = new ProlibArchiver(prolib);
             List<IFileToArchive> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.pl");
-            TestHelper.CreateSourceFiles(listFiles);           
-            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
+            listFiles.AddRange(TestHelper.GetPackageTestFilesList(TestFolder, "out2.pl"));
             
+            TestHelper.CreateSourceFiles(listFiles);
+            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
+
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out.pl")));
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out2.pl")));
+
             // verify
-            foreach (var groupedFiles in listFiles.GroupBy(f => f.PackPath)) {
+            ListPl(prolib, listFiles);
+            
+            // delete files
+            DeleteFilesInPl(prolib, listFiles);
+        }
+
+
+        private void ListPl(string prolib, List<IFileToArchive> listFiles) {
+            IArchiver archiver = new ProlibArchiver(prolib);
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
                 var files = archiver.ListFiles(groupedFiles.Key);
                 foreach (var file in files) {
-                    Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInPack.Equals(file.RelativePathInPack)));
+                    Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInArchive.Equals(file.RelativePathInArchive)));
                 }
+
                 Assert.AreEqual(groupedFiles.ToList().Count, files.Count);
             }
-            
-            /*
-            
-            
-            var cabPath = Path.Combine(TestFolder, "out.pl");
-            IArchiver archiver = new ProlibArchiver(prolib);
-            var listFiles = new List<IFileToArchive>();
-
-            var fileName = "file1.txt";
-            var filePath = Path.Combine(TestFolder, fileName);
-            File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToArchive {
-                From = filePath,
-                PackPath = cabPath,
-                RelativePathInPack = fileName
-            });
-            
-            fileName = "file2 with spaces.txt";
-            filePath = Path.Combine(TestFolder, fileName);
-            File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToArchive {
-                From = filePath, 
-                PackPath = cabPath,
-                RelativePathInPack = Path.Combine("subfolder1", fileName)
-            });
-            
+        }
+        
+        
+        private void DeleteFilesInPl(string prolib, List<IFileToArchive> listFiles) {
+            IArchiver archiver = new ProlibArchiveDeleter(prolib);
             archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
-
-            var listedFiles = archiver.ListFiles(cabPath);
             
-            Assert.AreEqual(listFiles.Count, listedFiles.Count);
-
-            foreach (var prolibFile in listedFiles) {
-                Assert.IsTrue(listFiles.Exists(f => f.RelativePathInPack.Equals(prolibFile.RelativePathInPack)));
+            // list files
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
+                var files = archiver.ListFiles(groupedFiles.Key);
+                Assert.AreEqual(0, files.Count);
             }
-            */
         }
 
-        private void ProgressHandler(object sender, ArchiveProgressionEventArgs e) {
-            
-        }
+        private void ProgressHandler(object sender, ArchiveProgressionEventArgs e) { }
     }
 }

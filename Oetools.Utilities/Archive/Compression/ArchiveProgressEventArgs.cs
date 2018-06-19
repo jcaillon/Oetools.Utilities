@@ -42,20 +42,20 @@ namespace Oetools.Utilities.Archive.Compression {
         /// <summary>
         ///     Gets the type of status message.
         /// </summary>
-        /// <value>A <see cref="ArchiveProgressType" /> value indicating what type of progress event occurred.</value>
+        /// <value>A <see cref="ArchiveProgressionType" /> value indicating what type of progress event occurred.</value>
         /// <remarks>
         ///     The handler may choose to ignore some types of progress events.
         ///     For example, if the handler will only list each file as it is
         ///     compressed/extracted, it can ignore events that
-        ///     are not of type <see cref="ArchiveProgressType.FinishFile" />.
+        ///     are not of type <see cref="ArchiveProgressionType.FinishFile" />.
         /// </remarks>
         public ArchiveProgressType ProgressType { get; private set; }
 
         /// <summary>
         ///     Gets the name of the file being processed. (The name of the file within the Archive; not the external
         ///     file path.) Also includes the internal path of the file, if any.  Valid for
-        ///     <see cref="ArchiveProgressType.StartFile" />, <see cref="ArchiveProgressType.PartialFile" />,
-        ///     and <see cref="ArchiveProgressType.FinishFile" /> messages.
+        ///     <see cref="ArchiveProgressionType.StartFile" />, <see cref="ArchiveProgressionType.PartialFile" />,
+        ///     and <see cref="ArchiveProgressionType.FinishFile" /> messages.
         /// </summary>
         /// <value>
         ///     The name of the file currently being processed, or null if processing
@@ -65,8 +65,8 @@ namespace Oetools.Utilities.Archive.Compression {
 
         /// <summary>
         ///     Gets the number of the current file being processed. The first file is number 0, and the last file
-        ///     is <see cref="TotalFiles" />-1. Valid for <see cref="ArchiveProgressType.StartFile" />,
-        ///     <see cref="ArchiveProgressType.PartialFile" />, and <see cref="ArchiveProgressType.FinishFile" /> messages.
+        ///     is <see cref="TotalFiles" />-1. Valid for <see cref="ArchiveProgressionType.StartFile" />,
+        ///     <see cref="ArchiveProgressionType.PartialFile" />, and <see cref="ArchiveProgressionType.FinishFile" /> messages.
         /// </summary>
         /// <value>
         ///     The number of the file currently being processed, or the most recent
@@ -82,8 +82,8 @@ namespace Oetools.Utilities.Archive.Compression {
 
         /// <summary>
         ///     Gets the number of bytes processed so far when compressing or extracting a file.  Valid for
-        ///     <see cref="ArchiveProgressType.StartFile" />, <see cref="ArchiveProgressType.PartialFile" />,
-        ///     and <see cref="ArchiveProgressType.FinishFile" /> messages.
+        ///     <see cref="ArchiveProgressionType.StartFile" />, <see cref="ArchiveProgressionType.PartialFile" />,
+        ///     and <see cref="ArchiveProgressionType.FinishFile" /> messages.
         /// </summary>
         /// <value>
         ///     The number of uncompressed bytes processed so far for the current file,
@@ -92,8 +92,8 @@ namespace Oetools.Utilities.Archive.Compression {
         public long CurrentFileBytesProcessed { get; private set; }
 
         /// <summary>
-        ///     Gets the total number of bytes in the current file.  Valid for <see cref="ArchiveProgressType.StartFile" />,
-        ///     <see cref="ArchiveProgressType.PartialFile" />, and <see cref="ArchiveProgressType.FinishFile" /> messages.
+        ///     Gets the total number of bytes in the current file.  Valid for <see cref="ArchiveProgressionType.StartFile" />,
+        ///     <see cref="ArchiveProgressionType.PartialFile" />, and <see cref="ArchiveProgressionType.FinishFile" /> messages.
         /// </summary>
         /// <value>
         ///     The uncompressed size of the current file being processed,

@@ -38,26 +38,26 @@ namespace Oetools.Utilities.Test {
 
         public static void CreateSourceFiles(List<IFileToArchive> listFiles) {
             foreach (var file in listFiles) {
-                File.WriteAllText(file.From, file.From);
+                File.WriteAllText(file.SourcePath, Path.GetFileName(file.SourcePath));
             }
         }
 
         public static List<IFileToArchive> GetPackageTestFilesList(string testFolder, string outCab) {
             return new List<IFileToArchive> {
                 new FileToArchive {
-                    From = Path.Combine(testFolder, "file1.txt"),
-                    PackPath = Path.Combine(testFolder, outCab),
-                    RelativePathInPack = "file1.txt"
+                    SourcePath = Path.Combine(testFolder, "file1.txt"),
+                    ArchivePath = Path.Combine(testFolder, outCab),
+                    RelativePathInArchive = "file1.txt"
                 },
                 new FileToArchive {
-                    From = Path.Combine(testFolder, "file2.txt"),
-                    PackPath = Path.Combine(testFolder, outCab),
-                    RelativePathInPack = Path.Combine("subfolder1", "file2.txt")
+                    SourcePath = Path.Combine(testFolder, "file2.txt"),
+                    ArchivePath = Path.Combine(testFolder, outCab),
+                    RelativePathInArchive = Path.Combine("subfolder1", "file2.txt")
                 },
                 new FileToArchive {
-                    From = Path.Combine(testFolder, "file1.txt"),
-                    PackPath = Path.Combine(testFolder, $"_{outCab}"),
-                    RelativePathInPack = Path.Combine("subfolder1", "bla", "file3.txt")
+                    SourcePath = Path.Combine(testFolder, "file3.txt"),
+                    ArchivePath = Path.Combine(testFolder, outCab),
+                    RelativePathInArchive = Path.Combine("subfolder1", "bla", "file3.txt")
                 }
             };
         }

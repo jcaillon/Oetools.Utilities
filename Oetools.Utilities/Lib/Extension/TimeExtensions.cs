@@ -1,7 +1,7 @@
 ﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (Archiver.cs) is part of Oetools.Utilities.
+// This file (TimeExtensions.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,26 +19,26 @@
 #endregion
 
 using System;
-using System.IO;
 
-namespace Oetools.Utilities.Archive {
-    public abstract class Archiver {
-
+namespace Oetools.Utilities.Lib.Extension {
+    
+    public static class TimeExtensions {
+        
         /// <summary>
-        /// Creates the folder so that the given archive file can be created, returns the folder path
+        /// Get the time elapsed in a human readable format
         /// </summary>
-        /// <param name="archivePath"></param>
-        /// <exception cref="Exception"></exception>
-        protected string CreateArchiveFolder(string archivePath) {
-            // check that the folder to the archive exists
-            var archiveFolder = Path.GetDirectoryName(archivePath);
-            if (string.IsNullOrEmpty(archiveFolder)) {
-                throw new Exception($"Could not find the folder for {archivePath ?? "null"}");
+        public static string ConvertToHumanTime(this TimeSpan? tn) {
+            if (tn == null) {
+                return string.Empty;
             }
-            if (!Directory.Exists(archiveFolder)) {
-                Directory.CreateDirectory(archiveFolder);
-            }
-            return archiveFolder;
+            var t = (TimeSpan) tn;
+            if (t.Hours > 0)
+                return $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s";
+            if (t.Minutes > 0)
+                return $"{t.Minutes:D2}m:{t.Seconds:D2}s";
+            if (t.Seconds > 0)
+                return $"{t.Seconds:D2}s";
+            return $"{t.Milliseconds:D3}ms";
         }
     }
 }

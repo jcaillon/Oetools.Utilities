@@ -2,18 +2,18 @@
     public interface IFileToArchive {
         
         /// <summary>
-        ///     Need to deploy this file FROM this path
+        /// The path of the file to archive
         /// </summary>
-        string From { get; set; }
+        string SourcePath { get; set; }
 
         /// <summary>
-        ///     Path to the pack in which we need to include this file
+        /// The path to the archive in which to put this file
         /// </summary>
-        string PackPath { get; set; }
+        string ArchivePath { get; set; }
 
         /// <summary>
-        ///     The relative path of the file within the pack
+        /// The relative path of this file inside the archive
         /// </summary>
-        string RelativePathInPack { get; set; }
+        string RelativePathInArchive { get; set; }
     }
 }

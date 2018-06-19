@@ -22,8 +22,8 @@ using System;
 
 namespace Oetools.Utilities.Archive.Zip {
     public class ZipFileArchived : IFileArchived {
-        public string PackPath { get; set; }
-        public string RelativePathInPack { get; set; }
+        public string ArchivePath { get; set; }
+        public string RelativePathInArchive { get; set; }
         public ulong SizeInBytes { get; set; }
         public DateTime LastWriteTime { get; set; }
     }

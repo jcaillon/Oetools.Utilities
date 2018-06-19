@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using Oetools.Utilities.Ftp;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Archive.Ftp {
     
@@ -14,7 +15,7 @@ namespace Oetools.Utilities.Archive.Ftp {
         ///     Send files to a FTP server
         /// </summary>
         public void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
-            foreach (var ftpGroupedFiles in files.GroupBy(f => f.PackPath)) {
+            foreach (var ftpGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 try {
                     ftpGroupedFiles.Key.ParseFtpAddress(out var uri, out var userName, out var passWord, out var host, out var port, out _);
             
@@ -25,7 +26,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                         SendFile(file, ftp, progressHandler);
                     }
                 } catch (Exception e) {
-                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ftpGroupedFiles.Key, null, e));
+                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, ftpGroupedFiles.Key, null, e));
                 }
             }
         }
@@ -39,10 +40,10 @@ namespace Oetools.Utilities.Archive.Ftp {
             ftp.SetCurrentDirectory(relativePath);
             return ftp.GetDirectoryList()
                 .Select(f => new FtpFileArchived {
-                    RelativePathInPack = Path.Combine(relativePath, f.Name),
+                    RelativePathInArchive = Path.Combine(relativePath, f.Name),
                     LastWriteTime = f.CreationTime,
                     SizeInBytes = f.Size,
-                    PackPath = uri
+                    ArchivePath = uri
                 } as IFileArchived)
                 .ToList();
         }
@@ -50,16 +51,16 @@ namespace Oetools.Utilities.Archive.Ftp {
         private void SendFile(IFileToArchive file, FtpsClient ftp, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
             try {
                 try {
-                    ftp.PutFile(file.From, file.RelativePathInPack);
+                    ftp.PutFile(file.SourcePath, file.RelativePathInArchive);
                 } catch (Exception) {
                     // try to create the directory and then push the file again
-                    ftp.MakeDir((Path.GetDirectoryName(file.RelativePathInPack) ?? "").Replace('\\', '/'), true);
+                    ftp.MakeDir((Path.GetDirectoryName(file.RelativePathInArchive) ?? "").Replace('\\', '/'), true);
                     ftp.SetCurrentDirectory("/");
-                    ftp.PutFile(file.From, file.RelativePathInPack);
+                    ftp.PutFile(file.SourcePath, file.RelativePathInArchive);
                 }
-                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(file.PackPath, file.RelativePathInPack, null));
+                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, file.ArchivePath, file.RelativePathInArchive, null));
             } catch (Exception e) {
-                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(file.PackPath, file.RelativePathInPack, e));
+                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, file.ArchivePath, file.RelativePathInArchive, e));
             }
         }
 
@@ -87,7 +88,7 @@ namespace Oetools.Utilities.Archive.Ftp {
             
             NetworkCredential credential = null;
             if (!string.IsNullOrEmpty(userName)) {
-                credential = new NetworkCredential(userName, passWord);
+                credential = new NetworkCredential(userName, passWord ?? "");
             }
 
             var modes = new List<EsslSupportMode>();

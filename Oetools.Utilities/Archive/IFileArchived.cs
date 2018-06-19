@@ -24,14 +24,14 @@ namespace Oetools.Utilities.Archive {
     public interface IFileArchived {
         
         /// <summary>
-        ///     Path to the archive in which this file is archived
+        /// Path to the archive in which this file is archived
         /// </summary>
-        string PackPath { get; set; }
+        string ArchivePath { get; set; }
         
         /// <summary>
         /// Give the relative path of the file in the archive/package
         /// </summary>
-        string RelativePathInPack { get; set; }
+        string RelativePathInArchive { get; set; }
         
         /// <summary>
         /// File size in bytes

@@ -27,22 +27,31 @@ namespace Oetools.Utilities.Test.Tests {
         }
 
         [TestMethod]
-        public void CreateCab() {
+        public void CreateCab_noCompression() {
             
             CabArchiver archiver = new CabArchiver();
             List<IFileToArchive> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.cab");
+            listFiles.AddRange(TestHelper.GetPackageTestFilesList(TestFolder, "out2.cab"));
+            
             TestHelper.CreateSourceFiles(listFiles);           
             archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
             
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out.cab")));
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out2.cab")));
+            
             // verify
-            foreach (var groupedFiles in listFiles.GroupBy(f => f.PackPath)) {
+            ListCab(listFiles);
+        }
+
+        private void ListCab(IEnumerable<IFileToArchive> listFiles) {
+            IArchiver archiver = new CabArchiver();
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
                 var files = archiver.ListFiles(groupedFiles.Key);
                 foreach (var file in files) {
-                    Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInPack.Equals(file.RelativePathInPack)));
+                    Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInArchive.Equals(file.RelativePathInArchive)));
                 }
                 Assert.AreEqual(groupedFiles.ToList().Count, files.Count);
             }
-            
         }
 
         private void ProgressHandler(object sender, ArchiveProgressionEventArgs e) {

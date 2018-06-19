@@ -1,23 +1,21 @@
 ﻿#region header
-
 // ========================================================================
-// Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
-// This file (Extensions.cs) is part of csdeployer.
+// Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
+// This file (StringExtensions.cs) is part of Oetools.Utilities.
 // 
-// csdeployer is a free software: you can redistribute it and/or modify
+// Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 // 
-// csdeployer is distributed in the hope that it will be useful,
+// Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 // 
 // You should have received a copy of the GNU General Public License
-// along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
+// along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
 #endregion
 
 using System;
@@ -28,46 +26,10 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Oetools.Utilities.Lib {
-
-    /// <summary>
-    /// This class regroups all the extension methods
-    /// </summary>
-    public static class Extensions {
+namespace Oetools.Utilities.Lib.Extension {
+    
+    public static class StringExtensions {
         
-        /// <summary>
-        /// Get the time elapsed in a human readable format
-        /// </summary>
-        public static string ConvertToHumanTime(this TimeSpan? tn) {
-            if (tn == null) {
-                return string.Empty;
-            }
-            var t = (TimeSpan) tn;
-            if (t.Hours > 0)
-                return $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s";
-            if (t.Minutes > 0)
-                return $"{t.Minutes:D2}m:{t.Seconds:D2}s";
-            if (t.Seconds > 0)
-                return $"{t.Seconds:D2}s";
-            return $"{t.Milliseconds:D3}ms";
-        }
-
-        private static Dictionary<Type, List<Tuple<string, long>>> _enumTypeNameValueKeyPairs = new Dictionary<Type, List<Tuple<string, long>>>();
-
-        public static void ForEach<T>(this Type curType, Action<string, long> actionForEachNameValue) {
-            if (!curType.IsEnum)
-                return;
-            if (!_enumTypeNameValueKeyPairs.ContainsKey(curType)) {
-                var list = new List<Tuple<string, long>>();
-                foreach (var name in Enum.GetNames(curType)) {
-                    var val = (T) Enum.Parse(curType, name);
-                    list.Add(new Tuple<string, long>(name, Convert.ToInt64(val)));
-                }
-                _enumTypeNameValueKeyPairs.Add(curType, list);
-            }
-            foreach (var tuple in _enumTypeNameValueKeyPairs[curType]) actionForEachNameValue(tuple.Item1, tuple.Item2);
-        }
-
         /// <summary>
         ///     Converts a string to an object of the given type
         /// </summary>
@@ -206,21 +168,41 @@ namespace Oetools.Utilities.Lib {
             return FtpUriRegex.Match(ftpUri.Replace("\\", "/")).Success;
         }
 
+        /// <summary>
+        /// Parses the given FTP URI into strings
+        /// </summary>
+        /// <param name="ftpUri"></param>
+        /// <param name="ftpBaseUri"></param>
+        /// <param name="userName"></param>
+        /// <param name="passWord"></param>
+        /// <param name="host"></param>
+        /// <param name="port"></param>
+        /// <param name="relativePath"></param>
+        /// <returns></returns>
         public static bool ParseFtpAddress(this string ftpUri, out string ftpBaseUri, out string userName, out string passWord, out string host, out int port, out string relativePath) {
             var match = FtpUriRegex.Match(ftpUri.Replace("\\", "/"));
             if (match.Success) {
                 ftpBaseUri = match.Groups[1].Value;
                 relativePath = match.Groups[6].Value;
+                port = 0;
                 if (match.Groups[4].Success) {
                     userName = match.Groups[2].Value;
-                    passWord = match.Groups[3].Value.Substring(1);
+                    if (match.Groups[3].Success && !string.IsNullOrEmpty(match.Groups[3].Value)) {
+                        passWord = match.Groups[3].Value.Substring(1);
+                    } else {
+                        passWord = null;
+                    }
                     host = match.Groups[4].Value.Substring(1);
-                    int.TryParse(match.Groups[5].Value.Substring(1), out port);
+                    if (!string.IsNullOrWhiteSpace(match.Groups[5].Value)) {
+                        int.TryParse(match.Groups[5].Value.Substring(1), out port);
+                    }
                 } else {
                     userName = null;
                     passWord = null;
                     host = match.Groups[2].Value;
-                    int.TryParse(match.Groups[3].Value.Substring(1), out port);
+                    if (!string.IsNullOrWhiteSpace(match.Groups[3].Value)) {
+                        int.TryParse(match.Groups[3].Value.Substring(1), out port);
+                    }
                 }
             } else {
                 ftpBaseUri = null;
@@ -258,62 +240,6 @@ namespace Oetools.Utilities.Lib {
         /// <returns></returns>
         public static string CompactWhitespaces(this string s) {
             return new StringBuilder(s).CompactWhitespaces().ToString();
-        }
-
-        /// <summary>
-        /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
-        /// and all whitespaces are replaced to space char (so we have uniform space separator)
-        /// </summary>
-        /// <param name="sb"></param>
-        public static StringBuilder CompactWhitespaces(this StringBuilder sb) {
-            if (sb == null)
-                return null;
-            if (sb.Length == 0)
-                return sb;
-
-            // set [start] to first not-whitespace char or to sb.Length
-            int start = 0;
-            while (start < sb.Length) {
-                if (char.IsWhiteSpace(sb[start]))
-                    start++;
-                else
-                    break;
-            }
-
-            // if [sb] has only whitespaces, then return empty string
-            if (start == sb.Length) {
-                sb.Length = 0;
-                return sb;
-            }
-
-            // set [end] to last not-whitespace char
-            int end = sb.Length - 1;
-            while (end >= 0) {
-                if (char.IsWhiteSpace(sb[end]))
-                    end--;
-                else
-                    break;
-            }
-
-            // compact string
-            int dest = 0;
-            bool previousIsWhitespace = false;
-            for (int i = start; i <= end; i++) {
-                if (char.IsWhiteSpace(sb[i])) {
-                    if (!previousIsWhitespace) {
-                        previousIsWhitespace = true;
-                        sb[dest] = ' ';
-                        dest++;
-                    }
-                } else {
-                    previousIsWhitespace = false;
-                    sb[dest] = sb[i];
-                    dest++;
-                }
-            }
-
-            sb.Length = dest;
-            return sb;
         }
     }
 }

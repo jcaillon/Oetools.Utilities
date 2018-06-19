@@ -6,7 +6,7 @@ namespace Oetools.Utilities.Archive {
     public interface IArchiver {
         
         /// <summary>
-        /// Copy/compress files into an archive
+        /// Copy/compress files into archives
         /// </summary>
         /// <param name="files">List of files to archive</param>
         /// <param name="compressionLevel">The compression level used when creating the archive</param>
@@ -19,6 +19,13 @@ namespace Oetools.Utilities.Archive {
         /// <param name="archivePath"></param>
         /// <returns></returns>
         List<IFileArchived> ListFiles(string archivePath);
+        
+        /// <summary>
+        /// Extracts the given files from archives
+        /// </summary>
+        /// <param name="files"></param>
+        /// <param name="progressHandler"></param>
+        //void ExtractFileSet(List<IFileToExtract> files, EventHandler<ArchiveProgressionEventArgs> progressHandler = null);
     }
 
 }

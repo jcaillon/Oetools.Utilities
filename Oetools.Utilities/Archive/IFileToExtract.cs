@@ -1,7 +1,7 @@
 ﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (Archiver.cs) is part of Oetools.Utilities.
+// This file (IFileToExtract.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,27 +18,22 @@
 // ========================================================================
 #endregion
 
-using System;
-using System.IO;
-
 namespace Oetools.Utilities.Archive {
-    public abstract class Archiver {
+    public interface IFileToExtract {
+        
+        /// <summary>
+        /// Path to the archive in which this file is archived
+        /// </summary>
+        string ArchivePath { get; set; }
+        
+        /// <summary>
+        /// Give the relative path of the file in the archive/package
+        /// </summary>
+        string RelativePathInArchive { get; set; }
 
         /// <summary>
-        /// Creates the folder so that the given archive file can be created, returns the folder path
+        /// Absolute path at which this file should be extracted from the archive
         /// </summary>
-        /// <param name="archivePath"></param>
-        /// <exception cref="Exception"></exception>
-        protected string CreateArchiveFolder(string archivePath) {
-            // check that the folder to the archive exists
-            var archiveFolder = Path.GetDirectoryName(archivePath);
-            if (string.IsNullOrEmpty(archiveFolder)) {
-                throw new Exception($"Could not find the folder for {archivePath ?? "null"}");
-            }
-            if (!Directory.Exists(archiveFolder)) {
-                Directory.CreateDirectory(archiveFolder);
-            }
-            return archiveFolder;
-        }
+        string ExtractionPath { get; set; }
     }
 }

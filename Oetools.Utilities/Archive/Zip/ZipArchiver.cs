@@ -33,7 +33,7 @@ namespace Oetools.Utilities.Archive.Zip {
     /// </summary>
     public class ZipArchiver : Archiver, IArchiver {
         public void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
-            foreach (var zipGroupedFiles in files.GroupBy(f => f.PackPath)) {
+            foreach (var zipGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 //var zipInfo = new ZipInfo(cabGroupedFiles.Key);
                 //var filesDic = cabGroupedFiles.ToDictionary(file => file.RelativePathInPack, file => file.From);
                 //zipInfo.PackFileSet(filesDic, CompressionLevel.None, (sender, args) => {
@@ -42,19 +42,19 @@ namespace Oetools.Utilities.Archive.Zip {
                 //    }
                 //});
                 try {
-                    CreateArchivePath(zipGroupedFiles.Key);
+                    CreateArchiveFolder(zipGroupedFiles.Key);
                     var zipMode = File.Exists(zipGroupedFiles.Key) ? ZipArchiveMode.Update : ZipArchiveMode.Create;
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, zipMode)) {
                         foreach (var file in zipGroupedFiles) {
                             try {
-                                zip.CreateEntryFromFile(file.From, file.RelativePathInPack, CompressionLevel.Fastest);
+                                zip.CreateEntryFromFile(file.SourcePath, file.RelativePathInArchive, CompressionLevel.Fastest);
                             } catch (Exception e) {
-                                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(zipGroupedFiles.Key, file.RelativePathInPack, e));
+                                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, zipGroupedFiles.Key, file.RelativePathInArchive, e));
                             }
                         }
                     }
                 } catch (Exception e) {
-                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(zipGroupedFiles.Key, null, e));
+                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, zipGroupedFiles.Key, null, e));
                 }
             }
         }
@@ -63,10 +63,10 @@ namespace Oetools.Utilities.Archive.Zip {
             using (var archive = ZipFile.OpenRead(archivePath)) {
                 return archive.Entries
                     .Select(entry => new ZipFileArchived {
-                        RelativePathInPack = entry.FullName,
+                        RelativePathInArchive = entry.FullName,
                         SizeInBytes = (ulong) entry.Length,
                         LastWriteTime = entry.LastWriteTime.DateTime,
-                        PackPath = archivePath
+                        ArchivePath = archivePath
                     } as IFileArchived)
                     .ToList();
             }

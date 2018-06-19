@@ -25,8 +25,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
+    
     /// <summary>
     ///     Class that exposes utility methods
     /// </summary>
@@ -35,7 +37,7 @@ namespace Oetools.Utilities.Lib {
         #region File manipulation wrappers
 
         /// <summary>
-        ///     Read all the text of a file in one go, same as File.ReadAllText expect it's truly a read only function
+        /// Read all the text of a file in one go, same as File.ReadAllText expect it's truly a read only function
         /// </summary>
         public static string ReadAllText(string path, Encoding encoding = null) {
             try {
@@ -45,7 +47,7 @@ namespace Oetools.Utilities.Lib {
                     }
                 }
             } catch (Exception e) {
-                throw new Exception("Couldn't read the file " + path.Quoter(), e);
+                throw new Exception($"Couldn\'t read the file {path.Quoter()}", e);
             }
         }
 
@@ -81,14 +83,14 @@ namespace Oetools.Utilities.Lib {
         public static IEnumerable<string> EnumerateFolders(string folderPath, string pattern, SearchOption options) {
             var hiddenDirList = new List<string>();
             foreach (var dir in Directory.EnumerateDirectories(folderPath, pattern, options)) {
-                if (new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.Hidden))
+                if (hiddenDirList.Exists(d => dir.StartsWith(d, StringComparison.CurrentCultureIgnoreCase))) {
+                    continue;
+                }
+                if (new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.Hidden)) {
                     hiddenDirList.Add(dir);
-                var hidden = false;
-                foreach (var hiddenDir in hiddenDirList)
-                    if (dir.StartsWith(hiddenDir))
-                        hidden = true;
-                if (!hidden)
-                    yield return dir;
+                    continue;
+                }
+                yield return dir;
             }
         }
 
@@ -98,10 +100,13 @@ namespace Oetools.Utilities.Lib {
         public static IEnumerable<string> EnumerateFiles(string folderPath, string pattern, SearchOption options) {
             foreach (var file in Directory.EnumerateFiles(folderPath, pattern, SearchOption.TopDirectoryOnly))
                 yield return file;
-            if (options == SearchOption.AllDirectories)
-                foreach (var folder in EnumerateFolders(folderPath, "*", SearchOption.AllDirectories))
-                    foreach (var file in Directory.EnumerateFiles(folder, pattern, SearchOption.TopDirectoryOnly))
+            if (options == SearchOption.AllDirectories) {
+                foreach (var folder in EnumerateFolders(folderPath, "*", SearchOption.AllDirectories)) {
+                    foreach (var file in Directory.EnumerateFiles(folder, pattern, SearchOption.TopDirectoryOnly)) {
                         yield return file;
+                    }
+                }
+            }
         }
 
         #endregion

@@ -25,16 +25,11 @@ namespace Oetools.Utilities.Archive {
     
     public class ArchiveProgressionEventArgs : EventArgs {
         
-        /// <summary>
-        ///     If true, don't cancel the treatment when you receive the progress event
-        /// </summary>
-        public bool CannotCancel { get; set; }
+        public ArchiveProgressionType ProgressionType { get; set; }
 
         /// <summary>
         ///     Gets the name of the file being processed. (The name of the file within the Archive; not the external
-        ///     file path.) Also includes the internal path of the file, if any.  Valid for
-        ///     <see cref="ArchiveProgressType.StartFile" />, <see cref="ArchiveProgressType.PartialFile" />,
-        ///     and <see cref="ArchiveProgressType.FinishFile" /> messages.
+        ///     file path.) Also includes the internal path of the file, if any.
         /// </summary>
         /// <value>
         ///     The name of the file currently being processed, or null if processing
@@ -46,11 +41,20 @@ namespace Oetools.Utilities.Archive {
 
         public Exception TreatmentException { get; private set; }
 
-        public ArchiveProgressionEventArgs(string archiveFileName, string currentFileName, Exception treatmentException, bool cannotCancel = false) {
+        public ArchiveProgressionEventArgs(ArchiveProgressionType progressionType, string archiveFileName, string currentFileName, Exception treatmentException) {
             ArchivedFileName = archiveFileName;
             CurrentFileName = currentFileName;
             TreatmentException = treatmentException;
-            CannotCancel = cannotCancel;
+            ProgressionType = progressionType;
         }
+    }
+    
+    public enum ArchiveProgressionType : byte {
+
+        /// <summary>Status message after completion of the packing or unpacking an individual file.</summary>
+        FinishFile,
+
+        /// <summary>Status message after completion of the packing or unpacking of an archive.</summary>
+        FinishArchive
     }
 }
