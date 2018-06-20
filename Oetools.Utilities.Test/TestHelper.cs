@@ -24,12 +24,34 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Oetools.Utilities.Archive;
+using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Test {
     public static class TestHelper {
         
         private static readonly string TestFolder = Path.Combine(AppContext.BaseDirectory, "Tests");
 
+        public static bool GetDlcPath(out string dlcPath) {
+            dlcPath = Environment.GetEnvironmentVariable("dlc");
+            if (string.IsNullOrEmpty(dlcPath)) {
+                return false;
+            }
+            if (!Directory.Exists(dlcPath)) {
+                return false;
+            }
+            return true;
+        }
+        
+        public static bool GetProlibPath(out string prolibPath) {
+            bool ret = GetDlcPath(out string dlcPath);
+            if (!ret) {
+                prolibPath = null;
+                return false;
+            }
+            prolibPath = Path.Combine(dlcPath, "bin", Utils.IsRuntimeWindowsPlatform ? "prolib.exe" : "prolib");
+            return File.Exists(prolibPath);
+        }
+        
         public static string GetTestFolder(string testName) {
             var path = Path.Combine(TestFolder, testName);
             Directory.CreateDirectory(path);

@@ -27,13 +27,7 @@ namespace Oetools.Utilities.Test.Tests {
 
         [TestMethod]
         public void CreatePl() {
-            var dlcPath = Environment.GetEnvironmentVariable("dlc");
-            if (string.IsNullOrEmpty(dlcPath)) {
-                return;
-            }
-
-            var prolib = Path.Combine(dlcPath, "bin", "prolib.exe");
-            if (!File.Exists(prolib)) {
+            if (!TestHelper.GetProlibPath(out string prolib)) {
                 return;
             }
 

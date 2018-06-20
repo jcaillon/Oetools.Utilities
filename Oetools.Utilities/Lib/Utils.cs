@@ -28,7 +28,6 @@ using System.Text;
 using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
-    
     /// <summary>
     ///     Class that exposes utility methods
     /// </summary>
@@ -86,10 +85,12 @@ namespace Oetools.Utilities.Lib {
                 if (hiddenDirList.Exists(d => dir.StartsWith(d, StringComparison.CurrentCultureIgnoreCase))) {
                     continue;
                 }
+
                 if (new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.Hidden)) {
                     hiddenDirList.Add(dir);
                     continue;
                 }
+
                 yield return dir;
             }
         }
@@ -110,7 +111,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         #endregion
-        
+
         public static string GetConnectionStringFromPfFile(string pfPath) {
             if (!File.Exists(pfPath))
                 return string.Empty;
@@ -135,7 +136,6 @@ namespace Oetools.Utilities.Lib {
 #endif
             }
         }
-        
 
         #region Read a configuration file
 

@@ -40,6 +40,8 @@ namespace Oetools.Utilities.Lib {
         public int ExitCode { get; private set; }
 
         public ProcessStartInfo StartInfo { get; }
+        
+        public bool WaitForExit { get; set; }
 
         #endregion
        
@@ -74,7 +76,7 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         public bool TryExecute(string arguments = null) {
             try {
-                return Execute(arguments);
+                return Execute(arguments) && ErrorOutput.Length == 0;
             } catch (Exception e) {
                 ErrorOutput.AppendLine(e.Message);
                 return false;
@@ -87,6 +89,7 @@ namespace Oetools.Utilities.Lib {
         public bool Execute(string arguments = null) {
             StandardOutput.Clear();
             ErrorOutput.Clear();
+            ExitCode = 0;
 
             if (!string.IsNullOrEmpty(arguments)) {
                 StartInfo.Arguments = arguments;
@@ -98,6 +101,7 @@ namespace Oetools.Utilities.Lib {
             using (var process = new Process {
                 StartInfo = StartInfo
             }) {
+                
                 process.OutputDataReceived += OnProcessOnOutputDataReceived;
                 process.ErrorDataReceived += OnProcessOnErrorDataReceived;
                 
@@ -113,10 +117,11 @@ namespace Oetools.Utilities.Lib {
                 ExitCode = process.ExitCode;
                 
                 process.Close();
+                
+                ErrorOutput.TrimEnd();
+                StandardOutput.TrimEnd();
+                
             }
-            
-            ErrorOutput.TrimEnd();
-            StandardOutput.TrimEnd();
             
             return ExitCode == 0;
         }
