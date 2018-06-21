@@ -30,6 +30,26 @@ using Oetools.Utilities.Lib;
 namespace Oetools.Utilities.Openedge {
     
     public static class ProUtilities {
+
+        public static string GetDlcPath() {
+            return Environment.GetEnvironmentVariable("dlc");
+        }
+
+        public static string GetProExecutableFromDlc(string dlcPath, bool useCharacterModeOfProgress = false) {
+            string outputPath;
+            if (Utils.IsRuntimeWindowsPlatform) {
+                outputPath = Path.Combine(dlcPath, "bin", useCharacterModeOfProgress ? "_progres.exe" : "prowin32.exe");
+                if (!File.Exists(outputPath)) {
+                    outputPath = Path.Combine(dlcPath, "bin", "prowin.exe");
+                    if (!File.Exists(outputPath)) {
+                        outputPath = Path.Combine(dlcPath, "bin", !useCharacterModeOfProgress ? "_progres.exe" : "prowin32.exe");
+                    }
+                }
+            } else {
+                outputPath = Path.Combine(dlcPath, "bin", "_progres");
+            }
+            return File.Exists(outputPath) ? outputPath : null;
+        }
         
         public static HashSet<string> GetProPathFromBaseDirectory(string baseDirectory) {
             

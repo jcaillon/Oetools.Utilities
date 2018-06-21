@@ -151,6 +151,19 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
+        /// Transform a relative to an absolute path
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="currentDirectory"></param>
+        /// <returns></returns>
+        public static string MakePathAbsolute(this string path, string currentDirectory = null) {
+            if (Path.IsPathRooted(path)) {
+                return path;
+            }
+            return Path.Combine(currentDirectory ?? Directory.GetCurrentDirectory(), path);
+        }
+
+        /// <summary>
         ///     Same as ToList but returns an empty list on Null instead of an exception
         /// </summary>
         public static List<T> ToNonNullList<T>(this IEnumerable<T> obj) {

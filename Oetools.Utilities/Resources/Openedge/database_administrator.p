@@ -1,3 +1,5 @@
+/* Returns a final **ERROR if it ends badly */
+
 DEFINE VARIABLE ipc_code AS CHARACTER NO-UNDO.
 DEFINE VARIABLE ipc_path AS CHARACTER NO-UNDO.
 DEFINE VARIABLE gc_error AS CHARACTER NO-UNDO.
@@ -6,12 +8,12 @@ DEFINE VARIABLE gh_proc AS HANDLE NO-UNDO.
 DEFINE STREAM str_file.
 
 IF NUM-ENTRIES(SESSION:PARAMETER, "|") < 2 THEN DO:
-    PUT UNFORMATTED "** Invalid parameters." SKIP ">> ERROR".
+    PUT UNFORMATTED "Invalid parameters." SKIP "**ERROR".
     QUIT.
 END.
 
 IF NUM-DBS < 1 THEN DO:
-    PUT UNFORMATTED "** Not connected to a database." SKIP ">> ERROR".
+    PUT UNFORMATTED "Not connected to a database." SKIP "**ERROR".
     QUIT.
 END.
 
@@ -34,6 +36,7 @@ CASE ipc_code:
     WHEN "load-df" THEN DO:
         /* RUN prodict/load_df.p (INPUT ipc_path) NO-ERROR. */
         RUN prodict/load_df_silent.p (INPUT ipc_path, INPUT ?, OUTPUT gc_error) NO-ERROR.
+        RUN ReadFileIntoStandardOutput(INPUT LDBNAME("DICTDB") + ".e").
     END.
     WHEN "dump-inc" THEN DO:
         /* incremental df */
@@ -56,17 +59,17 @@ CASE ipc_code:
         RUN LoadSequences (INPUT ipc_path) NO-ERROR.
     END.
     OTHERWISE DO:
-        PUT UNFORMATTED "** Invalid operation code." SKIP ">> ERROR".
+        PUT UNFORMATTED "Invalid operation code." SKIP "**ERROR".
         QUIT.
     END.
 END CASE.
 
 IF ERROR-STATUS:ERROR OR gc_error > "" THEN DO:
-    PUT UNFORMATTED "** Error while performing operation." SKIP gc_error SKIP ERROR-STATUS:GET-MESSAGE(1) SKIP RETURN-VALUE SKIP ">> ERROR".
+    PUT UNFORMATTED "Error while performing operation." SKIP gc_error SKIP ERROR-STATUS:GET-MESSAGE(1) SKIP RETURN-VALUE SKIP "**ERROR".
     QUIT.
 END.
 
-PUT UNFORMATTED SKIP ">> OK".
+PUT UNFORMATTED SKIP "OK".
 QUIT.
 
 PROCEDURE DumpSequences :
@@ -193,3 +196,31 @@ PROCEDURE LoadSequences :
     RETURN "".
 END PROCEDURE.
 
+PROCEDURE ReadFileIntoStandardOutput:
+
+    DEFINE INPUT PARAMETER ipc_file AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE lc_line AS CHARACTER NO-UNDO.
+    
+    IF (SEARCH(ipc_file) = ?) THEN
+        RETURN "".
+    
+    read-errors-load-df:
+    DO ON ERROR UNDO read-errors-load-df, LEAVE read-errors-load-df:
+        
+        INPUT STREAM str_file FROM VALUE(ipc_file).
+        REPEAT:
+            IMPORT STREAM str_file UNFORMATTED lc_line.
+            PUT UNFORMATTED SKIP lc_line.
+        END.
+        CATCH oAnyError AS Progress.Lang.Error:
+        END CATCH.
+        FINALLY:
+            INPUT STREAM str_file CLOSE.
+        END FINALLY.
+    END.
+    
+    OS-DELETE VALUE(SEARCH(ipc_file)).
+    
+    RETURN "".
+
+END PROCEDURE.

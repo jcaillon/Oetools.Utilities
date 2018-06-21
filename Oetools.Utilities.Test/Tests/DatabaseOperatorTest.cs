@@ -21,16 +21,17 @@
 #endregion
 
 using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge;
 
 namespace Oetools.Utilities.Test.Tests {
     
     [TestClass]
-    public class DatabaseOperationTest {
+    public class DatabaseOperatorTest {
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(DatabaseOperationTest)));
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(DatabaseOperatorTest)));
 
         [ClassInitialize]
         public static void Init(TestContext context) {           
@@ -127,6 +128,67 @@ namespace Oetools.Utilities.Test.Tests {
             Assert.IsFalse(File.Exists(Path.Combine(TestFolder, "test4.db")));
         }
         
+        [TestMethod]
+        public void GenerateStructureFile() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            
+            var db = new DatabaseOperator(dlcPath);
+
+            var pathDf = Path.Combine(TestFolder, "file.df");
+
+            File.WriteAllText(pathDf, "ADD TABLE \"Benefits\"\n  AREA \"Employee\"\n  DESCRIPTION \"The benefits table contains employee benefits.\"\n  DUMP-NAME \"benefits\"\n\nADD TABLE \"BillTo\"\n  AREA \"Order\"\n  DESCRIPTION \"The billto table contains bill to address information for an order. \"\n  DUMP-NAME \"billto\"\n");
+
+            var generatedSt = db.GenerateStructureFileFromDf(Path.Combine(TestFolder, "file.db"), pathDf);
+            
+            Assert.AreEqual(Path.Combine(TestFolder, "file.st"), generatedSt);
+            
+            Assert.IsTrue(File.Exists(generatedSt));
+            
+            Assert.IsTrue(File.ReadAllText(Path.Combine(TestFolder, "file.st")).Contains("Employee"));
+            Assert.IsTrue(File.ReadAllText(Path.Combine(TestFolder, "file.st")).Contains("Order"));
+
+        }
+        
+        [TestMethod]
+        public void CopyStructureFile() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            
+            var db = new DatabaseOperator(dlcPath);
+
+            var pathSt = Path.Combine(TestFolder, "source.st");
+
+            File.WriteAllText(pathSt, "d \"Schema Area\":6,32;1 .\nd \"Order\":11,32;1 D:\\DATABASES\\cp_sport f 1280 \nd \"Order\":11,32;1 \"D:\\DATABASES\\cp_sport\"");
+
+            var generatedSt = db.CopyStructureFile(Path.Combine(TestFolder, "target.db"), pathSt);
+            
+            Assert.AreEqual(Path.Combine(TestFolder, "target.st"), generatedSt);
+            Assert.IsTrue(File.Exists(generatedSt));
+            
+            Assert.IsTrue(File.ReadAllText(Path.Combine(TestFolder, "target.st")).Count(c => c.Equals('.')).Equals(3));
+
+        }
+        
+        [TestMethod]
+        public void GenerateStructureFile_empty_df() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            
+            var db = new DatabaseOperator(dlcPath);
+
+            var pathDf = Path.Combine(TestFolder, "file.df");
+            
+            File.WriteAllText(pathDf, "");
+            
+            db.GenerateStructureFileFromDf(Path.Combine(TestFolder, "file.db"), pathDf);
+            
+            Assert.IsTrue(File.ReadAllText(Path.Combine(TestFolder, "file.st")).Contains("Schema Area"));
+        }
+        
         
         [TestMethod]
         public void Tests_on_base_ref() {
@@ -137,7 +199,7 @@ namespace Oetools.Utilities.Test.Tests {
             ProShut_hard_ok();
             Proserve_with_options();
         }
-        
+
         private void Procopy_existing_db() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
@@ -222,7 +284,8 @@ namespace Oetools.Utilities.Test.Tests {
             
             Assert.AreEqual(DatabaseBusyMode.NotBusy, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
         }
-        
+
+
         
     }
 }

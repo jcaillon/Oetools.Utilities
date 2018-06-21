@@ -43,7 +43,10 @@ namespace Oetools.Utilities.Lib.Extension {
                 }
                 _enumTypeNameValueKeyPairs.Add(curType, list);
             }
-            foreach (var tuple in _enumTypeNameValueKeyPairs[curType]) actionForEachNameValue(tuple.Item1, tuple.Item2);
+
+            foreach (var tuple in _enumTypeNameValueKeyPairs[curType]) {
+                actionForEachNameValue(tuple.Item1, tuple.Item2);
+            }
         }
 
         

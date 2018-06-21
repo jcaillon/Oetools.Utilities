@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Openedge;
 
 namespace Oetools.Utilities.Test {
     public static class TestHelper {
@@ -32,7 +33,7 @@ namespace Oetools.Utilities.Test {
         private static readonly string TestFolder = Path.Combine(AppContext.BaseDirectory, "Tests");
 
         public static bool GetDlcPath(out string dlcPath) {
-            dlcPath = Environment.GetEnvironmentVariable("dlc");
+            dlcPath = ProUtilities.GetDlcPath();
             if (string.IsNullOrEmpty(dlcPath)) {
                 return false;
             }

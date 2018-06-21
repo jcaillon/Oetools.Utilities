@@ -20,6 +20,8 @@
 
 using System;
 using System.IO;
+using System.Net;
+using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Resources.Openedge;
 
@@ -42,8 +44,7 @@ namespace Oetools.Utilities.Openedge {
         /// <returns></returns>
         /// <exception cref="DatabaseOperationException"></exception>
         public void LoadDf(string targetDbPath, string dfFilePath) {
-            
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
             if (string.IsNullOrEmpty(dfFilePath)) {
                 throw new DatabaseOperationException("The structure file path can't be null");
@@ -62,12 +63,37 @@ namespace Oetools.Utilities.Openedge {
 
             using (var proc = new DatabaseAdministratorProcedure(TempFolder)) {
                 var executionOk = progres.TryExecute($"-b -db {dbPhysicalName}.db -1 -ld DICTDB -p {proc.ProcedurePath.Quoter()} -param {$"load-df|{dfFilePath}".Quoter()}");
-                if (!executionOk || progres.StandardOutput.ToString().EndsWith(">> ERROR")) {
-                    throw new DatabaseOperationException($"Error : {progres.ErrorOutput}\nStandard output was : {progres.StandardOutput}");
+                if (!executionOk || progres.StandardOutput.ToString().EndsWith("**ERROR")) {
+                    throw new DatabaseOperationException(GetErrorFromProcessIo(progres));
                 }
              }
         }
 
+        /// <summary>
+        /// Returns the connection string to use to connect to a database
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="serviceName"></param>
+        /// <param name="singleUser"></param>
+        /// <returns></returns>
+        public static string GetConnectionString(string targetDbPath, string serviceName, bool singleUser = false) {
+            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            if (singleUser) {
+                return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {dbPhysicalName} -1";
+            }
+            return $"-db {dbPhysicalName} -ld {dbPhysicalName} -N TCP -H locahost -S {serviceName}";
+        }
+
+        private static string GetHostName() {
+            try {
+                var hostname = Dns.GetHostName();
+                Dns.GetHostEntry(hostname);
+                return hostname;
+            } catch (Exception) {
+                return "localhost";
+            }
+        }
+        
         private class DatabaseAdministratorProcedure : IDisposable {
             
             public DatabaseAdministratorProcedure(string folderPath) {
