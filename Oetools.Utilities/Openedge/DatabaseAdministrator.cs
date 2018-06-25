@@ -23,7 +23,7 @@ using System.IO;
 using System.Net;
 using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib.Extension;
-using Oetools.Utilities.Resources.Openedge;
+using Oetools.Utilities.Resources;
 
 namespace Oetools.Utilities.Openedge {
     
