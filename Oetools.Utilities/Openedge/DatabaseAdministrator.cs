@@ -81,7 +81,7 @@ namespace Oetools.Utilities.Openedge {
             if (singleUser) {
                 return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {dbPhysicalName} -1";
             }
-            return $"-db {dbPhysicalName} -ld {dbPhysicalName} -N TCP -H locahost -S {serviceName}";
+            return $"-db {dbPhysicalName} -ld {dbPhysicalName} -N TCP -H localhost -S {serviceName}";
         }
 
         private static string GetHostName() {
