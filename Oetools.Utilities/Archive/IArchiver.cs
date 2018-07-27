@@ -20,12 +20,14 @@ namespace Oetools.Utilities.Archive {
         /// <returns></returns>
         List<IFileArchived> ListFiles(string archivePath);
         
+        /*
         /// <summary>
         /// Extracts the given files from archives
         /// </summary>
         /// <param name="files"></param>
         /// <param name="progressHandler"></param>
-        //void ExtractFileSet(List<IFileToExtract> files, EventHandler<ArchiveProgressionEventArgs> progressHandler = null);
+        void ExtractFileSet(List<IFileToExtract> files, EventHandler<ArchiveProgressionEventArgs> progressHandler = null);
+        */
     }
 
 }

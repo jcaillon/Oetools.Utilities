@@ -1,9 +1,7 @@
-Interesting project :
+# Oetools.Utilities
 
-- https://github.com/Riverside-Software
-- https://github.com/Riverside-Software/pct
-- https://github.com/Riverside-Software/sonar-openedge
+[![Build status](https://ci.appveyor.com/api/projects/status/vd9av4gmokfifviv?svg=true)](https://ci.appveyor.com/project/jcaillon/oetools-utilities)
 
-- https://github.com/pvginkel/ProgressEncode
-- https://github.com/MightyBarto/OpenEdgeInterface
-- https://github.com/NickHeap/extractrcodemd5
+## About
+
+Slave library for https://github.com/jcaillon/Oetools.Runner

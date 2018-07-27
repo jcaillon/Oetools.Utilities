@@ -139,7 +139,7 @@ namespace Oetools.Utilities.Ftp {
     }
 
     /// <summary>
-    ///     File pattern style used in <see cref="FtpsClient.GetFiles" /> and  <see cref="FtpsClient.PutFiles" />.
+    ///     File pattern style used in <see cref="FtpsClient.GetFiles(string,string,string,Oetools.Utilities.Ftp.EPatternStyle,bool,Oetools.Utilities.Ftp.FileTransferCallback)" /> and  <see cref="FtpsClient.PutFiles(string,string,string,Oetools.Utilities.Ftp.EPatternStyle,bool,Oetools.Utilities.Ftp.FileTransferCallback)" />.
     /// </summary>
     public enum EPatternStyle {
         /// <summary>
@@ -259,8 +259,6 @@ namespace Oetools.Utilities.Ftp {
         private int _sslMinCipherAlgStrength;
         private int _sslMinHashAlgStrength;
 
-        private bool _sslCheckCertRevocation = true;
-
         private RemoteCertificateValidationCallback _userValidateServerCertificate;
 
         private int _timeout = 120000; //ms
@@ -324,7 +322,6 @@ namespace Oetools.Utilities.Ftp {
         /// <summary>
         ///     The server X.509 certificate used by the current connection
         /// </summary>
-        /// <values><c>null</c> if the connection is not encrypted</value>
         public X509Certificate RemoteCertificate {
             get { return _ctrlSslStream != null ? _ctrlSslStream.RemoteCertificate : null; }
         }
@@ -391,6 +388,7 @@ namespace Oetools.Utilities.Ftp {
         ///     Anonymous authentication
         /// </summary>
         /// <param name="hostname"></param>
+        /// <param name="sslSupportMode"></param>
         /// <returns>The text of the \"welcome message\" sent by the server.</returns>
         public string Connect(string hostname, EsslSupportMode sslSupportMode) {
             return Connect(hostname, null, sslSupportMode);
@@ -1550,8 +1548,8 @@ namespace Oetools.Utilities.Ftp {
             if (_sslClientCert != null)
                 clientCertColl.Add(_sslClientCert);
 
-            //sslStream.AuthenticateAsClient(hostname);
-            sslStream.AuthenticateAsClient(_hostname, clientCertColl, SslProtocols.Default, _sslCheckCertRevocation);
+            sslStream.AuthenticateAsClient(_hostname);
+            //sslStream.AuthenticateAsClient(_hostname, clientCertColl, SslProtocols.Default, true);
 
             CheckSslAlgorithmsStrength(sslStream);
 

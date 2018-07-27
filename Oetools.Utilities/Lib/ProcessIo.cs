@@ -30,7 +30,7 @@ namespace Oetools.Utilities.Lib {
     public class ProcessIo {
         
         #region public fields
-        
+
         public string WorkingDirectory { get; set; }
 
         public StringBuilder StandardOutput { get; }
@@ -40,11 +40,11 @@ namespace Oetools.Utilities.Lib {
         public int ExitCode { get; private set; }
 
         public ProcessStartInfo StartInfo { get; }
-        
+
         public bool WaitForExit { get; set; }
 
         #endregion
-       
+
         #region Life and death
 
         /// <summary>
@@ -67,7 +67,6 @@ namespace Oetools.Utilities.Lib {
         }
 
         #endregion
-        
 
         #region public methods
 
@@ -94,6 +93,7 @@ namespace Oetools.Utilities.Lib {
             if (!string.IsNullOrEmpty(arguments)) {
                 StartInfo.Arguments = arguments;
             }
+
             if (!string.IsNullOrEmpty(WorkingDirectory)) {
                 StartInfo.WorkingDirectory = WorkingDirectory;
             }
@@ -101,28 +101,26 @@ namespace Oetools.Utilities.Lib {
             using (var process = new Process {
                 StartInfo = StartInfo
             }) {
-                
                 process.OutputDataReceived += OnProcessOnOutputDataReceived;
                 process.ErrorDataReceived += OnProcessOnErrorDataReceived;
-                
+
                 process.Start();
-            
+
                 // Asynchronously read the standard output of the spawned process
                 // This raises OutputDataReceived events for each line of output
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
-            
+
                 process.WaitForExit();
-                
+
                 ExitCode = process.ExitCode;
-                
+
                 process.Close();
-                
+
                 ErrorOutput.TrimEnd();
                 StandardOutput.TrimEnd();
-                
             }
-            
+
             return ExitCode == 0;
         }
 

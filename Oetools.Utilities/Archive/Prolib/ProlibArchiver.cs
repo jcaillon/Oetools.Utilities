@@ -36,6 +36,7 @@ namespace Oetools.Utilities.Archive.Prolib {
     ///     Allows to pack files into a prolib file
     /// </summary>
     public class ProlibArchiver : Archiver, IArchiver {
+        
         #region Private
 
         protected readonly string ProlibExePath;
@@ -99,14 +100,38 @@ namespace Oetools.Utilities.Archive.Prolib {
                                 // ignore
                             }
                         });
-
-                        // now we just need to add the content of temp folders into the .pl
-                        if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -create -nowarn -add {Path.Combine(subFolder.Key.Replace(uniqueTempFolder, "").TrimStart('\\'), "*").Quoter()}")) {
-                            foreach (var file in subFolder.Value) {
+                        
+                        // for files containing a space, we don't have a choice, call extract for each...
+                        foreach (var file in subFolder.Value.Where(f => f.RelativePath.ContainsFast(" "))) {
+                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -create -nowarn -add {file.RelativePath.Quoter()}")) {
                                 progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.ErrorOutput.ToString())));
                             }
                         }
 
+                        var remainingFiles = subFolder.Value.Where(f => !f.RelativePath.ContainsFast(" ")).ToList();
+                        if (remainingFiles.Count > 0) {
+                            // for the other files, we can use the -pf parameter
+                            var pfContent = new StringBuilder();
+                            pfContent.AppendLine("-create -nowarn -add");
+                            foreach (var file in remainingFiles) {
+                                pfContent.AppendLine(file.RelativePath);
+                            }
+
+                            var pfPath = Path.Combine(uniqueTempFolder, $"{Path.GetFileName(plGroupedFiles.Key)}~{Path.GetRandomFileName()}.pf");
+
+                            File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
+
+                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -pf {pfPath.Quoter()}")) {
+                                foreach (var file in remainingFiles) {
+                                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.ErrorOutput.ToString())));
+                                }
+                            }
+
+                            if (File.Exists(pfPath)) {
+                                File.Delete(pfPath);
+                            }
+                        }
+                        
                         // move files from the temp subfolder
                         Parallel.ForEach(subFolder.Value, file => {
                             try {

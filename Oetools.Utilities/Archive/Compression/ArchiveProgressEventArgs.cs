@@ -53,9 +53,7 @@ namespace Oetools.Utilities.Archive.Compression {
 
         /// <summary>
         ///     Gets the name of the file being processed. (The name of the file within the Archive; not the external
-        ///     file path.) Also includes the internal path of the file, if any.  Valid for
-        ///     <see cref="ArchiveProgressionType.StartFile" />, <see cref="ArchiveProgressionType.PartialFile" />,
-        ///     and <see cref="ArchiveProgressionType.FinishFile" /> messages.
+        ///     file path.) Also includes the internal path of the file, if any.
         /// </summary>
         /// <value>
         ///     The name of the file currently being processed, or null if processing
@@ -65,8 +63,7 @@ namespace Oetools.Utilities.Archive.Compression {
 
         /// <summary>
         ///     Gets the number of the current file being processed. The first file is number 0, and the last file
-        ///     is <see cref="TotalFiles" />-1. Valid for <see cref="ArchiveProgressionType.StartFile" />,
-        ///     <see cref="ArchiveProgressionType.PartialFile" />, and <see cref="ArchiveProgressionType.FinishFile" /> messages.
+        ///     is <see cref="TotalFiles" />-1.
         /// </summary>
         /// <value>
         ///     The number of the file currently being processed, or the most recent
@@ -81,9 +78,7 @@ namespace Oetools.Utilities.Archive.Compression {
         public int TotalFiles { get; private set; }
 
         /// <summary>
-        ///     Gets the number of bytes processed so far when compressing or extracting a file.  Valid for
-        ///     <see cref="ArchiveProgressionType.StartFile" />, <see cref="ArchiveProgressionType.PartialFile" />,
-        ///     and <see cref="ArchiveProgressionType.FinishFile" /> messages.
+        ///     Gets the number of bytes processed so far when compressing or extracting a file.
         /// </summary>
         /// <value>
         ///     The number of uncompressed bytes processed so far for the current file,
@@ -92,8 +87,7 @@ namespace Oetools.Utilities.Archive.Compression {
         public long CurrentFileBytesProcessed { get; private set; }
 
         /// <summary>
-        ///     Gets the total number of bytes in the current file.  Valid for <see cref="ArchiveProgressionType.StartFile" />,
-        ///     <see cref="ArchiveProgressionType.PartialFile" />, and <see cref="ArchiveProgressionType.FinishFile" /> messages.
+        ///     Gets the total number of bytes in the current file.
         /// </summary>
         /// <value>
         ///     The uncompressed size of the current file being processed,

@@ -36,6 +36,7 @@ namespace Oetools.Utilities.Test.Tests {
             listFiles.AddRange(TestHelper.GetPackageTestFilesList(TestFolder, "out2.pl"));
             
             TestHelper.CreateSourceFiles(listFiles);
+            
             archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
 
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out.pl")));
