@@ -24,8 +24,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using csdeployer.Lib;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Openedge {
     
@@ -34,7 +37,35 @@ namespace Oetools.Utilities.Openedge {
         public static string GetDlcPath() {
             return Environment.GetEnvironmentVariable("dlc");
         }
+        
+        /// <summary>
+        /// Returns the openedge version currently installed
+        /// </summary>
+        /// <remarks>https://knowledgebase.progress.com/articles/Article/P126</remarks>
+        public static Version GetProVersionFromDlc(string dlcPath) {
+            var versionFilePath = Path.Combine(dlcPath, "version");
+            if (File.Exists(versionFilePath)) {
+                var matches = new Regex(@"(\d+)\.(\d+)(?:\.(\d+)|([A-Za-z](\d+)))").Matches(File.ReadAllText(versionFilePath));
+                if (matches.Count == 1) {
+                    return new Version(int.Parse(matches[0].Groups[1].Value), int.Parse(matches[0].Groups[2].Value), int.Parse(matches[0].Groups[3].Success ? matches[0].Groups[3].Value : matches[0].Groups[5].Value));
+                }
+            }
+            return new Version();
+        }
 
+        /// <summary>
+        /// Returns wether or not the progress version accepts the -nosplash parameter
+        /// </summary>
+        /// <param name="proVersion"></param>
+        /// <returns></returns>
+        public static bool CanProVersionUseNoSplashParameter(Version proVersion) => proVersion.CompareTo(new Version(11, 6, 0)) >= 0;
+
+        /// <summary>
+        /// Returns the best suited pro executable full path from the dlc path
+        /// </summary>
+        /// <param name="dlcPath"></param>
+        /// <param name="useCharacterModeOfProgress"></param>
+        /// <returns></returns>
         public static string GetProExecutableFromDlc(string dlcPath, bool useCharacterModeOfProgress = false) {
             string outputPath;
             if (Utils.IsRuntimeWindowsPlatform) {
@@ -50,19 +81,13 @@ namespace Oetools.Utilities.Openedge {
             }
             return File.Exists(outputPath) ? outputPath : null;
         }
-        
-        public static HashSet<string> GetProPathFromBaseDirectory(string baseDirectory) {
-            
-            var uniqueDirList = new HashSet<string>();
 
-            foreach (var folder in Utils.EnumerateFolders(baseDirectory, "*", SearchOption.AllDirectories)) {
-                if (!uniqueDirList.Contains(folder))
-                    uniqueDirList.Add(folder);
-            }
-
-            return uniqueDirList;
-        }
-        
+        /// <summary>
+        /// Reads the propath from an ini file
+        /// </summary>
+        /// <param name="iniFile"></param>
+        /// <param name="sourceDirectory"></param>
+        /// <returns></returns>
         public static HashSet<string> GetProPathFromIniFile(string iniFile, string sourceDirectory) {
             
             var uniqueDirList = new HashSet<string>();
@@ -100,6 +125,35 @@ namespace Oetools.Utilities.Openedge {
             }
 
             return uniqueDirList;
+        }
+        
+        /// <summary>
+        /// Reads a database connection string from a progress parameter file (takes comment into account)
+        /// </summary>
+        /// <param name="pfPath"></param>
+        /// <returns></returns>
+        public static string GetConnectionStringFromPfFile(string pfPath) {
+            if (!File.Exists(pfPath))
+                return string.Empty;
+
+            var connectionString = new StringBuilder();
+            Utils.ForEachLine(pfPath, new byte[0], (nb, line) => {
+                if (!string.IsNullOrEmpty(line)) {
+                    connectionString.Append(" ");
+                    connectionString.Append(line);
+                }
+            });
+            connectionString.Append(" ");
+            return connectionString.CompactWhitespaces().ToString();
+        }
+
+        /// <summary>
+        /// List all the prolib files in a directory
+        /// </summary>
+        /// <param name="baseDirectory"></param>
+        /// <returns></returns>
+        public static List<string> ListProlibFilesInDirectory(string baseDirectory) {
+            return Utils.EnumerateFiles(baseDirectory, $"*{OeConstants.ExtProlibFile}", SearchOption.TopDirectoryOnly).ToList();
         }
     }
 }

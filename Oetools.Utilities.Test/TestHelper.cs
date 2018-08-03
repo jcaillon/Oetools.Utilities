@@ -26,6 +26,7 @@ using System.IO;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge;
+using Oetools.Utilities.Test.Archive;
 
 namespace Oetools.Utilities.Test {
     public static class TestHelper {

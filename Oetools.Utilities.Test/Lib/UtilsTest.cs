@@ -18,54 +18,22 @@
 // ========================================================================
 #endregion
 
-using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
-using Oetools.Utilities.Openedge;
 
-namespace Oetools.Utilities.Test.Tests {
+namespace Oetools.Utilities.Test.Lib {
     
     [TestClass]
-    public class ProUtilitiesTest {
+    public class UtilsTest {
         
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ProUtilitiesTest)));
-
-        [ClassInitialize]
-        public static void Init(TestContext context) {           
-            Cleanup();
-            Directory.CreateDirectory(TestFolder);
-        }
-        
-        [ClassCleanup]
-        public static void Cleanup() {
-            if (Directory.Exists(TestFolder)) {
-                Directory.Delete(TestFolder, true);
-            }
-        }
-        
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UtilsTest)));
+                     
         [TestMethod]
-        public void GetProPathFromIniFile_TestEnvVarReplacement() {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                return;
-            }
-            
-            var iniPath = Path.Combine(TestFolder, "test.ini");
-            File.WriteAllText(iniPath, "[Startup]\nPROPATH=t:\\error:exception\";C:\\Windows,%TEMP%;z:\\nooooop");
-
-            var list = ProUtilities.GetProPathFromIniFile(iniPath, TestFolder);
-
-            Assert.AreEqual(2, list.Count);
-            Assert.IsTrue(list.ToList().Exists(s => s.Equals("C:\\Windows")));
-            Assert.IsTrue(list.ToList().Exists(s => s.Equals(Environment.GetEnvironmentVariable("TEMP"))));
-        }
-        
-        [TestMethod]
-        public void GetProPathFromBaseDirectory_Test() {
+        public void ListAllFoldersFromBaseDirectory_Test() {
             Directory.CreateDirectory(Path.Combine(TestFolder, "test1"));
             Directory.CreateDirectory(Path.Combine(TestFolder, "test2"));
             Directory.CreateDirectory(Path.Combine(TestFolder, "test3"));
@@ -75,11 +43,15 @@ namespace Oetools.Utilities.Test.Tests {
             dirInfo = Directory.CreateDirectory(Path.Combine(TestFolder, "test2_hidden"));
             dirInfo.Attributes |= FileAttributes.Hidden;
 
-            var list = ProUtilities.GetProPathFromBaseDirectory(TestFolder);
+            var list = Utils.ListAllFoldersFromBaseDirectory(TestFolder);
 
             Assert.AreEqual(4, list.Count);
             Assert.IsFalse(list.ToList().Exists(s => s.Contains("_hidden")));
-        }
+            
+            list = Utils.ListAllFoldersFromBaseDirectory(TestFolder, false);
 
+            Assert.AreEqual(6, list.Count);
+            Assert.IsTrue(list.ToList().Exists(s => s.Contains("_hidden")));
+        }
     }
 }

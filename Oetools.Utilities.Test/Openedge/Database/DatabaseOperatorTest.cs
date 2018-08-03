@@ -25,7 +25,7 @@ using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge;
 
-namespace Oetools.Utilities.Test.Tests {
+namespace Oetools.Utilities.Test.Openedge.Database {
     
     [TestClass]
     public class DatabaseOperatorTest {

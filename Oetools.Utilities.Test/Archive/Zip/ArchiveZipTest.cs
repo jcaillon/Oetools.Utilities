@@ -1,12 +1,11 @@
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Zip;
 
-namespace Oetools.Utilities.Test.Tests {
+namespace Oetools.Utilities.Test.Archive.Zip {
     
     [TestClass]
     public class ArchiveZipTest {

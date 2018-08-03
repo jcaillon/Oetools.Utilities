@@ -5,7 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Cab;
 
-namespace Oetools.Utilities.Test.Tests {
+namespace Oetools.Utilities.Test.Archive.Cab {
     
     [TestClass]
     public class ArchiveCabTest {

@@ -18,25 +18,42 @@
 // ========================================================================
 #endregion
 
-using System.Text;
+using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Lib.Extension;
 
-namespace Oetools.Utilities.Test.Tests {
+namespace Oetools.Utilities.Test.Openedge.Execution {
     
     [TestClass]
-    public class ExtensionTest {
+    public class ExecutionTest {
         
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UtilsTest)));
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ExecutionTest)));
 
-        [TestMethod]
-        [DataRow(@"    ", @"")]
-        [DataRow(null, @"")]
-        [DataRow(" motend     \t", @" motend")]
-        public void TrimEnd_IsOk(string input, string expected) {
-            Assert.AreEqual(expected, new StringBuilder(input).TrimEnd().ToString());
+        [ClassInitialize]
+        public static void Init(TestContext context) {           
+            Cleanup();
+            Directory.CreateDirectory(TestFolder);
         }
+        
+        [ClassCleanup]
+        public static void Cleanup() {
+            if (Directory.Exists(TestFolder)) {
+                Directory.Delete(TestFolder, true);
+            }
+        }
+        
+        [TestMethod]
+        public void Test1() {
+            var content1 = @"USING namespacerandom.*.
+CLASS namespacerandom.Class1 INHERITS Class2:
+END CLASS.";
+            var content2 = @"CLASS namespacerandom.Class2 ABSTRACT:
+END CLASS.";
+            
+            
+        }
+        
+
     }
 }

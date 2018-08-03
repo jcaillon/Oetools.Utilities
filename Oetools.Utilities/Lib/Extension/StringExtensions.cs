@@ -46,9 +46,24 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <summary>
         ///     Allows to test if a string matches one of the listOfPattern (wildcards) in the list of patterns,
         ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls,*.com,*.xml") return true
+        ///     Ex : "path/file.xml".TestAgainstListOfPatterns("*.xls,*.com,*.xml") return false!
         /// </summary>
         public static bool TestAgainstListOfPatterns(this string source, string listOfPattern) {
-            return listOfPattern.Split(',').Where(s => !string.IsNullOrEmpty(s)).ToList().Exists(s => source.RegexMatch(s.WildCardToRegex()));
+            if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(listOfPattern)) {
+                return false;
+            }
+            return listOfPattern.Split(',').Where(s => !string.IsNullOrEmpty(s)).ToList().Exists(s => new Regex(s.PathWildCardToRegex()).IsMatch(source));
+        }
+
+        /// <summary>
+        ///     Allows to test if a string matches one of the listOfPattern (wildcards) in the list of patterns,
+        ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls,*.com,*.xml") return true
+        /// </summary>
+        public static bool TestFileNameAgainstListOfPatterns(this string filePath, string listOfPattern) {
+            if (string.IsNullOrEmpty(filePath) || string.IsNullOrEmpty(listOfPattern)) {
+                return false;
+            }
+            return listOfPattern.Split(',').Where(s => !string.IsNullOrEmpty(s)).ToList().Exists(s => new Regex(s.PathWildCardToRegex()).IsMatch(Path.GetFileName(filePath)));
         }
 
         /// <summary>
@@ -73,48 +88,61 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Allows to tranform a matching string using * and ? (wildcards) into a valid regex expression
+        ///     Allows to tranform a matching string using **, * and ? (wildcards) into a valid regex expression
         ///     it escapes regex special char so it will work as you expect!
         ///     Ex: foo*.xls? will become ^foo.*\.xls.$
-        ///     if the listOfPattern doesn't start with a * and doesn't end with a *, it adds both
+        ///     ** matches any char any nb of time
+        ///     * matches only non path separators any time
+        ///     ? matches non path separators 1 time
         /// </summary>
         /// <param name="pattern"></param>
         /// <returns></returns>
-        public static string WildCardToRegex(this string pattern) {
-            if (string.IsNullOrEmpty(pattern))
-                return ".*";
-            var startStar = pattern[0].Equals('*');
-            var endStar = pattern[pattern.Length - 1].Equals('*');
-            return $"{(!startStar ? (endStar ? "^" : "") : "")}{Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".")}{(!endStar ? (startStar ? "$" : "") : "")}";
+        public static string PathWildCardToRegex(this string pattern) {
+            if (string.IsNullOrEmpty(pattern)) {
+                return null;
+            }
+            pattern = Regex.Escape(pattern.Replace("\\", "/"))
+                .Replace(@"/\*\*/", @"/.*")
+                .Replace(@"/", @"[\\/]")
+                .Replace(@"\*\*", ".*")
+                .Replace(@"\*", @"[^\\/]*")
+                .Replace(@"\?", @"[^\\/]");
+            return $"^{pattern}$";
         }
 
         /// <summary>
-        ///     Allows to find a string with a regular expression, uses the IgnoreCase option by default, returns a match
-        ///     collection,
-        ///     to be used foreach (Match match in collection) { with match.Groups[1].Value being the first capture [2] etc...
+        /// Test if the path wild card has correct matches &lt;match&gt;
+        /// We need this to know if the new Regex() will fail with this PathWildCard or not
         /// </summary>
-        public static MatchCollection RegexFind(this string source, string regexString, RegexOptions options = RegexOptions.IgnoreCase) {
-            var regex = new Regex(regexString, options);
-            return regex.Matches(source);
-        }
+        /// <param name="pattern"></param>
+        /// <returns></returns>
+        public static bool ArePathWildCardMatchesValid(this string pattern) {
+            if (string.IsNullOrEmpty(pattern)) {
+                return false;
+            }
 
-        /// <summary>
-        ///     Allows to test a string with a regular expression, uses the IgnoreCase option by default
-        ///     good website : https://regex101.com/
-        /// </summary>
-        public static bool RegexMatch(this string source, string regex, RegexOptions options = RegexOptions.IgnoreCase) {
-            var reg = new Regex(regex, options);
-            return reg.Match(source).Success;
-        }
+            int stack = 0;
+            int idx = 0;
+            do {
+                var idxStart = pattern.IndexOf('<', idx);
+                var idxEnd = pattern.IndexOf('>', idx);
+                if (idxStart >= 0 && (idxEnd < 0 || idxStart < idxEnd)) {
+                    idx = idxStart;
+                    stack++;
+                } else {
+                    if (idxEnd >= 0) {
+                        stack--;
+                    }
+                    idx = idxEnd;
+                }
+                if (stack < 0) {
+                    return false;
+                }
+                idx++;
+            } while (idx > 0 && idx < pattern.Length - 1);
 
-        /// <summary>
-        ///     Allows to replace a string with a regular expression, uses the IgnoreCase option by default,
-        ///     replacementStr can contains $1, $2...
-        /// </summary>
-        public static string RegexReplace(this string source, string regexString, string replacementStr, RegexOptions options = RegexOptions.IgnoreCase) {
-            var regex = new Regex(regexString, options);
-            return regex.Replace(source, replacementStr);
-        }
+            return stack == 0;
+        } 
         
         /// <summary>
         ///     Replaces " by "", replaces new lines by spaces and add extra " at the start and end of the string
@@ -122,6 +150,9 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="text"></param>
         /// <returns></returns>
         public static string Quoter(this string text) {
+            if (string.IsNullOrEmpty(text)) {
+                return "\"null\"";
+            }
             return $"\"{(text ?? "").Replace("\"", "\"\"").Replace("\n", " ").Replace("\r", "")}\"";
         }
 

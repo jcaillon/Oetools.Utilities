@@ -53,40 +53,63 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Delete a dir, recursively
         /// </summary>
-        public static bool DeleteDirectory(string path, bool recursive) {
-            if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
-                return true;
-            Directory.Delete(path, recursive);
+        public static bool DeleteDirectoryIfExists(string path, bool recursive) {
+            if (string.IsNullOrEmpty(path)) {
+                return false;
+            }
+            try {
+                Directory.Delete(path, recursive);
+            } catch (DirectoryNotFoundException) {
+                return false;
+            }
             return true;
         }
 
         /// <summary>
-        ///     Creates the directory, can apply attributes
+        /// Creates the directory, can apply attributes
         /// </summary>
-        public static bool CreateDirectory(string path, FileAttributes attributes = FileAttributes.Directory) {
-            try {
-                if (Directory.Exists(path))
-                    return true;
-                var dirInfo = Directory.CreateDirectory(path);
-                dirInfo.Attributes |= attributes;
-            } catch (Exception e) {
-                throw new Exception("Couldn't create the folder " + path.Quoter(), e);
+        public static bool CreateDirectoryIfNeeded(string path, FileAttributes attributes = FileAttributes.Directory) {
+            if (Directory.Exists(path)) {
+                return false;
+            }
+            var dirInfo = Directory.CreateDirectory(path);
+            dirInfo.Attributes |= attributes;
+            return true;
+        }
+        
+                
+        /// <summary>
+        /// Returns the list of all the folders in a given folder
+        /// </summary>
+        /// <param name="baseDirectory"></param>
+        /// <param name="excludeHiddenFolders"></param>
+        /// <returns></returns>
+        public static HashSet<string> ListAllFoldersFromBaseDirectory(string baseDirectory, bool excludeHiddenFolders = true) {
+            
+            var uniqueDirList = new HashSet<string>();
+
+            foreach (var folder in EnumerateFolders(baseDirectory, "*", SearchOption.AllDirectories, excludeHiddenFolders)) {
+                if (!uniqueDirList.Contains(folder))
+                    uniqueDirList.Add(folder);
             }
 
-            return true;
+            return uniqueDirList;
         }
 
         /// <summary>
         ///     Same as Directory.EnumerateDirectories but doesn't list hidden folders
         /// </summary>
-        public static IEnumerable<string> EnumerateFolders(string folderPath, string pattern, SearchOption options) {
-            var hiddenDirList = new List<string>();
+        public static IEnumerable<string> EnumerateFolders(string folderPath, string pattern, SearchOption options, bool excludeHidden = false) {
+            
+            var hiddenDirList = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            
             foreach (var dir in Directory.EnumerateDirectories(folderPath, pattern, options)) {
-                if (hiddenDirList.Exists(d => dir.StartsWith(d, StringComparison.CurrentCultureIgnoreCase))) {
+                
+                if (hiddenDirList.Contains(dir)) {
                     continue;
                 }
 
-                if (new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.Hidden)) {
+                if (excludeHidden && new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.Hidden)) {
                     hiddenDirList.Add(dir);
                     continue;
                 }
@@ -96,37 +119,34 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        ///     Same as Directory.EnumerateFiles but doesn't list files in hidden folders
+        /// Same as Directory.EnumerateFiles but is able to not list files in hidden folders
         /// </summary>
-        public static IEnumerable<string> EnumerateFiles(string folderPath, string pattern, SearchOption options) {
+        public static IEnumerable<string> EnumerateFiles(string folderPath, string pattern, SearchOption options, bool excludeHidden = false) {
             foreach (var file in Directory.EnumerateFiles(folderPath, pattern, SearchOption.TopDirectoryOnly))
                 yield return file;
             if (options == SearchOption.AllDirectories) {
-                foreach (var folder in EnumerateFolders(folderPath, "*", SearchOption.AllDirectories)) {
-                    foreach (var file in Directory.EnumerateFiles(folder, pattern, SearchOption.TopDirectoryOnly)) {
-                        yield return file;
-                    }
+                foreach (var file in EnumerateFiles(EnumerateFolders(folderPath, "*", SearchOption.AllDirectories, excludeHidden), pattern)) {
+                    yield return file;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Same as Directory.EnumerateFiles
+        /// </summary>
+        public static IEnumerable<string> EnumerateFiles(IEnumerable<string> folders, string pattern) {
+            foreach (var folder in folders) {
+                foreach (var file in Directory.EnumerateFiles(folder, pattern, SearchOption.TopDirectoryOnly)) {
+                    yield return file;
                 }
             }
         }
 
         #endregion
 
-        public static string GetConnectionStringFromPfFile(string pfPath) {
-            if (!File.Exists(pfPath))
-                return string.Empty;
-
-            var connectionString = new StringBuilder();
-            ForEachLine(pfPath, new byte[0], (nb, line) => {
-                if (!string.IsNullOrEmpty(line)) {
-                    connectionString.Append(" ");
-                    connectionString.Append(line);
-                }
-            });
-            connectionString.Append(" ");
-            return connectionString.CompactWhitespaces().ToString();
-        }
-
+        /// <summary>
+        /// Returns true if the current execution is done on windows platform
+        /// </summary>
         public static bool IsRuntimeWindowsPlatform {
             get {
 #if WINDOWSONLYBUILD

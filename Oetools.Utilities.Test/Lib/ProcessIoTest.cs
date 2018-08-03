@@ -25,7 +25,7 @@ using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
 
-namespace Oetools.Utilities.Test.Tests {
+namespace Oetools.Utilities.Test.Lib {
     [TestClass]
     public class ProcessIoTest {
         private static string _testFolder;

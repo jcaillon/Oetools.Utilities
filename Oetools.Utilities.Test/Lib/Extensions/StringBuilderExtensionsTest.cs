@@ -1,7 +1,7 @@
 ﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (FileToDeployInPackage.cs) is part of Oetools.Utilities.Test.
+// This file (UtilsTest.cs) is part of Oetools.Utilities.Test.
 // 
 // Oetools.Utilities.Test is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,12 +18,17 @@
 // ========================================================================
 #endregion
 
-using Oetools.Utilities.Archive;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Oetools.Utilities.Lib.Extension;
 
-namespace Oetools.Utilities.Test {
-    public class FileToArchive : IFileToArchive {
-        public string SourcePath { get; set; }
-        public string ArchivePath { get; set; }
-        public string RelativePathInArchive { get; set; }
+namespace Oetools.Utilities.Test.Lib.Extensions {
+    
+    [TestClass]
+    public class StringBuilderExtensionsTest {
+        
+        private static string _testFolder;
+
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UtilsTest)));
+
     }
 }

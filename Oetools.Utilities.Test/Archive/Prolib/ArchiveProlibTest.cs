@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,7 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Prolib;
 
-namespace Oetools.Utilities.Test.Tests {
+namespace Oetools.Utilities.Test.Archive.Prolib {
     [TestClass]
     public class ArchiveProlibTest {
         private static string _testFolder;
