@@ -1,6 +1,4 @@
-﻿#region header
-
-// ========================================================================
+﻿// ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (FTPSClient.cs) is part of csdeployer.
 // 
@@ -17,8 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
-#endregion
 
 using System;
 using System.Collections.Generic;
@@ -198,8 +194,6 @@ namespace Oetools.Utilities.Ftp {
     ///     Requirements: MS Framework 2.0 and above or Mono 2.0 and above.
     /// </remarks>
     public sealed partial class FtpsClient : IDisposable {
-        #region Private Enums
-
         private enum EProtCode {
             C,
             S,
@@ -217,10 +211,6 @@ namespace Oetools.Utilities.Ftp {
             I,
             L
         }
-
-        #endregion
-
-        #region Private Fields
 
         private TcpClient _ctrlClient;
         private StreamReader _ctrlSr;
@@ -275,10 +265,6 @@ namespace Oetools.Utilities.Ftp {
         private Thread _keepAliveThread;
         private volatile bool _keepAlive = true;
         private int _keepAliveTimeout = 20000; // ms
-
-        #endregion
-
-        #region Public Properties
 
         public EDataConnectionMode DataConnectionMode {
             get { return _dataConnectionMode; }
@@ -352,10 +338,6 @@ namespace Oetools.Utilities.Ftp {
         /// </summary>
         public bool Connected { get; set; }
 
-        #endregion
-
-        #region private Properties
-
         private bool IsControlChannelEncrypted {
             get { return _ctrlSslStream != null; }
         }
@@ -364,16 +346,8 @@ namespace Oetools.Utilities.Ftp {
             get { return _dataClient != null; }
         }
 
-        #endregion
-
-        #region Public Events
-
         public event LogCommandEventHandler LogCommand;
         public event LogServerReplyEventHandler LogServerReply;
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         ///     Anonymous authentication
@@ -1218,17 +1192,9 @@ namespace Oetools.Utilities.Ftp {
             _sslClientCert = null;
         }
 
-        #region IDisposable Members
-
         public void Dispose() {
             Close();
         }
-
-        #endregion
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         ///     Copies the protocol information form the given stream.
@@ -1774,8 +1740,6 @@ namespace Oetools.Utilities.Ftp {
                 StopActiveDataConnListener();
         }
 
-        #region RFC 959
-
         private void StorCmd(string fileName) {
             HandleCmd("STOR " + fileName);
         }
@@ -1910,10 +1874,6 @@ namespace Oetools.Utilities.Ftp {
             HandleCmd("NOOP");
         }
 
-        #endregion
-
-        #region RFC 2228
-
         private void AuthCmd(EAuthMechanism authMech) {
             HandleCmd("AUTH " + authMech);
             SwitchCtrlToSslMode();
@@ -1932,10 +1892,6 @@ namespace Oetools.Utilities.Ftp {
             HandleCmd("PBSZ " + maxSize);
         }
 
-        #endregion
-
-        #region RFC 2389
-
         private IList<string> FeatCmd() {
             var reply = HandleCmd("FEAT");
             IList<string> features = new List<string>(reply.Message.Split(new[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries));
@@ -1949,10 +1905,6 @@ namespace Oetools.Utilities.Ftp {
             HandleCmd("OPTS " + command);
         }
 
-        #endregion
-
-        #region RFC 2428
-
         private void EpsvCmd() {
             var reply = HandleCmd("EPSV");
             var dataEndPoint = ParseEpsvReply(reply);
@@ -1961,20 +1913,12 @@ namespace Oetools.Utilities.Ftp {
             SetupPassiveDataConnection(dataEndPoint);
         }
 
-        #endregion
-
-        #region RFC 2640
-
         /// <summary>
         /// </summary>
         /// <param name="ietfLanguageTag">RFC 1766 language tag</param>
         private void LangCmd(string ietfLanguageTag) {
             HandleCmd("LANG" + (ietfLanguageTag != null ? " " + ietfLanguageTag : ""));
         }
-
-        #endregion
-
-        #region RFC 3659
 
         private DateTime MdtmCmd(string fileName) {
             var reply = HandleCmd("MDTM " + fileName);
@@ -1990,16 +1934,8 @@ namespace Oetools.Utilities.Ftp {
             return DateTime.ParseExact(message, "yyyyMMddHHmmss.FFF", CultureInfo.GetCultureInfo("en-US"), DateTimeStyles.AssumeUniversal);
         }
 
-        #endregion
-
-        #region Other FTP Commands
-
         private void ClntCmd(string name) {
             HandleCmd("CLNT " + name);
         }
-
-        #endregion
-
-        #endregion
     }
 }

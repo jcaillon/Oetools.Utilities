@@ -1,6 +1,4 @@
-﻿#region header
-
-// ========================================================================
+﻿// ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (Db.cs) is part of Oetools.Utilities.
 // 
@@ -17,8 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
-#endregion
 
 using System;
 using System.Collections.Generic;

@@ -1,6 +1,4 @@
-﻿#region header
-
-// ========================================================================
+﻿// ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ProlibPackager.cs) is part of csdeployer.
 // 
@@ -18,8 +16,6 @@
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 
-#endregion
-
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -36,22 +32,11 @@ namespace Oetools.Utilities.Archive.Prolib {
     ///     Allows to pack files into a prolib file
     /// </summary>
     public class ProlibArchiver : Archiver, IArchiver {
-        
-        #region Private
-
         protected readonly string ProlibExePath;
-
-        #endregion
-
-        #region Life and death
 
         public ProlibArchiver(string prolibExePath) {
             ProlibExePath = prolibExePath;
         }
-
-        #endregion
-
-        #region Methods
 
         public virtual void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
             foreach (var plGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
@@ -232,10 +217,6 @@ namespace Oetools.Utilities.Archive.Prolib {
             }
         }
 
-        #endregion
-
-        #region FilesToMove
-
         private class FilesToMove {
             public string Origin { get; private set; }
             public string Temp { get; private set; }
@@ -249,7 +230,5 @@ namespace Oetools.Utilities.Archive.Prolib {
                 Move = origin.Length > 2 && temp.Length > 2 && origin.Substring(0, 2).EqualsCi(temp.Substring(0, 2));
             }
         }
-
-        #endregion
     }
 }

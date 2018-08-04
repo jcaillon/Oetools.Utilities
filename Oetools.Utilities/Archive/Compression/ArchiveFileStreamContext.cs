@@ -1,4 +1,3 @@
-#region header
 // ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ArchiveFileStreamContext.cs) is part of csdeployer.
@@ -16,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-#endregion
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -37,8 +36,6 @@ namespace csdeployer.Lib.Compression {
         private IDictionary<string, string> files;
         private bool extractOnlyNewerFiles;
         private bool enableOffsetOpen;
-
-        #region Constructors
 
         /// <summary>
         /// Creates a new ArchiveFileStreamContext with a archive file and
@@ -117,10 +114,6 @@ namespace csdeployer.Lib.Compression {
             this.files = files;
         }
 
-        #endregion
-
-        #region Properties
-
         /// <summary>
         /// Gets or sets the list of archive files that are created or extracted.
         /// </summary>
@@ -179,10 +172,6 @@ namespace csdeployer.Lib.Compression {
 
             set { enableOffsetOpen = value; }
         }
-
-        #endregion
-
-        #region IPackStreamContext Members
 
         /// <summary>
         /// Gets the name of the archive with a specified number.
@@ -379,10 +368,6 @@ namespace csdeployer.Lib.Compression {
             return null;
         }
 
-        #endregion
-
-        #region IUnpackStreamContext Members
-
         /// <summary>
         /// Opens the archive stream for reading.
         /// </summary>
@@ -545,10 +530,6 @@ namespace csdeployer.Lib.Compression {
             }
         }
 
-        #endregion
-
-        #region Private utility methods
-
         /// <summary>
         /// Translates an internal file path to an external file path using the
         /// <see cref="Directory"/> and the <see cref="Files"/> mapping, according to
@@ -574,7 +555,5 @@ namespace csdeployer.Lib.Compression {
 
             return filePath;
         }
-
-        #endregion
     }
 }

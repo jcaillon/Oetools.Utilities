@@ -1,5 +1,3 @@
-#region header
-
 // ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (Utils.cs) is part of csdeployer.
@@ -18,8 +16,6 @@
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 
-#endregion
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -33,8 +29,6 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     public static class Utils {
         
-        #region File manipulation wrappers
-
         /// <summary>
         /// Read all the text of a file in one go, same as File.ReadAllText expect it's truly a read only function
         /// </summary>
@@ -142,8 +136,6 @@ namespace Oetools.Utilities.Lib {
             }
         }
 
-        #endregion
-
         /// <summary>
         /// Returns true if the current execution is done on windows platform
         /// </summary>
@@ -156,8 +148,6 @@ namespace Oetools.Utilities.Lib {
 #endif
             }
         }
-
-        #region Read a configuration file
 
         /// <summary>
         ///     Reads all the line of either the filePath (if the file exists) or from byte array dataResources,
@@ -211,7 +201,5 @@ namespace Oetools.Utilities.Lib {
                 }
             }
         }
-
-        #endregion
     }
 }

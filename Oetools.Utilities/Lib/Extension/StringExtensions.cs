@@ -1,5 +1,4 @@
-﻿#region header
-// ========================================================================
+﻿// ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (StringExtensions.cs) is part of Oetools.Utilities.
 // 
@@ -16,15 +15,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-#endregion
 
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
+
+[assembly: InternalsVisibleTo("Oetools.Utilities.Test")]
 
 namespace Oetools.Utilities.Lib.Extension {
     
@@ -41,6 +42,27 @@ namespace Oetools.Utilities.Lib.Extension {
             } catch (Exception) {
                 return destType.IsValueType ? Activator.CreateInstance(destType) : null;
             }
+        }
+
+        /// <summary>
+        ///     Equivalent to Equals but case insensitive
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="comp"></param>
+        /// <returns></returns>
+        public static bool EqualsCi(this string s, string comp) {
+            //string.Equals(a, b, StringComparison.CurrentCultureIgnoreCase);
+            return s.Equals(comp, StringComparison.CurrentCultureIgnoreCase);
+        }
+
+        /// <summary>
+        ///     case insensitive contains
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="toCheck"></param>
+        /// <returns></returns>
+        public static bool ContainsFast(this string source, string toCheck) {
+            return source.IndexOf(toCheck, StringComparison.CurrentCultureIgnoreCase) >= 0;
         }
 
         /// <summary>
@@ -67,65 +89,49 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Equivalent to Equals but case insensitive
-        /// </summary>
-        /// <param name="s"></param>
-        /// <param name="comp"></param>
-        /// <returns></returns>
-        public static bool EqualsCi(this string s, string comp) {
-            //string.Equals(a, b, StringComparison.CurrentCultureIgnoreCase);
-            return s.Equals(comp, StringComparison.CurrentCultureIgnoreCase);
-        }
-
-        /// <summary>
-        ///     case insensitive contains
-        /// </summary>
-        /// <param name="source"></param>
-        /// <param name="toCheck"></param>
-        /// <returns></returns>
-        public static bool ContainsFast(this string source, string toCheck) {
-            return source.IndexOf(toCheck, StringComparison.CurrentCultureIgnoreCase) >= 0;
-        }
-
-        /// <summary>
         ///     Allows to tranform a matching string using **, * and ? (wildcards) into a valid regex expression
         ///     it escapes regex special char so it will work as you expect!
         ///     Ex: foo*.xls? will become ^foo.*\.xls.$
-        ///     ** matches any char any nb of time
-        ///     * matches only non path separators any time
-        ///     ? matches non path separators 1 time
+        ///     - ** matches any char any nb of time (greedy match!)
+        ///     - * matches only non path separators any time
+        ///     - ? matches non path separators 1 time
+        ///     - &lt; will be transformed into open capturing parenthesis
+        ///     - &gt; will be transformed into close capturing parenthesis
         /// </summary>
         /// <param name="pattern"></param>
+        /// <remarks>validate the pattern first with <see cref="IsPlaceHolderPathValid"/></remarks>
         /// <returns></returns>
         public static string PathWildCardToRegex(this string pattern) {
             if (string.IsNullOrEmpty(pattern)) {
                 return null;
             }
             pattern = Regex.Escape(pattern.Replace("\\", "/"))
-                .Replace(@"/\*\*/", @"/.*")
+                .Replace(@"<", @"(")
+                .Replace(@">", @")")
                 .Replace(@"/", @"[\\/]")
-                .Replace(@"\*\*", ".*")
+                .Replace(@"\*\*", ".*?")
                 .Replace(@"\*", @"[^\\/]*")
-                .Replace(@"\?", @"[^\\/]");
+                .Replace(@"\?", @"[^\\/]")
+                ;
             return $"^{pattern}$";
         }
 
         /// <summary>
-        /// Test if the path wild card has correct matches &lt;match&gt;
-        /// We need this to know if the new Regex() will fail with this PathWildCard or not
+        /// Checks if a string has correct place horders, return false if they are opened and not closed
+        /// i.e. : "^zf^ez$f$" return true with tags ^ start $ end and depth 2
         /// </summary>
-        /// <param name="pattern"></param>
+        /// <param name="source"></param>
+        /// <param name="openPo"></param>
+        /// <param name="closePo"></param>
+        /// <param name="maxDepth"></param>
+        /// <param name="comparison"></param>
         /// <returns></returns>
-        public static bool ArePathWildCardMatchesValid(this string pattern) {
-            if (string.IsNullOrEmpty(pattern)) {
-                return false;
-            }
-
+        public static bool HasValidPlaceHolders(this string source, string openPo, string closePo, int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
             int stack = 0;
             int idx = 0;
             do {
-                var idxStart = pattern.IndexOf('<', idx);
-                var idxEnd = pattern.IndexOf('>', idx);
+                var idxStart = source.IndexOf(openPo, idx, comparison);
+                var idxEnd = source.IndexOf(closePo, idx, comparison);
                 if (idxStart >= 0 && (idxEnd < 0 || idxStart < idxEnd)) {
                     idx = idxStart;
                     stack++;
@@ -138,12 +144,73 @@ namespace Oetools.Utilities.Lib.Extension {
                 if (stack < 0) {
                     return false;
                 }
+                if (maxDepth > 0 && stack > maxDepth) {
+                    return false;
+                }
                 idx++;
-            } while (idx > 0 && idx < pattern.Length - 1);
+            } while (idx > 0 && idx <= source.Length - 1);
 
             return stack == 0;
-        } 
+        }
+
+        /// <summary>
+        /// - Test if the path wild card has correct matches &lt; &gt; place holders
+        /// - Test if the path contains any invalid characters
+        /// </summary>
+        /// <remarks>We need this to know if the new Regex() will fail with this PathWildCard or not</remarks>
+        /// <param name="pattern"></param>
+        /// <returns></returns>
+        public static bool IsPlaceHolderPathValid(this string pattern) {
+            if (string.IsNullOrEmpty(pattern)) {
+                return false;
+            }
+            foreach (char c in Path.GetInvalidPathChars()) {
+                if (c == '<' || c == '>') {
+                    continue;
+                }
+                if (pattern.IndexOf(c) >= 0) {
+                    return false;
+                }
+            }
+            return pattern.HasValidPlaceHolders("<", ">");
+        }
         
+        /// <summary>
+        /// Replace the place holders in a string by a value
+        /// </summary>
+        /// <remarks>doesn't do any checks, you have to validate that the source is correct first using <see cref="HasValidPlaceHolders"/></remarks>
+        /// <remarks>Also make sure that replacementFunction will not return a string containing the opening or closing!</remarks>
+        /// <param name="replacementString"></param>
+        /// <param name="replacementFunction"></param>
+        /// <param name="openPo"></param>
+        /// <param name="closePo"></param>
+        /// <param name="comparison"></param>
+        /// <returns></returns>
+        public static string ReplacePlaceHolders(this string replacementString, Func<string, string> replacementFunction, string openPo = "<", string closePo = ">", StringComparison comparison = StringComparison.Ordinal) {
+            int idxStart;
+            int idx = 0;
+            int loop = 0;
+            do {
+                loop++;
+                if (loop > 100) {
+                    throw new Exception("Trapped in infinite loop make sure the replacement function doesn't return a placeholder token");
+                }
+                idxStart = replacementString.IndexOf(openPo, idx, comparison);
+                if (idxStart >= 0) {
+                    var idxEnd = replacementString.IndexOf(closePo, idxStart + openPo.Length, comparison);
+                    var nextIdxStart = replacementString.IndexOf(openPo, idxStart + openPo.Length, comparison);
+                    if (nextIdxStart < 0 || idxEnd < nextIdxStart) {
+                        var variableName = replacementString.Substring(idxStart + openPo.Length, idxEnd - (idxStart + openPo.Length));
+                    replacementString = replacementString.Remove(idxStart, idxEnd + closePo.Length - idxStart).Insert(idxStart, replacementFunction(variableName));
+                        idx = 0;
+                    } else {
+                        idx = idxStart + openPo.Length;
+                    }
+                }
+            } while (idxStart >= 0);
+            return replacementString;
+        }
+
         /// <summary>
         ///     Replaces " by "", replaces new lines by spaces and add extra " at the start and end of the string
         /// </summary>
@@ -153,7 +220,7 @@ namespace Oetools.Utilities.Lib.Extension {
             if (string.IsNullOrEmpty(text)) {
                 return "\"null\"";
             }
-            return $"\"{(text ?? "").Replace("\"", "\"\"").Replace("\n", " ").Replace("\r", "")}\"";
+            return $"\"{text.Replace("\"", "\"\"").Replace("\n", " ").Replace("\r", "")}\"";
         }
 
         /// <summary>

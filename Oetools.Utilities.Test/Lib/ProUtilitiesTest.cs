@@ -21,6 +21,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime;
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge;
@@ -64,12 +65,15 @@ namespace Oetools.Utilities.Test.Lib {
         }
         
         [TestMethod]
-        public void GetProVersionFromDlc_Test() {
-            if (string.IsNullOrEmpty(ProUtilities.GetDlcPath())) {
-                return;
-            }
-            
-            Assert.AreEqual(ProUtilities.GetProVersionFromDlc(ProUtilities.GetDlcPath()), new Version(11, 7, 3));
+        [DataRow(@"OpenEdge Release 11.7 as of Mon Mar 27 10:21:54 EDT 2017", 11, 7, 0)]
+        [DataRow(@"OpenEdge Release 9.1D05 as of Mon Mar 27 10:21:54 EDT 2017", 9, 1, 5)]
+        [DataRow(@"OpenEdge Release 10.2B0801 as of Mon Mar 27 10:21:54 EDT 2017", 10, 2, 801)]
+        [DataRow(@"OpenEdge Release 11.1.2.001 as of Mon Mar 27 10:21:54 EDT 2017", 11, 1, 2)]
+        [DataRow(@"OpenEdge Release 11.1.2 as of Mon Mar 27 10:21:54 EDT 2017", 11, 1, 2)]
+        public void GetProVersionFromDlc_Test(string version, int major, int minor, int patch) {
+            var versionFilePath = Path.Combine(TestFolder, "version");
+            File.WriteAllText(versionFilePath, version);
+            Assert.AreEqual(new Version(major, minor, patch), ProUtilities.GetProVersionFromDlc(TestFolder));
         }
         
         [TestMethod]
@@ -78,8 +82,10 @@ namespace Oetools.Utilities.Test.Lib {
                 return;
             }
             
-            Assert.AreEqual(ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPath()), Path.Combine(ProUtilities.GetDlcPath(), "bin", "prowin32.exe"));
-            Assert.AreEqual(ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPath(), true), Path.Combine(ProUtilities.GetDlcPath(), "bin", "_progres.exe"));
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                Assert.IsTrue(ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPath()).StartsWith(Path.Combine(ProUtilities.GetDlcPath(), "bin", "prowin")));
+            }
+            Assert.AreEqual(Path.Combine(ProUtilities.GetDlcPath(), "bin", "_progres.exe"), ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPath(), true));
         }
         
         [TestMethod]

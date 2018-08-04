@@ -18,7 +18,9 @@
 // ========================================================================
 #endregion
 
+using System;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
 
@@ -29,7 +31,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UtilsTest)));
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ExtensionTest)));
 
         [TestMethod]
         [DataRow(@"    ", @"")]
@@ -56,24 +58,24 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         
         [TestMethod]
         [DataRow(@"c/folder/file.ext", @"fack", false)]
-        [DataRow(@"c/folder/file.ext", @"folder", false)]
+        [DataRow(@"c/folder/file.ext", @"f<old>er", false)]
         [DataRow(@"c/folder/file.ext", @"**folder**", true)]
         [DataRow(@"c/folder/file.ext", @"**/file", false)]
-        [DataRow(@"c/folder/file.ext", @"**/file.ext", true)]
+        [DataRow(@"c/folder/file.ext", @"<**>/file.ext", true)]
         [DataRow(@"c\folder\file.ext", @"**\file.ext", true)]
         [DataRow(@"c\folder\file.ext", @"**\file.*", true)]
-        [DataRow(@"c\folder\file.ext", @"**\??le.*", true)]
+        [DataRow(@"c\folder\file.ext", @"<**\??le.*>", true)]
         [DataRow(@"c\folder\file.ext", @"*\file.ext", false)]
         [DataRow(@"c/folder\file.ext", @"d/**", false)]
         [DataRow(@"c/folder\file.ext", @"?/**", true)]
         [DataRow(@"c/folder\file.ext", @"c/**", true)]
-        [DataRow(@"c/folder\file.ext", @"c/**/*.ext", true)]
+        [DataRow(@"c/folder\file.ext", @"c/**<*.ext>", true)]
         [DataRow(@"c/folder\file.ext", @"c/*/*", true)]
         [DataRow(@"c/folder\file.ext", @"c/*/*/*", false)]
-        [DataRow(@"c/folder/file.ext", @"c\folder/**", true)]
-        [DataRow(@"c\folder/file.ext", @"c/folder/**/file.ext", true)]
-        [DataRow(@"c\folder/file.ext", @"**\folder/**/file**", true)]
-        [DataRow(@"c\folder/file.ext", @"**/*/**/*", true)]
+        [DataRow(@"c/folder/file.ext", @"c\folder/<**>", true)]
+        [DataRow(@"c\folder/file.ext", @"c/<folder/<**>file.ext>", true)]
+        [DataRow(@"c\folder/file.ext", @"<**>\<fo<ld>er>/**file**", true)]
+        [DataRow(@"c\folder/file.ext", @"**/*/**", true)]
         [DataRow(@"file.ext", @"**/*/**/*", false)]
         [DataRow(@"file.ext", null, false)]
         [DataRow(@"file.ext", @"", false)]
@@ -82,18 +84,79 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         }
         
         [TestMethod]
-        [DataRow(null, false)]
+        [DataRow(@"zfezef|dze", false)]
         [DataRow(@"<00000>", true)]
+        [DataRow(@"<000>>", false)]
+        [DataRow(@"<<<><>>>", true)]
+        [DataRow(null, false)]
         [DataRow(@"<0<1>0>", true)]
         [DataRow(@"<0<1111>0000<22222>0>", true)]
         [DataRow(@"<<<><>>>", true)]
         [DataRow(@"000>><<", false)]
         [DataRow(@"<<0000>", false)]
-        [DataRow(@"<000>>", false)]
         [DataRow(@"000>>", false)]
         [DataRow(@"<0<1<2<3>>>>0>>", false)]
         public void IsPathWildCardValid_Test(string pattern, bool expected) {
-            Assert.AreEqual(expected, pattern.ArePathWildCardMatchesValid());
+            Assert.AreEqual(expected, pattern.IsPlaceHolderPathValid());
+        }
+        
+        [TestMethod]
+        [DataRow(@"^zf^ez$f$", "^", "$", 0,  true)]
+        [DataRow(@"^zf^ez$f$", "^", "$", 2,  true)]
+        [DataRow(@"^zf^ez$f$", "^", "$", 1,  false)]
+        [DataRow(@"^^^zf^^^ez$$$f$$$", "^^^", "$$$", 0,  true)]
+        [DataRow(@"^^^zf^^^ez$$$f$$$", "^^^", "$$$", 1,  false)]
+        [DataRow(@"^^^zf^^^ez$$$f", "^^^", "$$$", 0,  false)]
+        public void HasValidPlaceHolders_Test(string pattern, string open, string close, int maxdepth, bool expected) {
+            Assert.AreEqual(expected, pattern.HasValidPlaceHolders(open, close, maxdepth), pattern);
+        }
+        
+        [TestMethod]
+        [DataRow(@"0<1><2><3>", "0123")]
+        [DataRow(@"0<1>0<2>0<3>", "010203")]
+        [DataRow(@"0<1<2<3>>>", "0123")]
+        [DataRow(@"<>", "")]
+        [DataRow(@"<bla>", "bla")]
+        public void ReplacePlaceHolders_Test(string pattern, string expected) {
+            Assert.AreEqual(expected, pattern.ReplacePlaceHolders(s => s), pattern);
+        }
+        
+        [TestMethod]
+        [DataRow(@"^^^zf^^^ez$$$$$$f", "^^^", "$$$", "zfezf")]
+        [DataRow(@"<TAG>hello</TAG> <TAG>there</TAG>", "<TAG>", "</TAG>", "hello there")]
+        public void ReplacePlaceHolders_Test2(string pattern, string open, string close, string expected) {
+            Assert.AreEqual(expected, pattern.ReplacePlaceHolders(s => s, open, close), pattern);
+        }
+        
+        [TestMethod]
+        [DataRow(@"<>")]
+        public void ReplacePlaceHolders_Test_expect_exceptions(string pattern) {
+            // expect bad recursion
+            Assert.ThrowsException<Exception>(() => pattern.ReplacePlaceHolders(s => "<>"));
+        }
+        
+        [TestMethod]
+        [DataRow(@"efzee<")]
+        public void ReplacePlaceHolders_Test_expect_exceptions2(string pattern) {
+            Assert.IsFalse(pattern.IsPlaceHolderPathValid());
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => pattern.ReplacePlaceHolders(s => s));
+        }
+        
+        [TestMethod]
+        [DataRow(@"c\file.ext", @"c/<**><*>.ext", @"d/<2>.new", @"d/file.new")]
+        [DataRow(@"c\folder/file.ext", @"c/<**><*>.ext", @"d/<2>.new", @"d/file.new")]
+        [DataRow(@"c\folder/file.ext", @"c/<**><*>.ext", @"<0>", @"c\folder/file.ext")]
+        [DataRow(@"c\folder/file.ext", @"c/<**><*>.ext", @"nop", @"nop")]
+        [DataRow(@"c\folder/file.ext", @"c/f<old>er/<?>ile.**", @"<1> <2>k", @"old fk")]
+        [DataRow(@"c\folder/file.ext", @"c/<*>/**", @"<1> <name>", @"folder name")]
+        public void ReplacePlaceHoldersInPathRegex_Test(string path, string pattern, string replacementString, string expected) {
+            var match = new Regex(pattern.PathWildCardToRegex()).Match(path);
+            Assert.AreEqual(expected, replacementString.ReplacePlaceHolders(s => {
+                if (match.Success && match.Groups[s].Success) {
+                    return match.Groups[s].Value;
+                }
+                return s;
+            }), pattern);
         }
         
         [TestMethod]

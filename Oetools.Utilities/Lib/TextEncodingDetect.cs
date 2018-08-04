@@ -1,6 +1,4 @@
-﻿#region header
-
-// ========================================================================
+﻿// ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (TextEncodingDetect.cs) is part of csdeployer.
 // 
@@ -18,8 +16,6 @@
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 
-#endregion
-
 using System;
 using System.IO;
 using System.Text;
@@ -31,9 +27,6 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     /// <remarks>Credits go to: https://github.com/AutoIt/text-encoding-detect</remarks>
     public class TextEncodingDetect {
-
-        #region Enums
-
         public enum EncodingEnum {
             None, // Unknown or binary
             Ansi, // 0-255
@@ -45,8 +38,6 @@ namespace Oetools.Utilities.Lib {
             Utf16BeBom, // UTF16-BE with BOM
             Utf16BeNobom // UTF16-BE without BOM
         }
-
-        #endregion
 
         /// <summary>
         ///     Returns the encoding of the input file
@@ -293,8 +284,6 @@ namespace Oetools.Utilities.Lib {
             return false;
         }
 
-        #region Fields
-
         private readonly byte[] _utf16Lebom = {0xFF, 0xFE};
         private readonly byte[] _utf16Bebom = {0xFE, 0xFF};
         private readonly byte[] _utf8Bom = {0xEF, 0xBB, 0xBF};
@@ -302,10 +291,6 @@ namespace Oetools.Utilities.Lib {
         private bool _nullSuggestsBinary = true;
         private double _utf16ExpectedNullPercent = 70;
         private double _utf16UnexpectedNullPercent = 10;
-
-        #endregion
-
-        #region Properties
 
         public bool NullSuggestsBinary {
             set { _nullSuggestsBinary = value; }
@@ -322,7 +307,5 @@ namespace Oetools.Utilities.Lib {
                 if (value > 0 && value < 100) _utf16UnexpectedNullPercent = value;
             }
         }
-
-        #endregion
     }
 }

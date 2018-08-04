@@ -1,6 +1,4 @@
-﻿#region header
-
-// ========================================================================
+﻿// ========================================================================
 // Copyright (c) 2017 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ProcessIo.cs) is part of csdeployer.
 // 
@@ -18,8 +16,6 @@
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 
-#endregion
-
 using System;
 using System.Diagnostics;
 using System.Text;
@@ -28,9 +24,6 @@ using Oetools.Utilities.Lib.Extension;
 namespace Oetools.Utilities.Lib {
 
     public class ProcessIo {
-        
-        #region public fields
-
         public string WorkingDirectory { get; set; }
 
         public StringBuilder StandardOutput { get; }
@@ -42,10 +35,6 @@ namespace Oetools.Utilities.Lib {
         public ProcessStartInfo StartInfo { get; }
 
         public bool WaitForExit { get; set; }
-
-        #endregion
-
-        #region Life and death
 
         /// <summary>
         ///     Constructor
@@ -65,10 +54,6 @@ namespace Oetools.Utilities.Lib {
                 StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
             }
         }
-
-        #endregion
-
-        #region public methods
 
         /// <summary>
         /// Start the process synchronously, catch the exceptions
@@ -131,7 +116,5 @@ namespace Oetools.Utilities.Lib {
         private void OnProcessOnOutputDataReceived(object sender, DataReceivedEventArgs args) {
             StandardOutput.AppendLine(args.Data);
         }
-
-        #endregion
     }
 }

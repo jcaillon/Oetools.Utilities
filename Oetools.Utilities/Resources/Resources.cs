@@ -1,5 +1,4 @@
-﻿#region header
-// ========================================================================
+﻿// ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (Resources.cs) is part of Oetools.HtmlExport.
 // 
@@ -16,7 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Oetools.HtmlExport. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-#endregion
 
 using System.IO;
 using System.Reflection;

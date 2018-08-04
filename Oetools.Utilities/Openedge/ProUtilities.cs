@@ -1,6 +1,4 @@
-﻿#region header
-
-// ========================================================================
+﻿// ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ProUtilities.cs) is part of Oetools.Utilities.
 // 
@@ -17,8 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
-#endregion
 
 using System;
 using System.Collections.Generic;
@@ -45,9 +41,9 @@ namespace Oetools.Utilities.Openedge {
         public static Version GetProVersionFromDlc(string dlcPath) {
             var versionFilePath = Path.Combine(dlcPath, "version");
             if (File.Exists(versionFilePath)) {
-                var matches = new Regex(@"(\d+)\.(\d+)(?:\.(\d+)|([A-Za-z](\d+)))").Matches(File.ReadAllText(versionFilePath));
+                var matches = new Regex(@"(\d+)\.(\d+)(?:\.(\d+)|([A-Za-z](\d+)))?").Matches(File.ReadAllText(versionFilePath));
                 if (matches.Count == 1) {
-                    return new Version(int.Parse(matches[0].Groups[1].Value), int.Parse(matches[0].Groups[2].Value), int.Parse(matches[0].Groups[3].Success ? matches[0].Groups[3].Value : matches[0].Groups[5].Value));
+                    return new Version(int.Parse(matches[0].Groups[1].Value), int.Parse(matches[0].Groups[2].Value), int.Parse(matches[0].Groups[3].Success ? matches[0].Groups[3].Value : matches[0].Groups[5].Success ? matches[0].Groups[5].Value : "0"));
                 }
             }
             return new Version();
@@ -86,9 +82,9 @@ namespace Oetools.Utilities.Openedge {
         /// Reads the propath from an ini file
         /// </summary>
         /// <param name="iniFile"></param>
-        /// <param name="sourceDirectory"></param>
+        /// <param name="currentDirectory"></param>
         /// <returns></returns>
-        public static HashSet<string> GetProPathFromIniFile(string iniFile, string sourceDirectory) {
+        public static HashSet<string> GetProPathFromIniFile(string iniFile, string currentDirectory) {
             
             var uniqueDirList = new HashSet<string>();
             
@@ -103,13 +99,13 @@ namespace Oetools.Utilities.Openedge {
                     var thisPath = path;
                 
                     // replace environment variables
-                    if (thisPath.Contains("%")) {
+                    if (thisPath.Contains("%") || thisPath.Contains("$")) {
                         thisPath = Environment.ExpandEnvironmentVariables(thisPath);
                     }
                 
                     // need to take into account relative paths
                     if (!Path.IsPathRooted(thisPath)) {
-                        thisPath = Path.GetFullPath(Path.Combine(sourceDirectory, thisPath));
+                        thisPath = Path.GetFullPath(Path.Combine(currentDirectory, thisPath));
                     }
 
                     if (!Directory.Exists(thisPath) && !File.Exists(thisPath)) {
