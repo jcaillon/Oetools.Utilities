@@ -8,8 +8,6 @@ namespace Oetools.Packager.Core2.Execution {
         protected override ExecutionType ExecutionType => ExecutionType.Compile;
 
         protected override bool SilentExecution => true;
-
-        protected override bool CanUseBatchMode => true;
         
         public ProExecutionCompile(IEnvExecutionCompilation env) : base(env) {}
 

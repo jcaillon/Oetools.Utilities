@@ -43,8 +43,6 @@ namespace Oetools.Packager.Core2.Execution {
         }
         
         protected override bool SilentExecution => true;
-        
-        protected override bool CanUseBatchMode => true;
 
         private string ProgramDumpDatabase => OpenedgeResources.GetOpenedgeAsStringFromResources(@"DumpDatabase.p");
 

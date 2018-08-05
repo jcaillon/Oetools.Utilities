@@ -69,23 +69,14 @@ FUNCTION fi_write RETURNS LOGICAL PRIVATE ( INPUT ipc_path AS CHARACTER, INPUT i
 SESSION:SYSTEM-ALERT-BOXES = YES.
 SESSION:APPL-ALERT-BOXES = YES.
 
-/* Assign the PROPATH here */
-&IF {&verHigherThan11} &THEN
-    DEFINE VARIABLE llg_propath AS LONGCHAR NO-UNDO.
-    COPY-LOB FROM FILE {&PropathFilePath} TO llg_propath.
-    IF LENGTH(llg_propath) > 31190 THEN
-        ASSIGN llg_propath = SUBSTRING(llg_propath, 1, 31190 - LENGTH(PROPATH)).
-    ASSIGN PROPATH = TRIM(TRIM(STRING(llg_propath)), ",") + "," + PROPATH.
-&ELSE
-    /* COPY-LOB and LONGCHAR do not exist */
-    DEFINE VARIABLE lc_propath AS CHARACTER NO-UNDO.
-    INPUT STREAM str_rw FROM VALUE({&PropathFilePath}) NO-ECHO.
-    REPEAT:
-        IMPORT STREAM str_rw UNFORMATTED lc_propath.
-    END.
-    INPUT STREAM str_rw CLOSE.
-    ASSIGN PROPATH = TRIM(TRIM(lc_propath), ",") + "," + PROPATH.
-&ENDIF
+/* Assign the PROPATH here (maximum length is 31990) */
+DEFINE VARIABLE lc_propath AS CHARACTER NO-UNDO.
+INPUT STREAM str_rw FROM VALUE({&PropathFilePath}) NO-ECHO.
+REPEAT:
+    IMPORT STREAM str_rw UNFORMATTED lc_propath.
+END.
+INPUT STREAM str_rw CLOSE.
+ASSIGN PROPATH = lc_propath.
 
 
 /* Connect the database(s) */

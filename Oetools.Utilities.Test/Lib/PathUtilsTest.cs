@@ -26,11 +26,11 @@ using Oetools.Utilities.Lib;
 namespace Oetools.Utilities.Test.Lib {
     
     [TestClass]
-    public class UtilsTest {
+    public class PathUtilsTest {
         
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UtilsTest)));
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(PathUtilsTest)));
                      
         [TestMethod]
         public void ListAllFoldersFromBaseDirectory_Test() {

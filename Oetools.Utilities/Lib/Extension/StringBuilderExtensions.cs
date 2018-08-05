@@ -82,6 +82,35 @@ namespace Oetools.Utilities.Lib.Extension {
         }
         
         /// <summary>
+        /// Trim space characters in the string builder (can be limited to maxOccurences)
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <returns></returns>
+        public static StringBuilder Trim(this StringBuilder builder) {
+            return builder.TrimStart().TrimEnd();
+        }
+        
+        /// <summary>
+        /// Trim the end space characters in the string builder (can be limited to maxOccurences)
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <returns></returns>
+        public static StringBuilder TrimStart(this StringBuilder builder) {
+            if (builder.Length > 0) {
+                int i;
+                for (i = 0; i < builder.Length; i++) {
+                    if (!char.IsWhiteSpace(builder[i]))
+                        break;
+                }
+
+                if (i > 0) {
+                    builder.Remove(0, i);
+                }
+            }
+            return builder;
+        }
+        
+        /// <summary>
         /// Trim the end space characters in the string builder (can be limited to maxOccurences)
         /// </summary>
         /// <param name="builder"></param>

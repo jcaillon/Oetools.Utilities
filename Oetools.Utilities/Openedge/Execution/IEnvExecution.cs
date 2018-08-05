@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 namespace Oetools.Packager.Core2.Execution {
+    
     public interface IEnvExecution {
                 
         /// <summary>
@@ -10,14 +11,9 @@ namespace Oetools.Packager.Core2.Execution {
         string DlcPath { get; set; }
         
         /// <summary>
-        /// Returns the path to the progress executable prowin/_progres (or null if it was not found)
-        /// </summary>
-        string ProExePath { get; }
-        
-        /// <summary>
         /// True if using _progres
         /// </summary>
-        bool IsProgressCharacterMode { get; set; }
+        bool UseProgressCharacterMode { get; set; }
 
         /// <summary>
         /// Connection string to use for the database connection in a CONNECT statement
@@ -37,7 +33,7 @@ namespace Oetools.Packager.Core2.Execution {
         List<string> ProPathList { get; set; }
 
         /// <summary>
-        /// Command line parameters to append to the execution of <see cref="ProExePath"/>
+        /// Command line parameters to append to the execution of progress
         /// </summary>
         string ProExeCommandLineParameters { get; set; }
         
@@ -52,14 +48,9 @@ namespace Oetools.Packager.Core2.Execution {
         string PostExecutionProgramPath { get; set; }
         
         /// <summary>
-        /// Force to never use the -b parameter even if we could
-        /// </summary>
-        bool NeverUseBatchMode { get; set; }
-        
-        /// <summary>
         /// Indicates whether or not the -nosplash parameter is available for this version of openedge
         /// </summary>
-        bool CanProExeUseNoSplash { get; }
+        bool CanProVersionUseNoSplash { get; }
         
         /// <summary>
         /// Temporary folder used when executing openedge

@@ -27,13 +27,11 @@ using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Openedge {
-    
     public static class ProUtilities {
-
-        public static string GetDlcPath() {
+        public static string GetDlcPathFromEnv() {
             return Environment.GetEnvironmentVariable("dlc");
         }
-        
+
         /// <summary>
         /// Returns the openedge version currently installed
         /// </summary>
@@ -46,7 +44,7 @@ namespace Oetools.Utilities.Openedge {
                     return new Version(int.Parse(matches[0].Groups[1].Value), int.Parse(matches[0].Groups[2].Value), int.Parse(matches[0].Groups[3].Success ? matches[0].Groups[3].Value : matches[0].Groups[5].Success ? matches[0].Groups[5].Value : "0"));
                 }
             }
-            return new Version();
+            return null;
         }
 
         /// <summary>
@@ -54,28 +52,38 @@ namespace Oetools.Utilities.Openedge {
         /// </summary>
         /// <param name="proVersion"></param>
         /// <returns></returns>
-        public static bool CanProVersionUseNoSplashParameter(Version proVersion) => proVersion.CompareTo(new Version(11, 6, 0)) >= 0;
+        public static bool CanProVersionUseNoSplashParameter(Version proVersion) => proVersion != null && proVersion.CompareTo(new Version(11, 6, 0)) >= 0;
 
         /// <summary>
-        /// Returns the best suited pro executable full path from the dlc path
+        /// Returns the pro executable full path from the dlc path
         /// </summary>
         /// <param name="dlcPath"></param>
         /// <param name="useCharacterModeOfProgress"></param>
+        /// <exception cref="Exception">invalid mode (gui/char) or path not found</exception>
         /// <returns></returns>
         public static string GetProExecutableFromDlc(string dlcPath, bool useCharacterModeOfProgress = false) {
             string outputPath;
             if (Utils.IsRuntimeWindowsPlatform) {
                 outputPath = Path.Combine(dlcPath, "bin", useCharacterModeOfProgress ? "_progres.exe" : "prowin32.exe");
                 if (!File.Exists(outputPath)) {
-                    outputPath = Path.Combine(dlcPath, "bin", "prowin.exe");
-                    if (!File.Exists(outputPath)) {
-                        outputPath = Path.Combine(dlcPath, "bin", !useCharacterModeOfProgress ? "_progres.exe" : "prowin32.exe");
+                    if (useCharacterModeOfProgress) {
+                        throw new Exception($"Could not find the progress executable for character mode in {dlcPath}, check your DLC path or switch to graphical mode; the file searched was {outputPath}");
                     }
+                    outputPath = Path.Combine(dlcPath, "bin", "prowin.exe");
                 }
             } else {
+                if (!useCharacterModeOfProgress) {
+                    throw new Exception("Graphical mode unavailable on non windows platform, use the character mode of openedge (_progres)");
+                }
+
                 outputPath = Path.Combine(dlcPath, "bin", "_progres");
             }
-            return File.Exists(outputPath) ? outputPath : null;
+
+            if (!File.Exists(outputPath)) {
+                throw new Exception($"Could not find the progress executable in {dlcPath}, check your DLC path; the file searched was {outputPath}");
+            }
+
+            return outputPath;
         }
 
         /// <summary>
@@ -85,24 +93,19 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="currentDirectory"></param>
         /// <returns></returns>
         public static HashSet<string> GetProPathFromIniFile(string iniFile, string currentDirectory) {
-            
             var uniqueDirList = new HashSet<string>();
-            
+
             var propath = new IniReader(iniFile).GetValue("PROPATH", "");
 
-            foreach (var path in propath
-                .Split(',', '\n', ';')
-                .Select(path => path.Trim())
-                .Where(path => !string.IsNullOrEmpty(path))) {
-
+            foreach (var path in propath.Split(',', '\n', ';').Select(path => path.Trim()).Where(path => !string.IsNullOrEmpty(path))) {
                 try {
                     var thisPath = path;
-                
+
                     // replace environment variables
                     if (thisPath.Contains("%") || thisPath.Contains("$")) {
                         thisPath = Environment.ExpandEnvironmentVariables(thisPath);
                     }
-                
+
                     // need to take into account relative paths
                     if (!Path.IsPathRooted(thisPath)) {
                         thisPath = Path.GetFullPath(Path.Combine(currentDirectory, thisPath));
@@ -122,7 +125,7 @@ namespace Oetools.Utilities.Openedge {
 
             return uniqueDirList;
         }
-        
+
         /// <summary>
         /// Reads a database connection string from a progress parameter file (takes comment into account)
         /// </summary>

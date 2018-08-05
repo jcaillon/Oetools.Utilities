@@ -24,6 +24,7 @@ using System.Linq;
 using System.Runtime;
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge;
 
 namespace Oetools.Utilities.Test.Lib {
@@ -50,10 +51,7 @@ namespace Oetools.Utilities.Test.Lib {
         
         [TestMethod]
         public void GetProPathFromIniFile_TestEnvVarReplacement() {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                return;
-            }
-            
+           
             var iniPath = Path.Combine(TestFolder, "test.ini");
             File.WriteAllText(iniPath, "[Startup]\nPROPATH=t:\\error:exception\";C:\\Windows,%TEMP%;z:\\nooooop");
 
@@ -78,14 +76,15 @@ namespace Oetools.Utilities.Test.Lib {
         
         [TestMethod]
         public void GetProExecutableFromDlc_Test() {
-            if (string.IsNullOrEmpty(ProUtilities.GetDlcPath())) {
+            if (string.IsNullOrEmpty(ProUtilities.GetDlcPathFromEnv())) {
                 return;
             }
             
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                Assert.IsTrue(ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPath()).StartsWith(Path.Combine(ProUtilities.GetDlcPath(), "bin", "prowin")));
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
             }
-            Assert.AreEqual(Path.Combine(ProUtilities.GetDlcPath(), "bin", "_progres.exe"), ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPath(), true));
+            Assert.IsTrue(ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPathFromEnv()).StartsWith(Path.Combine(dlcPath, "bin", "prowin")));
+            Assert.AreEqual(Path.Combine(ProUtilities.GetDlcPathFromEnv(), "bin", "_progres.exe"), ProUtilities.GetProExecutableFromDlc(dlcPath, true));
         }
         
         [TestMethod]

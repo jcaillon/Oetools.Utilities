@@ -24,97 +24,151 @@ using Oetools.Utilities.Lib.Extension;
 namespace Oetools.Utilities.Lib {
 
     public class ProcessIo {
+        
+        public string Executable { get; set; }
+        
+        public event EventHandler<EventArgs> OnProcessExit;
+        
         public string WorkingDirectory { get; set; }
 
-        public StringBuilder StandardOutput { get; }
+        public bool RedirectOutput { get; set; } = true;
 
-        public StringBuilder ErrorOutput { get; }
+        protected ProcessStartInfo _startInfo;
+        
+        protected Process _process;
+        
+        public StringBuilder StandardOutput { get; private set; }
+
+        public StringBuilder ErrorOutput { get; private set; }
 
         public int ExitCode { get; private set; }
-
-        public ProcessStartInfo StartInfo { get; }
-
-        public bool WaitForExit { get; set; }
+        
+        public bool Killed { get; private set; }
 
         /// <summary>
         ///     Constructor
         /// </summary>
-        public ProcessIo(string executable, bool hidden = true) {
-            StandardOutput = new StringBuilder();
-            ErrorOutput = new StringBuilder();
-            StartInfo = new ProcessStartInfo {
-                FileName = executable,
-                UseShellExecute = false,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                RedirectStandardInput = true
-            };
-            if (hidden) {
-                StartInfo.CreateNoWindow = true;
-                StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            }
+        public ProcessIo(string executable) {
+            Executable = executable;
         }
 
         /// <summary>
-        /// Start the process synchronously, catch the exceptions
+        /// Start the process, catch the exceptions
         /// </summary>
-        public bool TryExecute(string arguments = null) {
+        public bool TryExecute(string arguments = null, bool silent = true) {
             try {
-                return Execute(arguments) && ErrorOutput.Length == 0;
+                return Execute(arguments, silent) && ErrorOutput.Length == 0;
             } catch (Exception e) {
-                ErrorOutput.AppendLine(e.Message);
+                ErrorOutput.AppendLine(e.ToString());
                 return false;
             }
         }
 
         /// <summary>
-        /// Start the process synchronously
+        /// Start the process
         /// </summary>
-        public bool Execute(string arguments = null) {
-            StandardOutput.Clear();
-            ErrorOutput.Clear();
-            ExitCode = 0;
+        public bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
+            ExecuteAsyncProcess(arguments, silent);
 
-            if (!string.IsNullOrEmpty(arguments)) {
-                StartInfo.Arguments = arguments;
-            }
-
-            if (!string.IsNullOrEmpty(WorkingDirectory)) {
-                StartInfo.WorkingDirectory = WorkingDirectory;
-            }
-
-            using (var process = new Process {
-                StartInfo = StartInfo
-            }) {
-                process.OutputDataReceived += OnProcessOnOutputDataReceived;
-                process.ErrorDataReceived += OnProcessOnErrorDataReceived;
-
-                process.Start();
-
-                // Asynchronously read the standard output of the spawned process
-                // This raises OutputDataReceived events for each line of output
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-
-                process.WaitForExit();
-
-                ExitCode = process.ExitCode;
-
-                process.Close();
-
-                ErrorOutput.TrimEnd();
-                StandardOutput.TrimEnd();
-            }
+            WaitUntilProcessExits(timeoutMs);
 
             return ExitCode == 0;
         }
 
-        private void OnProcessOnErrorDataReceived(object sender, DataReceivedEventArgs args) {
+        /// <summary>
+        /// Start the process, use <see cref="OnProcessExit"/> event to know when the process is done
+        /// </summary>
+        protected virtual void ExecuteAsyncProcess(string arguments = null, bool silent = true) {
+            PrepareStart(arguments, silent);
+
+            _process.Start();
+
+            if (RedirectOutput) {
+                // Asynchronously read the standard output of the spawned process
+                // This raises OutputDataReceived events for each line of output
+                _process.BeginOutputReadLine();
+                _process.BeginErrorReadLine();
+            }
+        }
+
+        public void Kill() {
+            Killed = true;
+            _process?.Kill();
+        }
+
+        protected virtual void WaitUntilProcessExits(int timeoutMs) {
+            if (timeoutMs > 0) {
+                _process.WaitForExit(timeoutMs);
+            } else {
+                _process.WaitForExit();
+            }
+
+            ExitCode = _process.ExitCode;
+
+            _process?.Close();
+            _process?.Dispose();
+            _process = null;
+
+            ErrorOutput.Trim();
+            StandardOutput.Trim();
+        }
+
+        protected virtual void PrepareStart(string arguments, bool silent) {
+            StandardOutput = new StringBuilder();
+            ErrorOutput = new StringBuilder();
+            ExitCode = 0;
+
+            _startInfo = new ProcessStartInfo {
+                FileName = Executable,
+                UseShellExecute = false
+            };
+
+            if (!string.IsNullOrEmpty(arguments)) {
+                _startInfo.Arguments = arguments;
+            }
+
+            if (!string.IsNullOrEmpty(WorkingDirectory)) {
+                _startInfo.WorkingDirectory = WorkingDirectory;
+            }
+
+            if (silent) {
+                _startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                _startInfo.CreateNoWindow = true;
+            }
+
+            if (RedirectOutput) {
+                _startInfo.RedirectStandardError = true;
+                _startInfo.RedirectStandardOutput = true;
+            }
+
+            _process = new Process {
+                StartInfo = _startInfo
+            };
+
+            if (RedirectOutput) {
+                _process.OutputDataReceived += OnProcessOnOutputDataReceived;
+                _process.ErrorDataReceived += OnProcessOnErrorDataReceived;
+            }
+
+            if (OnProcessExit != null) {
+                _process.EnableRaisingEvents = true;
+                _process.Exited += ProcessOnExited;
+            }
+        }
+
+        protected virtual void OnProcessOnErrorDataReceived(object sender, DataReceivedEventArgs args) {
             ErrorOutput.AppendLine(args.Data);
         }
 
-        private void OnProcessOnOutputDataReceived(object sender, DataReceivedEventArgs args) {
+        protected virtual void OnProcessOnOutputDataReceived(object sender, DataReceivedEventArgs args) {
             StandardOutput.AppendLine(args.Data);
+        }
+
+        protected virtual void ProcessOnExited(object sender, EventArgs e) {
+            ExitCode = _process.ExitCode;
+            ErrorOutput.Trim();
+            StandardOutput.Trim();
+            OnProcessExit?.Invoke(sender, e);
         }
     }
 }

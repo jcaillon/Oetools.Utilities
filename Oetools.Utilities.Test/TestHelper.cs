@@ -34,7 +34,7 @@ namespace Oetools.Utilities.Test {
         private static readonly string TestFolder = Path.Combine(AppContext.BaseDirectory, "Tests");
 
         public static bool GetDlcPath(out string dlcPath) {
-            dlcPath = ProUtilities.GetDlcPath();
+            dlcPath = ProUtilities.GetDlcPathFromEnv();
             if (string.IsNullOrEmpty(dlcPath)) {
                 return false;
             }

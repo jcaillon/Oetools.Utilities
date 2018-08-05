@@ -5,8 +5,6 @@
 
         protected override bool SilentExecution => true;
         
-        protected override bool CanUseBatchMode => true;
-        
         public ProExecutionCheckSyntax(IEnvExecutionCompilation env) : base(env) { }
     }
 }

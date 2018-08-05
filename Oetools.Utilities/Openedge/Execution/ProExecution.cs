@@ -34,7 +34,7 @@ namespace Oetools.Packager.Core2.Execution {
     /// <summary>
     ///     Base class for all the progress execution (i.e. when we need to start a prowin process and do something)
     /// </summary>
-    public abstract class ProExecution {
+    public abstract class ProExecution : IDisposable {
         
         /// <summary>
         ///     allows to prepare the execution environment by creating a unique temp folder
@@ -44,11 +44,12 @@ namespace Oetools.Packager.Core2.Execution {
         /// <returns></returns>
         /// <exception cref="ExecutionException"></exception>
         public void Start() {
+            
             // check parameters
             CheckParameters();
 
             // create a unique temporary folder
-            _localTempDir = Path.Combine(Env.TempDirectory, $"exec_{DateTime.Now:HHmmssfff}_{Path.GetRandomFileName()}");
+            _localTempDir = Path.Combine(Env.TempDirectory ?? Path.Combine(Path.GetTempPath(), ".oe"), $"exec_{DateTime.Now:HHmmssfff}_{Path.GetRandomFileName()}");
             if (!Directory.Exists(_localTempDir)) {
                 Directory.CreateDirectory(_localTempDir);
             }
@@ -103,27 +104,18 @@ namespace Oetools.Packager.Core2.Execution {
             File.WriteAllText(_runnerPath, runnerProgram.ToString(), Encoding.Default);
 
             // Parameters
-            _exeParameters = new StringBuilder();
-            if (UseBatchMode) {
-                _exeParameters.Append(" -b");
-            } 
-            
-            if (!Env.IsProgressCharacterMode) {
-                if (Env.CanProExeUseNoSplash) {
-                    _exeParameters.Append(" -nosplash");
-                } else {
-                    DisableSplashScreen();
-                }
-            }
-
-            _exeParameters.Append($" -p {_runnerPath.Quoter()}");
+            _exeParameters = new StringBuilder($" -p {_runnerPath.Quoter()}");
+            AppendProgressParameters(_exeParameters);
             if (!string.IsNullOrWhiteSpace(Env.ProExeCommandLineParameters)) {
                 _exeParameters.Append($" {Env.ProExeCommandLineParameters.Trim()}");
             }
-            AppendProgressParameters(_exeParameters);
 
             // start the process
-            StartProcess();
+            _process = new ProgressProcessIo(Env.DlcPath, Env.UseProgressCharacterMode && !RequiresGraphicalMode, Env.CanProVersionUseNoSplash) {
+                WorkingDirectory = _processStartDir
+            };
+            _process.OnProcessExit += ProcessOnExited;
+            _process.ExecuteAsync(_exeParameters.ToString(), SilentExecution);
         }
 
         /// <summary>
@@ -217,17 +209,24 @@ namespace Oetools.Packager.Core2.Execution {
         /// </summary>
         protected StringBuilder _exeParameters;
 
-        protected Process _process;
+        protected ProgressProcessIo _process;
 
         protected string _runnerPath;
-
-        private StringBuilder _batchModeOutput;
 
         /// <summary>
         ///     Deletes temp directory and everything in it
         /// </summary>
-        ~ProExecution() {
-            Clean();
+        public void Dispose() {
+            try {
+                _process?.Dispose();
+
+                // delete temp dir
+                if (_localTempDir != null) {
+                    Utils.DeleteDirectoryIfExists(_localTempDir, true);
+                }
+            } catch (Exception e) {
+                AddHandledExceptions(e);
+            }
         }
 
         public ProExecution(IEnvExecution env) {
@@ -278,18 +277,18 @@ namespace Oetools.Packager.Core2.Execution {
         public void KillProcess() {
             try {
                 _process.Kill();
-                _process.Close();
             } catch (Exception e) {
                 AddHandledExceptions(e);
             }
             HasBeenKilled = true;
         }
 
-        public void WaitForProcessExit(int maxWait = 3000) {
-            if (maxWait > 0)
+        public void WaitForProcessExit(int maxWait = 0) {
+            if (maxWait > 0) {
                 _process.WaitForExit(maxWait);
-            else
+            } else {
                 _process.WaitForExit();
+            }
         }
 
         /// <summary>
@@ -298,22 +297,20 @@ namespace Oetools.Packager.Core2.Execution {
         /// <exception cref="ExecutionException"></exception>
         protected virtual void CheckParameters() {
             // check prowin
-            if (!File.Exists(Env.ProExePath)) {
-                throw new ExecutionParametersException($"Couldn\'t start an execution, the following file does not exist : {Env.ProExePath.Quoter()}");
+            if (!Directory.Exists(Env.DlcPath)) {
+                throw new ExecutionParametersException($"Couldn\'t start an execution, the DLC directory does not exist : {Env.DlcPath.Quoter()}");
             }
         }
-
-        /// <summary>
-        ///     Return true if can use batch mode
-        /// </summary>
-        protected virtual bool CanUseBatchMode => false;
         
         /// <summary>
         /// if the exe should be executed silently (hidden) or not
         /// </summary>
         protected virtual bool SilentExecution => false;
         
-        protected bool UseBatchMode => !Env.NeverUseBatchMode && CanUseBatchMode;
+        /// <summary>
+        /// can only be executed with the gui version of progres (e.g. windows only)
+        /// </summary>
+        protected virtual bool RequiresGraphicalMode => false;
         
         /// <summary>
         ///     Extra stuff to do before executing
@@ -331,25 +328,6 @@ namespace Oetools.Packager.Core2.Execution {
         }
 
         /// <summary>
-        ///     Allows to clean the temporary directories
-        /// </summary>
-        public virtual void Clean() {
-            try {
-                _process?.Close();
-
-                // delete temp dir
-                if (_localTempDir != null) {
-                    Utils.DeleteDirectoryIfExists(_localTempDir, true);
-                }
-
-                // restore splashscreen
-                RestoreSplashScreen();
-            } catch (Exception e) {
-                AddHandledExceptions(e);
-            }
-        }
-
-        /// <summary>
         ///     set pre-processed variable for the runner program
         /// </summary>
         protected void SetPreprocessedVar(string key, string value) {
@@ -360,60 +338,17 @@ namespace Oetools.Packager.Core2.Execution {
         }
 
         /// <summary>
-        ///     Start the prowin process with the options defined in this object
-        /// </summary>
-        protected virtual void StartProcess() {
-            var pInfo = new ProcessStartInfo {
-                FileName = Env.ProExePath,
-                Arguments = _exeParameters.ToString(),
-                UseShellExecute = false,
-                WorkingDirectory = _processStartDir
-            };
-            if (UseBatchMode || SilentExecution) {
-                pInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                pInfo.CreateNoWindow = true;
-            }
-            if (UseBatchMode) {
-                pInfo.RedirectStandardError = true;
-                pInfo.RedirectStandardOutput = true;
-            }
-            _process = new Process {
-                StartInfo = pInfo,
-                EnableRaisingEvents = true
-            };
-            if (UseBatchMode) {
-                _batchModeOutput = new StringBuilder();
-                _process.OutputDataReceived += ProcessOnOutputDataReceived;
-                _process.ErrorDataReceived += ProcessOnOutputDataReceived;
-            }
-            _process.Exited += ProcessOnExited; 
-            _process.Start();
-            
-#if WINDOWSONLYBUILD
-            
-            if (UseBatchMode && SilentExecution) {
-                // on windows, we try to hide the window
-                while (!_process.HasExited && _process.TotalProcessorTime.TotalMilliseconds < 1000 && !HideProwinProcess(_process.Id)) { }
-            }
-#endif
-        }
-
-        private void ProcessOnOutputDataReceived(object sender, DataReceivedEventArgs e) {
-            _batchModeOutput.AppendLine(e.Data);
-        }
-
-        /// <summary>
         ///     Called by the process's thread when it is over, execute the ProcessOnExited event
         /// </summary>
         private void ProcessOnExited(object sender, EventArgs eventArgs) {
             try {
                 if (_process.ExitCode > 0) {
-                    AddHandledExceptions(new ExecutionProcessException($"An error has occurred during the execution : {Env.ProExePath} {_exeParameters}, in the directory : {_process.StartInfo.WorkingDirectory}, exit code {_process.ExitCode}{(_batchModeOutput != null ? $". The output was {_batchModeOutput}" : "")}", Env.ProExePath, _exeParameters.ToString(), _process.StartInfo.WorkingDirectory, _batchModeOutput?.ToString()));
+                    AddHandledExceptions(new ExecutionProcessException($"An error has occurred during the execution : {_process.Executable} {_process.StartParameters}, in the directory : {_process.WorkingDirectory}, exit code {_process.ExitCode}{(_process.StandardOutput.Length + _process.ErrorOutput.Length > 0 ? $". The output was {_process.StandardOutput} {_process.ErrorOutput}" : "")}", _process.Executable, _process.StartParameters, _process.WorkingDirectory, _process.StandardOutput.ToString(), _process.ErrorOutput.ToString()));
                     ExecutionFailed = true;              
 
-                } else if (UseBatchMode && _batchModeOutput.Length == 0 || _batchModeOutput[_batchModeOutput.Length - 1] != '<') {
+                } else if (SilentExecution && _process.StandardOutput.Length == 0 || _process.StandardOutput[_process.StandardOutput.Length - 1] != '<') {
                     // the standard output didn't end with <, indicating that the procedure ran until the end correctly
-                    AddHandledExceptions(new ExecutionProcessException($"An error has occurred during the execution : {Env.ProExePath} {_exeParameters}, in the directory : {_process.StartInfo.WorkingDirectory}, exit code {_process.ExitCode}. The output was {_batchModeOutput}", Env.ProExePath, _exeParameters.ToString(), _process.StartInfo.WorkingDirectory, _batchModeOutput?.ToString()));
+                    AddHandledExceptions(new ExecutionProcessException($"An error has occurred during the execution : {_process.Executable} {_process.StartParameters}, in the directory : {_process.WorkingDirectory}, exit code {_process.ExitCode}. The output was {_process.StandardOutput} {_process.ErrorOutput}", _process.Executable, _process.StartParameters, _process.WorkingDirectory, _process.StandardOutput.ToString(), _process.ErrorOutput.ToString()));
                     ExecutionFailed = true;     
                     
                 } else if (File.Exists(_logPath) && new FileInfo(_logPath).Length > 0) {
@@ -458,22 +393,6 @@ namespace Oetools.Packager.Core2.Execution {
             }
         }
 
-        private void DisableSplashScreen() {
-            try {
-                File.Move(Path.Combine(Env.DlcPath, "bin", "splashscreen.bmp"), Path.Combine(Env.DlcPath, "bin", "splashscreen-disabled.bmp"));
-            } catch (Exception) {
-                // if it fails it is not really a problem
-            }
-        }
-
-        private void RestoreSplashScreen() {
-            try {
-                File.Move(Path.Combine(Env.DlcPath, "bin", "splashscreen-disabled.bmp"), Path.Combine(Env.DlcPath, "bin", "splashscreen.bmp"));
-            } catch (Exception) {
-                // if it fails it is not really a problem
-            }
-        }
-
         protected void AddHandledExceptions(Exception exception, string customMessage = null) {
             if (HandledExceptions == null) {
                 HandledExceptions = new List<ExecutionException>();
@@ -488,46 +407,5 @@ namespace Oetools.Packager.Core2.Execution {
         
         private string ProgramProgressRun => OpenedgeResources.GetOpenedgeAsStringFromResources(@"ProgressRun.p");
 
-#if WINDOWSONLYBUILD
-    
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr FindWindowEx(IntPtr parentHandle, IntPtr childAfter, string className,  string windowTitle);
-
-        [DllImport("user32.dll", SetLastError=true)]
-        static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-
-        [DllImport("user32.dll")]
-        static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-        
-        // ReSharper disable once InconsistentNaming
-        private const int GWL_EX_STYLE = -20;
-
-        // ReSharper disable once InconsistentNaming
-        private const int WS_EX_APPWINDOW = 0x00040000;
-
-        // ReSharper disable once InconsistentNaming
-        private const int WS_EX_TOOLWINDOW = 0x00000080;
-        
-        [DllImport("user32.dll", EntryPoint = "ShowWindow", SetLastError = true)]
-        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-        private bool HideProwinProcess(int procId) {
-            var hWnd = IntPtr.Zero;
-            do {
-                hWnd = FindWindowEx(IntPtr.Zero, hWnd, OeConstants.ProwinWindowClass, null);
-                GetWindowThreadProcessId(hWnd, out var hWndProcessId);
-                if (hWndProcessId == procId) {
-                    SetWindowLong(hWnd, GWL_EX_STYLE, (GetWindowLong(hWnd, GWL_EX_STYLE) | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW);
-                    ShowWindow(hWnd, 0);
-                    return true;
-                }
-            } while(hWnd != IntPtr.Zero);	
-            return false;
-        }
-
-#endif
     }
 }

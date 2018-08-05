@@ -67,9 +67,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                     }
 
                     var prolibExe = new ProcessIo(ProlibExePath) {
-                        StartInfo = {
-                            WorkingDirectory = uniqueTempFolder,
-                        }
+                        WorkingDirectory = uniqueTempFolder
                     };
 
                     foreach (var subFolder in subFolders) {
@@ -179,7 +177,7 @@ namespace Oetools.Utilities.Archive.Prolib {
         public void ExtractFiles(List<IFileArchived> files, string extractionFolder) {
             var prolibExe = new ProcessIo(ProlibExePath);
             foreach (var plGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
-                prolibExe.StartInfo.WorkingDirectory = extractionFolder;
+                prolibExe.WorkingDirectory = extractionFolder;
 
                 // create the subfolders needed to extract each file
                 foreach (var folder in files.Select(f => Path.GetDirectoryName(f.RelativePathInArchive)).Distinct(StringComparer.CurrentCultureIgnoreCase)) {

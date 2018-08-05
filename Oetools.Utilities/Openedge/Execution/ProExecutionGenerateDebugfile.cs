@@ -8,8 +8,6 @@ namespace Oetools.Packager.Core2.Execution {
 
         protected override bool SilentExecution => true;
         
-        protected override bool CanUseBatchMode => true;
-        
         public ProExecutionGenerateDebugfile(IEnvExecutionCompilation env) : base(env) { }
 
         public string GeneratedFilePath {

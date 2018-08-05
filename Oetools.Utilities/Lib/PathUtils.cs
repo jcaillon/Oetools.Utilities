@@ -27,7 +27,7 @@ namespace Oetools.Utilities.Lib {
     /// <summary>
     ///     Class that exposes utility methods
     /// </summary>
-    public static class Utils {
+    public static partial class Utils {
         
         /// <summary>
         /// Read all the text of a file in one go, same as File.ReadAllText expect it's truly a read only function
@@ -45,7 +45,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Delete a dir, recursively
+        /// Delete a dir, recursively, doesn't throw an exception if it does not exists
         /// </summary>
         public static bool DeleteDirectoryIfExists(string path, bool recursive) {
             if (string.IsNullOrEmpty(path)) {
@@ -60,7 +60,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Creates the directory, can apply attributes
+        /// Creates the directory if it doesn't exists, can apply attributes
         /// </summary>
         public static bool CreateDirectoryIfNeeded(string path, FileAttributes attributes = FileAttributes.Directory) {
             if (Directory.Exists(path)) {
@@ -126,26 +126,13 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Same as Directory.EnumerateFiles
+        /// List all the files in a given list of folders
         /// </summary>
         public static IEnumerable<string> EnumerateFiles(IEnumerable<string> folders, string pattern) {
             foreach (var folder in folders) {
                 foreach (var file in Directory.EnumerateFiles(folder, pattern, SearchOption.TopDirectoryOnly)) {
                     yield return file;
                 }
-            }
-        }
-
-        /// <summary>
-        /// Returns true if the current execution is done on windows platform
-        /// </summary>
-        public static bool IsRuntimeWindowsPlatform {
-            get {
-#if WINDOWSONLYBUILD
-                return true;
-#else
-                return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-#endif
             }
         }
 

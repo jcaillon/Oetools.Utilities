@@ -15,7 +15,7 @@ namespace Oetools.Packager.Core2.Execution {
         
         protected override ExecutionType ExecutionType => ExecutionType.TableCrc;
 
-        protected override bool CanUseBatchMode => true;
+        protected override bool SilentExecution => true;
 
         /// <summary>
         ///     Copy of the pro env to use

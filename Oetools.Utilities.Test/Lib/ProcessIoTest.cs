@@ -34,7 +34,7 @@ namespace Oetools.Utilities.Test.Lib {
 
         [TestMethod]
         public void ProcessIo_Exit0() {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            if (!Utils.IsRuntimeWindowsPlatform) {
                 return;
             }
 
@@ -49,7 +49,7 @@ namespace Oetools.Utilities.Test.Lib {
 
         [TestMethod]
         public void ProcessIo_ExitNonZero() {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            if (!Utils.IsRuntimeWindowsPlatform) {
                 return;
             }
 
