@@ -16,7 +16,7 @@
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
     
     /// <summary>
     ///     This class represents a file that needs to be compiled

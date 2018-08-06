@@ -1,4 +1,4 @@
-﻿namespace Oetools.Packager.Core2.Execution {
+﻿namespace Oetools.Builder.Core2.Execution {
     internal class ProExecutionCheckSyntax : ProExecutionHandleCompilation {
 
         protected override ExecutionType ExecutionType => ExecutionType.CheckSyntax;

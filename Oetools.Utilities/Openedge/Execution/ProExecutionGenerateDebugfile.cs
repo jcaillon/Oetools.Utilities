@@ -1,6 +1,6 @@
 ﻿using System.Linq;
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
     
     internal class ProExecutionGenerateDebugfile : ProExecutionHandleCompilation {
 

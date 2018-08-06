@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Xml.Serialization;
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
     
     /// <summary>
     /// Error found when compiling a file

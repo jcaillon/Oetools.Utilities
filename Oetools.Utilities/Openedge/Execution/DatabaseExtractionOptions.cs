@@ -1,6 +1,6 @@
 ﻿using Oetools.Utilities.Resources;
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
     
     public class DatabaseExtractionOptions : IDatabaseExtractionOptions {
 

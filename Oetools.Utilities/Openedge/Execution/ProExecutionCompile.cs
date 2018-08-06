@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using Oetools.Utilities.Lib.Extension;
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
     
     public class ProExecutionCompile : ProExecutionHandleCompilation {
         

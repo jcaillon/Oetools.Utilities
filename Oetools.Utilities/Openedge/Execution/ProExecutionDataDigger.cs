@@ -2,7 +2,7 @@
 using System.Text;
 using Oetools.Utilities.Lib.Extension;
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
     internal class ProExecutionDataDigger : ProExecution {
 
         public string DataDiggerFolder { get; private set; }

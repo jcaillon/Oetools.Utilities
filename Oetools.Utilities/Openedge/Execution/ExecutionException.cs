@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
     public class ExecutionException : Exception {
         public ExecutionException() { }
         public ExecutionException(string message) : base(message) { }

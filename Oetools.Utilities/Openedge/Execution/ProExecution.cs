@@ -29,7 +29,7 @@ using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge;
 using Oetools.Utilities.Resources;
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
     
     /// <summary>
     ///     Base class for all the progress execution (i.e. when we need to start a prowin process and do something)

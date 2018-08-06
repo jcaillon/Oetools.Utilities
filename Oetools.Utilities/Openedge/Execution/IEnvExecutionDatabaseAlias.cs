@@ -1,4 +1,4 @@
-﻿namespace Oetools.Packager.Core2.Execution {
+﻿namespace Oetools.Builder.Core2.Execution {
     public interface IEnvExecutionDatabaseAlias {
                 
         string AliasLogicalName { get; set; }

@@ -26,7 +26,7 @@ using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge;
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
 
     public abstract class ProExecutionHandleCompilation : ProExecution {
 

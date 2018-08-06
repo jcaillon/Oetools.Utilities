@@ -1,4 +1,4 @@
-﻿namespace Oetools.Packager.Core2.Execution {
+﻿namespace Oetools.Builder.Core2.Execution {
 
     public enum ExecutionType {
         CheckSyntax = 0,

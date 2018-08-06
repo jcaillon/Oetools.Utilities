@@ -1,4 +1,4 @@
-﻿namespace Oetools.Packager.Core2.Execution {
+﻿namespace Oetools.Builder.Core2.Execution {
     internal class ProExecutionDataReader : ProExecutionDataDigger {
 
         protected override ExecutionType ExecutionType => ExecutionType.DataReader;

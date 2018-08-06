@@ -25,7 +25,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Packager.Core2.Execution;
+using Oetools.Builder.Core2.Execution;
 using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Test.Lib {

@@ -25,7 +25,7 @@ using System.Runtime.InteropServices;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge;
 
-namespace Oetools.Packager.Core2.Execution {
+namespace Oetools.Builder.Core2.Execution {
     
     /// <summary>
     /// 
