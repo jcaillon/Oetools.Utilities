@@ -20,8 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using csdeployer.Lib.Compression;
-using csdeployer.Lib.Compression.Cab;
+using Oetools.Utilities.Archive.Compression;
+using Oetools.Utilities.Archive.Compression.Cab;
 
 namespace Oetools.Utilities.Archive.Cab {
     

@@ -22,7 +22,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Permissions;
 
-namespace csdeployer.Lib.Compression.Cab {
+namespace Oetools.Utilities.Archive.Compression.Cab {
     /// <summary>
     /// Native DllImport methods and related structures and constants used for
     /// cabinet creation and extraction via cabinet.dll.

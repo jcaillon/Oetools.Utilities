@@ -24,7 +24,7 @@ namespace Oetools.Utilities.Lib {
     
     public class ProcessIoAsync : ProcessIo, IDisposable {
         
-        public ProcessIoAsync(string executable) : base(executable) { }
+        public ProcessIoAsync(string executablePath) : base(executablePath) { }
         
         /// <summary>
         /// Start the process, use <see cref="ProcessIo.OnProcessExit"/> event to know when the process is done
@@ -33,6 +33,10 @@ namespace Oetools.Utilities.Lib {
             ExecuteAsyncProcess(arguments, silent);
         }
 
+        /// <summary>
+        /// Wait for a process to end
+        /// </summary>
+        /// <param name="timeoutMs"></param>
         public void WaitForExit(int timeoutMs = 0) {
             WaitUntilProcessExits(timeoutMs);
         }

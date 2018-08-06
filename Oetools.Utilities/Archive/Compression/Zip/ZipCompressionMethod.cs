@@ -18,7 +18,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 
-namespace csdeployer.Lib.Compression.Zip {
+namespace Oetools.Utilities.Archive.Compression.Zip {
     /// <summary>
     /// Identifies the compression method or &quot;algorithm&quot;
     /// used for a single file within a zip archive.

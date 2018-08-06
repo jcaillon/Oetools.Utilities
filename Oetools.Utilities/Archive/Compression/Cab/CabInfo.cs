@@ -20,7 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace csdeployer.Lib.Compression.Cab {
+namespace Oetools.Utilities.Archive.Compression.Cab {
     /// <summary>
     /// Object representing a cabinet file on disk; provides access to
     /// file-based operations on the cabinet file.

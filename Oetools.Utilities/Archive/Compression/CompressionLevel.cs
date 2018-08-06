@@ -16,7 +16,7 @@
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// Specifies the compression level ranging from minimum compresion to
     /// maximum compression, or no compression at all.

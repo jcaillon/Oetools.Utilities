@@ -24,11 +24,11 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace Oetools.Utilities.Test.Openedge.Execution {
     
     [TestClass]
-    public class ExecutionTest {
+    public class OeExecutionTest {
         
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ExecutionTest)));
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(OeExecutionTest)));
 
         [ClassInitialize]
         public static void Init(TestContext context) {           

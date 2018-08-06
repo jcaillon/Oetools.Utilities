@@ -19,7 +19,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
-namespace csdeployer.Lib.Compression.Zip {
+namespace Oetools.Utilities.Archive.Compression.Zip {
     /// <summary>
     /// Wraps a source stream and calcaluates a CRC over all bytes that are read or written.
     /// </summary>

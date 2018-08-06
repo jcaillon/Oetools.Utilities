@@ -20,7 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace csdeployer.Lib.Compression.Zip {
+namespace Oetools.Utilities.Archive.Compression.Zip {
     public partial class ZipEngine {
         /// <summary>
         /// Extracts files from a zip archive or archive chain.

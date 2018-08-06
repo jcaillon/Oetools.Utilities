@@ -20,7 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace csdeployer.Lib.Compression.Zip {
+namespace Oetools.Utilities.Archive.Compression.Zip {
     /// <summary>
     /// Object representing a zip file on disk; provides access to
     /// file-based operations on the zip file.

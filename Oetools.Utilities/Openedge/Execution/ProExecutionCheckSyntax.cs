@@ -1,7 +1,5 @@
-﻿namespace Oetools.Builder.Core2.Execution {
+﻿namespace Oetools.Utilities.Openedge.Execution {
     internal class ProExecutionCheckSyntax : ProExecutionHandleCompilation {
-
-        protected override ExecutionType ExecutionType => ExecutionType.CheckSyntax;
 
         protected override bool SilentExecution => true;
         

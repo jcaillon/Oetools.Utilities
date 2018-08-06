@@ -26,8 +26,9 @@ namespace Oetools.Utilities.Lib.Extension {
     public static class StringBuilderExtensions {
         
         /// <summary>
-        /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
+        /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra internal whitespaces,
         /// and all whitespaces are replaced to space char (so we have uniform space separator)
+        /// Will not compact whitespaces inside quotes or double quotes
         /// </summary>
         /// <param name="sb"></param>
         public static StringBuilder CompactWhitespaces(this StringBuilder sb) {
@@ -62,9 +63,13 @@ namespace Oetools.Utilities.Lib.Extension {
 
             // compact string
             int dest = 0;
+            bool inQuote = false;
             bool previousIsWhitespace = false;
             for (int i = start; i <= end; i++) {
-                if (char.IsWhiteSpace(sb[i])) {
+                if (sb[i] == '"' || sb[i] == '\'') {
+                    inQuote = !inQuote;
+                }
+                if (!inQuote && char.IsWhiteSpace(sb[i])) {
                     if (!previousIsWhitespace) {
                         previousIsWhitespace = true;
                         sb[dest] = ' ';

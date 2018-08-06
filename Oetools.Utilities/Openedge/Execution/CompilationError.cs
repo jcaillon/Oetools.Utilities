@@ -1,8 +1,4 @@
-﻿using System;
-using System.ComponentModel;
-using System.Xml.Serialization;
-
-namespace Oetools.Builder.Core2.Execution {
+﻿namespace Oetools.Utilities.Openedge.Execution {
     
     /// <summary>
     /// Error found when compiling a file

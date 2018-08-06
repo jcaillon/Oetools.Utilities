@@ -19,7 +19,7 @@
 using System;
 using System.IO;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// Wraps a source stream and offsets all read/write/seek calls by a given value.
     /// </summary>

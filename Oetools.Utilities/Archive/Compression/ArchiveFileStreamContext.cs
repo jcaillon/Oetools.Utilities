@@ -20,7 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// Provides a basic implementation of the archive pack and unpack stream context
     /// interfaces, based on a list of archive files, a default directory, and an

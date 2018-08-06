@@ -19,7 +19,6 @@
 #endregion
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Test.Lib.Extensions {
     

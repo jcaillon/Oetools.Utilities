@@ -21,9 +21,8 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
-using Oetools.Utilities.Archive.Compression;
 
-namespace csdeployer.Lib.Compression.Cab {
+namespace Oetools.Utilities.Archive.Compression.Cab {
     internal abstract class CabWorker : IDisposable {
         internal const string CabStreamName = "%%CAB%%";
 

@@ -19,7 +19,7 @@
 using System;
 using System.IO;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// Duplicates a source stream by maintaining a separate position.
     /// </summary>

@@ -1,4 +1,4 @@
-﻿namespace Oetools.Builder.Core2.Execution {
+﻿namespace Oetools.Utilities.Openedge.Execution {
     
     /// <summary>
     ///     Errors found for this file, either from compilation or from prolint

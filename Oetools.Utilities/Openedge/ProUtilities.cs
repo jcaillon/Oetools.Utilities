@@ -22,7 +22,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using csdeployer.Lib;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 
@@ -30,6 +29,105 @@ namespace Oetools.Utilities.Openedge {
     public static class ProUtilities {
         public static string GetDlcPathFromEnv() {
             return Environment.GetEnvironmentVariable("dlc");
+        }
+
+        public static string GetOpenedgeErrorDetailedMessage(string dlcPath, int errorNumber) {
+            var messageDir = Path.Combine(dlcPath, "prohelp", "msgdata");
+            if (!Directory.Exists(messageDir)) {
+                return null;
+            }
+            var messageFile = Path.Combine(messageDir, $"msg{(errorNumber - 1) / 50 + 1}");
+            if (!File.Exists(messageFile)) {
+                return null;
+            }
+
+            string outputMessage = null;
+            ReadOpenedgeUnformattedExportFile(messageFile, record => {
+                if (record.Count >= 5 && !record[2].StartsWith("syserr")) {
+                    var categories = new List<string> {
+                        "Compiler", "Database", "Index", "Miscellaneous", "Operating System", "Program/Execution", "Syntax"
+                    };
+                    var catFirstLetter = record[3].StripQuotes();
+                    var cat = categories.FirstOrDefault(c => c.StartsWith(catFirstLetter, StringComparison.CurrentCultureIgnoreCase));
+                    outputMessage = string.Format("{0}{1}{2}", cat != null ? $"({cat}) " : "", record[2].StripQuotes(), record[4].Length > 2 ? $" ({record[4].StripQuotes()})": "");
+                }
+                return false;
+            }, (lineNumber, line) => line.StartsWith($"{errorNumber} "));
+
+            return outputMessage;
+        }
+
+        /// <summary>
+        /// Read records in an openedge .d file
+        /// Each line is a record with multiple fields separated by a space, you can use spaces in a field by double quoting the field
+        /// and you can use double quotes by doubling them. A quoted field can extend on multiple lines.
+        /// This method doesn't expect all the records to have the same number of fields, even less the same type
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="recordHandler"></param>
+        /// <param name="filterLinePredicate"></param>
+        /// <param name="encoding"></param>
+        /// <exception cref="Exception"></exception>
+        public static void ReadOpenedgeUnformattedExportFile(string filePath, Func<List<string>, bool> recordHandler, Func<int, string, bool> filterLinePredicate = null, Encoding encoding = null) {
+            if (encoding == null) {
+                encoding = Encoding.Default;
+            }
+            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)) {
+                using (var reader = new StreamReader(fileStream, encoding)) {
+                    var i = -1;
+                    string line;
+                    var record = new List<string>();
+                    bool inStringField = false;
+                    while ((line = reader.ReadLine()) != null) {
+                        i++;
+                        if (!inStringField && filterLinePredicate != null && !filterLinePredicate(i, line)) {
+                            continue;
+                        }
+                        if (line.Length > 0) {
+                            int fieldBegin = 0;
+                            do {
+                                int fieldEnd;
+                                if (line[fieldBegin] == '"' || inStringField) {
+                                    fieldEnd = fieldBegin + (inStringField ? 0 : 1) - 1;
+                                    do {
+                                        fieldEnd = line.IndexOf('"', fieldEnd + 1);
+                                        if (fieldEnd < 0) {
+                                            fieldEnd = line.Length - 1;
+                                        }
+                                    } while (fieldEnd < line.Length - 1 && line[fieldEnd + 1] == '"');
+                                    var currentRecordValue = line.Substring(fieldBegin, fieldEnd - fieldBegin + 1);
+                                    if (inStringField) {
+                                        record[record.Count - 1] = $"{record.Last()}{Environment.NewLine}{currentRecordValue}";
+                                    } else {
+                                        record.Add(currentRecordValue);
+                                    }
+                                    inStringField = line[fieldEnd] != '"';
+        
+                                } else {
+                                    fieldEnd = line.IndexOf(' ', fieldBegin + 1) - 1;
+                                    if (fieldEnd < 0) {
+                                        fieldEnd = line.Length - 1;
+                                    }
+                                    var fieldLength = fieldEnd - fieldBegin + 1;
+                                    if (fieldLength == 0) {
+                                        throw new Exception("Bad line format, consecutive spaces or line beggining by space");
+                                    }
+                                    record.Add(line.Substring(fieldBegin, fieldLength));
+                                }
+                                fieldBegin = fieldEnd + 2;
+                            } while (fieldBegin <= line.Length - 1);
+
+                            if (!inStringField) {
+                                if (!recordHandler(record)) {
+                                    // stop reading
+                                    break;
+                                }
+                                record.Clear();
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>

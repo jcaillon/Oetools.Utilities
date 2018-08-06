@@ -23,9 +23,8 @@ using System.Linq;
 using System.Text;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
-using Oetools.Utilities.Openedge;
 
-namespace Oetools.Builder.Core2.Execution {
+namespace Oetools.Utilities.Openedge.Execution {
     
     /// <summary>
     ///     This class represents a file thas been compiled

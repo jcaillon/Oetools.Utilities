@@ -21,9 +21,8 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
-using Oetools.Utilities.Archive.Compression;
 
-namespace csdeployer.Lib.Compression.Zip {
+namespace Oetools.Utilities.Archive.Compression.Zip {
     /// <summary>
     /// Engine capable of packing and unpacking archives in the zip format.
     /// </summary>

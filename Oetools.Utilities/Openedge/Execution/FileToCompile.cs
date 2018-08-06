@@ -16,7 +16,7 @@
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 
-namespace Oetools.Builder.Core2.Execution {
+namespace Oetools.Utilities.Openedge.Execution {
     
     /// <summary>
     ///     This class represents a file that needs to be compiled

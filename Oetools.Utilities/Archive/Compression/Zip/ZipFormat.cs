@@ -23,7 +23,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace csdeployer.Lib.Compression.Zip {
+namespace Oetools.Utilities.Archive.Compression.Zip {
     [Flags]
     internal enum ZipFileFlags : ushort {
         None = 0x0000,

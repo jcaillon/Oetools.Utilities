@@ -18,15 +18,15 @@ DEFINE STREAM str_out.
 OUTPUT STREAM str_out TO VALUE(gc_FileName) APPEND BINARY.
 
 FUNCTION fi_subst RETURNS CHARACTER(gc_text AS CHARACTER) FORWARD.
-    
+
 /* Report meta-information */
-/* Format is: H|<Dump date ISO 8601>|<Dump time>|<Logical DB name>|<Physical DB name>|<Progress version> */
-PUT STREAM str_out UNFORMATTED "#H|<Dump date ISO 8601>|<Dump time>|<Logical DB name>|<Physical DB name>|<Progress version>" SKIP.
-PUT STREAM str_out UNFORMATTED "#S|<Sequence name>|<Sequence num>" SKIP.
-PUT STREAM str_out UNFORMATTED "#T|<Table name>|<Table ID>|<Table CRC>|<Dump name>|<Description>|<Hidden? 0/1>|<Frozen? 0/1>|<Table type>" SKIP.
-PUT STREAM str_out UNFORMATTED "#X|<Parent table>|<Event>|<Proc name>|<Trigger CRC>" SKIP.
-PUT STREAM str_out UNFORMATTED "#I|<Parent table>|<Index name>|<Primary? 0/1>|<Unique? 0/1>|<Index CRC>|<Fileds separated with %>" SKIP.
-PUT STREAM str_out UNFORMATTED "#F|<Parent table>|<Field name>|<Type>|<Format>|<Order #>|<Mandatory? 0/1>|<Extent? 0/1>|<Part of index? 0/1>|<Part of PK? 0/1>|<Initial value>|<Desription>" SKIP.
+/* Format is: H <Dump date ISO 8601> <Dump time> <Logical DB name> <Physical DB name> <Progress version> */
+PUT STREAM str_out UNFORMATTED "#H~t<Dump date ISO 8601>~t<Dump time>~t<Logical DB name>~t<Physical DB name>~t<Progress version>" SKIP.
+PUT STREAM str_out UNFORMATTED "#S~t<Sequence name>~t<Sequence num>" SKIP.
+PUT STREAM str_out UNFORMATTED "#T~t<Table name>~t<Table ID>~t<Table CRC>~t<Dump name>~t<Description>~t<Hidden? 0/1>~t<Frozen? 0/1>~t<Table type>" SKIP.
+PUT STREAM str_out UNFORMATTED "#X~t<Parent table>~t<Event>~t<Proc name>~t<Trigger CRC>" SKIP.
+PUT STREAM str_out UNFORMATTED "#I~t<Parent table>~t<Index name>~t<Primary? 0/1>~t<Unique? 0/1>~t<Index CRC>~t<Fileds separated with %>" SKIP.
+PUT STREAM str_out UNFORMATTED "#F~t<Parent table>~t<Field name>~t<Type>~t<Format>~t<Order #>~t<Mandatory? 0/1>~t<Extent? 0/1>~t<Part of index? 0/1>~t<Part of PK? 0/1>~t<Initial value>~t<Desription>" SKIP.
 
 /* Write database info */
 PUT STREAM str_out UNFORMATTED "H" + gc_sep +
@@ -39,7 +39,7 @@ PUT STREAM str_out UNFORMATTED "H" + gc_sep +
 
 /* write sequences info */
 FOR EACH TPALDB._Sequence NO-LOCK:
-    PUT STREAM str_out UNFORMATTED    
+    PUT STREAM str_out UNFORMATTED
         "S" + gc_sep +
         TRIM(fi_subst(TPALDB._Sequence._Seq-Name)) + gc_sep +
         fi_subst(STRING(TPALDB._Sequence._Seq-Num))
@@ -47,10 +47,10 @@ FOR EACH TPALDB._Sequence NO-LOCK:
 END.
 
 /* Write table information */
-/* Format is: T|<Table name>|<Table ID>|<Table CRC>|<Dump name>|<Description> */
+/* Format is: T <Table name> <Table ID> <Table CRC> <Dump name> <Description> */
 FOR EACH TPALDB._FILE NO-LOCK WHERE CAN-DO(ipc_candoTableType, TPALDB._FILE._Tbl-Type) AND CAN-DO(ipc_candoFileName, TPALDB._FILE._FILE-NAME):
     PUT STREAM str_out UNFORMATTED "# ______________________________________________________________" SKIP.
-    PUT STREAM str_out UNFORMATTED    
+    PUT STREAM str_out UNFORMATTED
         "T" + gc_sep +
         TRIM(fi_subst(TPALDB._FILE._FILE-NAME)) + gc_sep +
         fi_subst(STRING(TPALDB._FILE._FILE-NUMBER)) + gc_sep +
@@ -63,9 +63,9 @@ FOR EACH TPALDB._FILE NO-LOCK WHERE CAN-DO(ipc_candoTableType, TPALDB._FILE._Tbl
         SKIP.
 
     /* Write triggers information */
-    /* Format is: X|<Parent table>|<Event>|<Proc name>|<Trigger CRC> */
+    /* Format is: X <Parent table> <Event> <Proc name> <Trigger CRC> */
     FOR EACH TPALDB._FILE-TRIG OF TPALDB._FILE NO-LOCK:
-        PUT STREAM str_out UNFORMATTED 
+        PUT STREAM str_out UNFORMATTED
             "X" + gc_sep +
             TRIM(fi_subst(TPALDB._FILE._FILE-NAME)) + gc_sep +
             TRIM(fi_subst(TPALDB._FILE-TRIG._EVENT)) + gc_sep +
@@ -74,24 +74,24 @@ FOR EACH TPALDB._FILE NO-LOCK WHERE CAN-DO(ipc_candoTableType, TPALDB._FILE._Tbl
             SKIP.
     END.
 
-    ASSIGN 
+    ASSIGN
         gc_champIndex = ""
         gc_champPK = "".
-    
+
     /* Write index information */
-    /* Format is: I|<Parent table>|<Index name>|<Primary? 0/1>|<Unique? 0/1>|<Index CRC>|<Fields separated with %> */
+    /* Format is: I <Parent table> <Index name> <Primary? 0/1> <Unique? 0/1> <Index CRC> <Fields separated with %> */
     FOR EACH TPALDB._INDEX OF TPALDB._FILE NO-LOCK WHERE TPALDB._INDEX._ACTIVE:
         ASSIGN gc_fieldList = "".
         FOR EACH TPALDB._INDEX-FIELD OF TPALDB._INDEX NO-LOCK,
             FIRST TPALDB._FIELD OF TPALDB._INDEX-FIELD NO-LOCK:
             ASSIGN gc_fieldList = gc_fieldList + TRIM(fi_subst(TPALDB._FIELD._FIELD-NAME)) + (IF TPALDB._INDEX-FIELD._ASCENDING THEN "+" ELSE "-") + "%".
         END.
-        
+
         IF RECID(TPALDB._INDEX) = TPALDB._FILE._PRIME-INDEX THEN
             gc_champPK = gc_champPK + gc_fieldList.
         gc_champIndex = gc_champIndex + gc_fieldList.
 
-        PUT STREAM str_out UNFORMATTED    
+        PUT STREAM str_out UNFORMATTED
             "I" + gc_sep +
             TRIM(fi_subst(TPALDB._FILE._FILE-NAME)) + gc_sep +
             TRIM(fi_subst(TPALDB._INDEX._INDEX-NAME)) + gc_sep +
@@ -103,9 +103,9 @@ FOR EACH TPALDB._FILE NO-LOCK WHERE CAN-DO(ipc_candoTableType, TPALDB._FILE._Tbl
     END.
 
     /* Write fields information */
-    /* Format is: F|<Parent table>|<Field name>|<Type>|<Format>|<Order #>|<Mandatory? 0/1>|<Extent? 0/1>|<Part of index? 0/1>|<Part of PK? 0/1>|<Initial value>|<Desription> */
+    /* Format is: F <Parent table> <Field name> <Type> <Format> <Order #> <Mandatory? 0/1> <Extent? 0/1> <Part of index? 0/1> <Part of PK? 0/1> <Initial value> <Desription> */
     FOR EACH TPALDB._FIELD OF TPALDB._FILE BY _Order:
-        PUT STREAM str_out UNFORMATTED 
+        PUT STREAM str_out UNFORMATTED
             "F" + gc_sep +
             TRIM(fi_subst(TPALDB._FILE._FILE-NAME)) + gc_sep +
             TRIM(fi_subst(TPALDB._FIELD._FIELD-NAME)) + gc_sep +
@@ -133,5 +133,5 @@ OUTPUT STREAM str_out CLOSE.
 RETURN "".
 
 FUNCTION fi_subst RETURNS CHARACTER(gc_text AS CHARACTER):
-    RETURN (IF gc_text <> ? THEN REPLACE(REPLACE(REPLACE(gc_text, CHR(9), ""), CHR(10), ""), CHR(13), "") ELSE "?").
+    RETURN (IF gc_text <> ? THEN REPLACE(REPLACE(REPLACE(gc_text, "~t", ""), "~r", ""), "~n", "") ELSE "?").
 END FUNCTION.

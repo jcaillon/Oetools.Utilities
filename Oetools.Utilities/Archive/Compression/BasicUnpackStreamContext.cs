@@ -20,7 +20,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// Stream context used to extract a single file from an archive into a memory stream.
     /// </summary>

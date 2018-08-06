@@ -1,6 +1,6 @@
-﻿namespace Oetools.Builder.Core2.Execution {
+﻿namespace Oetools.Utilities.Openedge.Execution {
     public interface IDatabaseExtractionOptions {
-        string DatabaseExtractCandoTblType { get; set; }
-        string DatabaseExtractCandoTblName { get; set; }
+        string DatabaseExtractCandoTblType { get; }
+        string DatabaseExtractCandoTblName { get; }
     }
 }

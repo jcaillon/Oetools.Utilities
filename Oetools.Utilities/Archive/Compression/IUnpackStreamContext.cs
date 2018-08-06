@@ -19,7 +19,7 @@
 using System;
 using System.IO;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// This interface provides the methods necessary for the <see cref="CompressionEngine"/> to open
     /// and close streams for archives and files. The implementor of this interface can use any

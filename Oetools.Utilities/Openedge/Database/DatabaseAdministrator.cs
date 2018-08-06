@@ -19,11 +19,10 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Resources;
 
-namespace Oetools.Utilities.Openedge {
+namespace Oetools.Utilities.Openedge.Database {
     
     public class DatabaseAdministrator : DatabaseOperator {
 

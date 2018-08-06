@@ -24,14 +24,11 @@ using System.Text;
 using System.Threading.Tasks;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
-using Oetools.Utilities.Openedge;
 
-namespace Oetools.Builder.Core2.Execution {
+namespace Oetools.Utilities.Openedge.Execution {
 
     public abstract class ProExecutionHandleCompilation : ProExecution {
 
-        protected override ExecutionType ExecutionType => ExecutionType.Compile;
-        
         /// <summary>
         /// Number of files already treated
         /// </summary>
@@ -104,7 +101,7 @@ namespace Oetools.Builder.Core2.Execution {
                     // we need to know which *.r files were generated for each input file
                     // so each file gets his own sub tempDir
                     compiledFile.CompilationOutputDir = Path.Combine(localSubTempDir, count.ToString());
-                } else if (Env.CompileForceUseOfTemp || string.IsNullOrEmpty(file.PreferedTargetPath)) {
+                } else if (string.IsNullOrEmpty(file.PreferedTargetPath)) {
                     compiledFile.CompilationOutputDir = localSubTempDir;
                 } else {
                     compiledFile.CompilationOutputDir = file.PreferedTargetPath;
@@ -158,19 +155,19 @@ namespace Oetools.Builder.Core2.Execution {
                         file.ReadAnalysisResults();
                     });
                 } catch (Exception e) {
-                    AddHandledExceptions(e, "An error occurred while reading the analysis results");
+                    HandledExceptions.Add(new ExecutionException("Error while reading the analysis results", e));
                 }
             }
 
             // end of successful execution action
-            if (!ExecutionFailed && (!ConnectionFailed || !NeedDatabaseConnection)) {
+            if (!ExecutionFailed && (!DbConnectionFailed || !NeedDatabaseConnection)) {
                 try {
                     LoadErrorLog();
                     CompiledFiles.ForEach(f => f.CorrectRcodePathForClassFiles());
 
                     OnCompilationOk?.Invoke(this, CompiledFiles);
                 } catch (Exception e) {
-                    AddHandledExceptions(e, "An error occurred while reading the compilation results");
+                    HandledExceptions.Add(new ExecutionException("Error while reading the compilation results", e));
                 }
             }
 

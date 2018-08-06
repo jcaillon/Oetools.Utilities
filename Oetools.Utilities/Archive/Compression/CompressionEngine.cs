@@ -20,9 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using Oetools.Utilities.Archive.Compression;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// Base class for an engine capable of packing and unpacking a particular
     /// compressed file format.

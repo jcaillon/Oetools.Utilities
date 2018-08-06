@@ -27,7 +27,7 @@ using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 
-namespace Oetools.Utilities.Openedge {
+namespace Oetools.Utilities.Openedge.Database {
     
     /// <summary>
     /// Allows to interact with an openedge database at a file system level : create/start/shutdown and so on...

@@ -19,7 +19,7 @@
 using System.Runtime.InteropServices;
 using System.Security;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     [SuppressUnmanagedCodeSecurity]
     internal static class SafeNativeMethods {
         [DllImport("kernel32.dll", SetLastError = true)]

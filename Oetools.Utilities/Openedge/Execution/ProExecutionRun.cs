@@ -1,17 +1,17 @@
 ﻿using System.IO;
 using System.Linq;
 
-namespace Oetools.Builder.Core2.Execution {
+namespace Oetools.Utilities.Openedge.Execution {
 
     internal class ProExecutionRun : ProExecutionHandleCompilation {
 
         public ProExecutionRun(IEnvExecutionCompilation env) : base(env) { }
         
-        protected override ExecutionType ExecutionType => ExecutionType.Run;
+        public string WorkingDirectory { get; set; }
 
         protected override void SetExecutionInfo() {
             base.SetExecutionInfo();
-            _processStartDir = Path.GetDirectoryName(FilesToCompile.First().SourcePath) ?? _localTempDir;
+            _processStartDir = WorkingDirectory ?? Path.GetDirectoryName(FilesToCompile.First().SourcePath) ?? _localTempDir;
         }
     }
 }

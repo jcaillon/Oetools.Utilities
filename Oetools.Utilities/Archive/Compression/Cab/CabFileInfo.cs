@@ -21,7 +21,7 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace csdeployer.Lib.Compression.Cab {
+namespace Oetools.Utilities.Archive.Compression.Cab {
     /// <summary>
     /// Object representing a compressed file within a cabinet package; provides operations for getting
     /// the file properties and extracting the file.

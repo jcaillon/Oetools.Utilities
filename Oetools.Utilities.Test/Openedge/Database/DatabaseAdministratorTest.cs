@@ -23,7 +23,7 @@
 using System;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Openedge;
+using Oetools.Utilities.Openedge.Database;
 
 namespace Oetools.Utilities.Test.Openedge.Database {
     

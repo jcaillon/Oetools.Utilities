@@ -18,7 +18,7 @@
 
 using System.Collections.Generic;
 
-namespace csdeployer.Lib.Compression.Cab {
+namespace Oetools.Utilities.Archive.Compression.Cab {
     /// <summary>
     /// Generic class for managing allocations of integer handles
     /// for objects of a certain type.

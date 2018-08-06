@@ -1,8 +1,8 @@
-﻿namespace Oetools.Builder.Core2.Execution {
+﻿namespace Oetools.Utilities.Openedge.Execution {
     public interface IEnvExecutionDatabaseAlias {
                 
-        string AliasLogicalName { get; set; }
+        string AliasLogicalName { get; }
 
-        string DatabaseLogicalName { get; set; }
+        string DatabaseLogicalName { get; }
     }
 }

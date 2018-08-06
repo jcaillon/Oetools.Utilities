@@ -17,7 +17,6 @@
 // ========================================================================
 
 using System;
-using csdeployer.Lib.Compression;
 
 namespace Oetools.Utilities.Archive {
     

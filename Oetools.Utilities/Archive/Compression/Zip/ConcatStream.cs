@@ -19,7 +19,7 @@
 using System;
 using System.IO;
 
-namespace csdeployer.Lib.Compression.Zip {
+namespace Oetools.Utilities.Archive.Compression.Zip {
     /// <summary>
     /// Used to trick a DeflateStream into reading from or writing to
     /// a series of (chunked) streams instead of a single steream.

@@ -182,8 +182,8 @@ namespace Oetools.Utilities.Lib {
                         Action(reader);
                     }
                 }
-            } else {
-                using (var reader = new StringReader(Encoding.Default.GetString(dataResources))) {
+            } else if (dataResources != null) {
+                using (var reader = new StringReader(encoding.GetString(dataResources))) {
                     Action(reader);
                 }
             }

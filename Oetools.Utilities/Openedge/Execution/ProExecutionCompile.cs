@@ -1,12 +1,7 @@
-﻿using System.IO;
-using Oetools.Utilities.Lib.Extension;
-
-namespace Oetools.Builder.Core2.Execution {
+﻿namespace Oetools.Utilities.Openedge.Execution {
     
     public class ProExecutionCompile : ProExecutionHandleCompilation {
         
-        protected override ExecutionType ExecutionType => ExecutionType.Compile;
-
         protected override bool SilentExecution => true;
         
         public ProExecutionCompile(IEnvExecutionCompilation env) : base(env) {}

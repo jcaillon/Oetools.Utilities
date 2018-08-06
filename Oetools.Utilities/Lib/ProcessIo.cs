@@ -17,43 +17,101 @@
 // ========================================================================
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
-using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
 
     public class ProcessIo {
         
-        public string Executable { get; set; }
+        /// <summary>
+        /// The full path to the executable used
+        /// </summary>
+        public string ExecutablePath { get; set; }
         
+        /// <summary>
+        /// Subscribe to this event called when the process exits
+        /// </summary>
         public event EventHandler<EventArgs> OnProcessExit;
         
+        /// <summary>
+        /// The working directory to use for this process
+        /// </summary>
         public string WorkingDirectory { get; set; }
 
+        /// <summary>
+        /// Choose to redirect the standard/error output or no, default to true
+        /// </summary>
         public bool RedirectOutput { get; set; } = true;
+
+        /// <summary>
+        /// Standard output, to be called after the process exits
+        /// </summary>
+        public StringBuilder StandardOutput {
+            get {
+                if (_standardOutput == null || _process != null && !_process.HasExited) {
+                    _standardOutput = new StringBuilder();
+                    foreach (var s in StandardOutputArray) {
+                        _standardOutput.Append(s);
+                    }
+                }
+                return _standardOutput;
+            }
+        }
+        
+        private StringBuilder _errorOutput;
+
+        /// <summary>
+        /// Error output, to be called after the process exits
+        /// </summary>
+        public StringBuilder ErrorOutput {
+            get {
+                if (_errorOutput == null || _process != null && !_process.HasExited) {
+                    _errorOutput = new StringBuilder();
+                    foreach (var s in ErrorOutputArray) {
+                        _errorOutput.Append(s);
+                    }
+                }
+                return _errorOutput;
+            }
+        }
+        
+        /// <summary>
+        /// Standard output, to be called after the process exits
+        /// </summary>
+        public List<string> StandardOutputArray { get; private set; } = new List<string>();
+
+        /// <summary>
+        /// Error output, to be called after the process exits
+        /// </summary>
+        public List<string> ErrorOutputArray { get; private set; } = new List<string>();
+
+        /// <summary>
+        /// Exit code of the process
+        /// </summary>
+        public int ExitCode { get; private set; }
+        
+        /// <summary>
+        /// Whether or not this process has been killed
+        /// </summary>
+        public bool Killed { get; private set; }
 
         protected ProcessStartInfo _startInfo;
         
         protected Process _process;
-        
-        public StringBuilder StandardOutput { get; private set; }
 
-        public StringBuilder ErrorOutput { get; private set; }
-
-        public int ExitCode { get; private set; }
-        
-        public bool Killed { get; private set; }
+        private StringBuilder _standardOutput;
 
         /// <summary>
         ///     Constructor
         /// </summary>
-        public ProcessIo(string executable) {
-            Executable = executable;
+        public ProcessIo(string executablePath) {
+            ExecutablePath = executablePath;
         }
 
         /// <summary>
-        /// Start the process, catch the exceptions
+        /// Start the process synchronously, catch the exceptions
         /// </summary>
         public bool TryExecute(string arguments = null, bool silent = true) {
             try {
@@ -65,7 +123,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Start the process
+        /// Start the process synchronously
         /// </summary>
         public bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
             ExecuteAsyncProcess(arguments, silent);
@@ -76,7 +134,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Start the process, use <see cref="OnProcessExit"/> event to know when the process is done
+        /// Start the process asynchronously, use <see cref="OnProcessExit"/> event to know when the process is done
         /// </summary>
         protected virtual void ExecuteAsyncProcess(string arguments = null, bool silent = true) {
             PrepareStart(arguments, silent);
@@ -91,12 +149,19 @@ namespace Oetools.Utilities.Lib {
             }
         }
 
+        /// <summary>
+        /// Kill the process
+        /// </summary>
         public void Kill() {
             Killed = true;
             _process?.Kill();
         }
 
         protected virtual void WaitUntilProcessExits(int timeoutMs) {
+            if (_process == null) {
+                return;
+            }
+            
             if (timeoutMs > 0) {
                 _process.WaitForExit(timeoutMs);
             } else {
@@ -108,18 +173,15 @@ namespace Oetools.Utilities.Lib {
             _process?.Close();
             _process?.Dispose();
             _process = null;
-
-            ErrorOutput.Trim();
-            StandardOutput.Trim();
         }
 
         protected virtual void PrepareStart(string arguments, bool silent) {
-            StandardOutput = new StringBuilder();
-            ErrorOutput = new StringBuilder();
+            StandardOutputArray.Clear();
+            ErrorOutputArray.Clear();
             ExitCode = 0;
 
             _startInfo = new ProcessStartInfo {
-                FileName = Executable,
+                FileName = ExecutablePath,
                 UseShellExecute = false
             };
 
@@ -157,17 +219,21 @@ namespace Oetools.Utilities.Lib {
         }
 
         protected virtual void OnProcessOnErrorDataReceived(object sender, DataReceivedEventArgs args) {
-            ErrorOutput.AppendLine(args.Data);
+            if (!string.IsNullOrEmpty(args.Data)) {
+                ErrorOutputArray.Add(args.Data);
+            }
         }
 
         protected virtual void OnProcessOnOutputDataReceived(object sender, DataReceivedEventArgs args) {
-            StandardOutput.AppendLine(args.Data);
+            if (!string.IsNullOrEmpty(args.Data)) {
+                StandardOutputArray.Add(args.Data);
+            }
         }
 
         protected virtual void ProcessOnExited(object sender, EventArgs e) {
-            ExitCode = _process.ExitCode;
-            ErrorOutput.Trim();
-            StandardOutput.Trim();
+            if (_process != null) {
+                ExitCode = _process.ExitCode;
+            }
             OnProcessExit?.Invoke(sender, e);
         }
     }

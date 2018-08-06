@@ -1,6 +1,4 @@
-﻿using Oetools.Utilities.Resources;
-
-namespace Oetools.Builder.Core2.Execution {
+﻿namespace Oetools.Utilities.Openedge.Execution {
     
     public class DatabaseExtractionOptions : IDatabaseExtractionOptions {
 

@@ -20,7 +20,7 @@ using System;
 using System.IO;
 using System.Runtime.Serialization;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// Base exception class for compression operations. Compression libraries should
     /// derive subclass exceptions with more specific error information relevent to the

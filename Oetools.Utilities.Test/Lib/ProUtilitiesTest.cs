@@ -19,12 +19,12 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime;
-using System.Runtime.InteropServices;
+using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge;
 
 namespace Oetools.Utilities.Test.Lib {
@@ -47,6 +47,65 @@ namespace Oetools.Utilities.Test.Lib {
             if (Directory.Exists(TestFolder)) {
                 Directory.Delete(TestFolder, true);
             }
+        }
+        
+        [TestMethod]
+        [DataRow(49)] // This Technical Support Knowled...
+        [DataRow(1)] // The -nb parameter is followed by a number that sp...
+        [DataRow(1964)] // COBOL binary or COMP var...
+        [DataRow(612)] // PROGRESS tried to read or write the
+        public void GetOpenedgeErrorDetailedMessage_Test(int errorNumber) {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            
+            var res = ProUtilities.GetOpenedgeErrorDetailedMessage(dlcPath, errorNumber);
+            Debug.WriteLine(res);
+            Assert.IsNotNull(res, res);
+        }
+        
+        [TestMethod]
+        [DataRow("1", "1|+")]
+        [DataRow(@"1 """" 2", @"1|""""|2|+")]
+        [DataRow(@"""field"" 2", @"""field""|2|+")]
+        [DataRow(@"3 ""field"" 2", @"3|""field""|2|+")]
+        [DataRow(@"3 ""field""", @"3|""field""|+")]
+        [DataRow(@"
+""f k"" 10 ""f k"" 20 ""long
+very
+long
+line
+""
+10 ""long
+very
+long
+line
+ending"" 30 ""last""
+
+", @"""f k""|10|""f k""|20|""long
+very
+long
+line
+""|+10|""long
+very
+long
+line
+ending""|30|""last""|+")]
+        public void ReadOpenedgeUnformattedExportFile_Test(string content, string expected) {
+           var path = Path.Combine(TestFolder, "data.d");
+            File.WriteAllText(path, content);
+
+            var sb = new StringBuilder();
+            ProUtilities.ReadOpenedgeUnformattedExportFile(path, record => {
+                foreach (var field in record) {
+                    sb.Append(field);
+                    sb.Append("|");
+                }
+                sb.Append("+");
+                return true;
+            });
+            
+            Assert.AreEqual(expected, sb.ToString(), content);
         }
         
         [TestMethod]
@@ -76,15 +135,13 @@ namespace Oetools.Utilities.Test.Lib {
         
         [TestMethod]
         public void GetProExecutableFromDlc_Test() {
-            if (string.IsNullOrEmpty(ProUtilities.GetDlcPathFromEnv())) {
-                return;
-            }
-            
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
             Assert.IsTrue(ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPathFromEnv()).StartsWith(Path.Combine(dlcPath, "bin", "prowin")));
             Assert.AreEqual(Path.Combine(ProUtilities.GetDlcPathFromEnv(), "bin", "_progres.exe"), ProUtilities.GetProExecutableFromDlc(dlcPath, true));
+            Assert.ThrowsException<Exception>(() => ProUtilities.GetProExecutableFromDlc(TestFolder, true));
+            Assert.ThrowsException<Exception>(() => ProUtilities.GetProExecutableFromDlc(TestFolder, false));
         }
         
         [TestMethod]

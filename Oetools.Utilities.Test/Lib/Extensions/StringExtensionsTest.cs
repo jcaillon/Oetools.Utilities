@@ -34,6 +34,16 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ExtensionTest)));
 
         [TestMethod]
+        [DataRow(null, null)]
+        [DataRow(@"", @"")]
+        [DataRow(@"""", @"""")]
+        [DataRow(@"""zef", @"""zef")]
+        [DataRow(@"""zef""", @"zef")]
+        public void StripQuotes_Test(string input, string expected) {
+            Assert.AreEqual(expected, input.StripQuotes());
+        }
+        
+        [TestMethod]
         [DataRow(@"    ", @"")]
         [DataRow(null, @"")]
         [DataRow(" motend     \t", @" motend")]
@@ -181,6 +191,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow(@"    ", @"")]
         [DataRow(null, @"")]
         [DataRow(" mot     \t deux \n\r\n\rtrois     end     \t", @"mot deux trois end")]
+        [DataRow(" mot     \t \"deux \t \t\t trois\"     end     \t", "mot \"deux \t \t\t trois\" end")]
         public void CompactWhitespaces_IsOk(string input, string expected) {
             Assert.AreEqual(expected, input.CompactWhitespaces());
         }

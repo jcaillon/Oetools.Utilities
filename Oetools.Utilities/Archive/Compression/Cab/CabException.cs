@@ -21,9 +21,8 @@ using System.Globalization;
 using System.Resources;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using Oetools.Utilities.Archive.Compression;
 
-namespace csdeployer.Lib.Compression.Cab {
+namespace Oetools.Utilities.Archive.Compression.Cab {
     /// <summary>
     /// Exception class for cabinet operations.
     /// </summary>

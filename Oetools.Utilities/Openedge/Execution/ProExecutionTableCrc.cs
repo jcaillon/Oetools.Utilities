@@ -6,15 +6,13 @@ using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Resources;
 
-namespace Oetools.Builder.Core2.Execution {
+namespace Oetools.Utilities.Openedge.Execution {
 
     /// <summary>
     ///     Allows to output a file containing the structure of the database
     /// </summary>
     public class ProExecutionTableCrc : ProExecution {
         
-        protected override ExecutionType ExecutionType => ExecutionType.TableCrc;
-
         protected override bool SilentExecution => true;
 
         /// <summary>

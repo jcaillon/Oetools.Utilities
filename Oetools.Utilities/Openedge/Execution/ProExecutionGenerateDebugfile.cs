@@ -1,10 +1,8 @@
 ﻿using System.Linq;
 
-namespace Oetools.Builder.Core2.Execution {
+namespace Oetools.Utilities.Openedge.Execution {
     
     internal class ProExecutionGenerateDebugfile : ProExecutionHandleCompilation {
-
-        protected override ExecutionType ExecutionType => ExecutionType.GenerateDebugfile;
 
         protected override bool SilentExecution => true;
         

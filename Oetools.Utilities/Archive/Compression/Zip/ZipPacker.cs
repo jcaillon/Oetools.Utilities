@@ -22,7 +22,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 
-namespace csdeployer.Lib.Compression.Zip {
+namespace Oetools.Utilities.Archive.Compression.Zip {
     public partial class ZipEngine {
         /// <summary>
         /// Creates a zip archive or chain of zip archives.

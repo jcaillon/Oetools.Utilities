@@ -23,9 +23,8 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
-using Oetools.Utilities.Archive.Compression;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// Abstract object representing a compressed archive on disk;
     /// provides access to file-based operations on the archive.

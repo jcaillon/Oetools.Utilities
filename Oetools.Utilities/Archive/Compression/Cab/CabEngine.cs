@@ -19,9 +19,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Oetools.Utilities.Archive.Compression;
 
-namespace csdeployer.Lib.Compression.Cab {
+namespace Oetools.Utilities.Archive.Compression.Cab {
     /// <summary>
     /// Engine capable of packing and unpacking archives in the cabinet format.
     /// </summary>

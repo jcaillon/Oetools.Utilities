@@ -22,7 +22,7 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace csdeployer.Lib.Compression {
+namespace Oetools.Utilities.Archive.Compression {
     /// <summary>
     /// Abstract object representing a compressed file within an archive;
     /// provides operations for getting the file properties and unpacking

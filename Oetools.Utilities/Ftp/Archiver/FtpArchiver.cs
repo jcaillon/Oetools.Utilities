@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using Oetools.Utilities.Ftp;
-using Oetools.Utilities.Lib;
+using Oetools.Utilities.Archive;
 using Oetools.Utilities.Lib.Extension;
 
-namespace Oetools.Utilities.Archive.Ftp {
+namespace Oetools.Utilities.Ftp.Archiver {
     
-    public class FtpArchiver : Archiver, IArchiver {
+    public class FtpArchiver : Archive.Archiver, IArchiver {
 
         /// <summary>
         ///     Send files to a FTP server

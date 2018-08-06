@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using Oetools.Utilities.Archive;
-
-namespace Oetools.Builder.Core2.Execution {
+﻿namespace Oetools.Utilities.Openedge.Execution {
     
     public interface IEnvExecutionCompilation : IEnvExecution {
         
@@ -16,9 +13,5 @@ namespace Oetools.Builder.Core2.Execution {
         bool CompileWithListing { get; }
         bool CompileUseXmlXref { get; }
        
-        /// <summary>
-        /// Force the usage of a temporary folder to compile the .r code files
-        /// </summary>
-        bool CompileForceUseOfTemp { get; }
     }
 }

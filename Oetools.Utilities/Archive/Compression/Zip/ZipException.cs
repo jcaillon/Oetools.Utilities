@@ -20,7 +20,7 @@ using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace csdeployer.Lib.Compression.Zip {
+namespace Oetools.Utilities.Archive.Compression.Zip {
     /// <summary>
     /// Exception class for zip operations.
     /// </summary>

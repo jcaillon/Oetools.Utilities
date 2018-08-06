@@ -30,6 +30,18 @@ using System.Text.RegularExpressions;
 namespace Oetools.Utilities.Lib.Extension {
     
     public static class StringExtensions {
+
+        /// <summary>
+        /// Remove quotes from a string
+        /// </summary>
+        /// <param name="source"></param>
+        /// <returns></returns>
+        public static string StripQuotes(this string source) {
+            if (string.IsNullOrEmpty(source)) {
+                return source;
+            }
+            return source.Length > 1 && source[0] == source[source.Length - 1] && source[0] == '"' ? (source.Length - 2 > 0 ? source.Substring(1, source.Length - 2) : "") : source;
+        }
         
         /// <summary>
         ///     Converts a string to an object of the given type
@@ -346,6 +358,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <summary>
         /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
         /// and all whitespaces are replaced to space char (so we have uniform space separator)
+        /// Will not compact whitespaces inside quotes or double quotes
         /// </summary>
         /// <param name="s"></param>
         /// <returns></returns>

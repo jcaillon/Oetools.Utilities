@@ -25,7 +25,7 @@ using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Text;
 
-namespace csdeployer.Lib.Compression.Cab {
+namespace Oetools.Utilities.Archive.Compression.Cab {
     internal class CabPacker : CabWorker {
         private const string TempStreamName = "%%TEMP%%";
 

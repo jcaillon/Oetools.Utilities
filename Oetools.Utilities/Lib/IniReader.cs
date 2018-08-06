@@ -20,9 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Oetools.Utilities.Lib;
 
-namespace csdeployer.Lib {
+namespace Oetools.Utilities.Lib {
 
     /// <summary>
     ///     This classes reads a .ini file
