@@ -11,18 +11,9 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// <summary>
     ///     Allows to output a file containing the structure of the database
     /// </summary>
-    public class ProExecutionTableCrc : ProExecution {
+    public class OeExecutionDbExtractTableCrc : OeExecutionDb {
         
-        protected override bool SilentExecution => true;
-
-        /// <summary>
-        ///     Copy of the pro env to use
-        /// </summary>
-        public IDatabaseExtractionOptions Config { get; private set; }
-
-        public ProExecutionTableCrc(IDatabaseExtractionOptions config, IEnvExecution env) : base(env) {
-            Config = config;
-        }
+        public OeExecutionDbExtractTableCrc( IEnvExecution env) : base(env) { }
 
         /// <summary>
         ///     Get a list with all the tables + CRC
@@ -49,14 +40,14 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected override void SetExecutionInfo() {
             base.SetExecutionInfo();
 
-            OutputPath = Path.Combine(_localTempDir, "db.extract");
+            OutputPath = Path.Combine(_tempDir, "db.extract");
             SetPreprocessedVar("OutputPath", OutputPath.PreProcQuoter());
 
             var fileToExecute = "db_" + DateTime.Now.ToString("yyMMdd_HHmmssfff") + ".p";
-            File.WriteAllText(Path.Combine(_localTempDir, fileToExecute), ProgramDumpTableCrc);
+            File.WriteAllText(Path.Combine(_tempDir, fileToExecute), ProgramDumpTableCrc);
             SetPreprocessedVar("CurrentFilePath", fileToExecute.PreProcQuoter());
-            SetPreprocessedVar("DatabaseExtractCandoTblType", Config.DatabaseExtractCandoTblType.Trim().PreProcQuoter());
-            SetPreprocessedVar("DatabaseExtractCandoTblName", Config.DatabaseExtractCandoTblName.Trim().PreProcQuoter());
+            SetPreprocessedVar("DatabaseExtractCandoTblType", DatabaseExtractCandoTblType.Trim().PreProcQuoter());
+            SetPreprocessedVar("DatabaseExtractCandoTblName", DatabaseExtractCandoTblName.Trim().PreProcQuoter());
         }
         
         private string ProgramDumpTableCrc => OpenedgeResources.GetOpenedgeAsStringFromResources(@"DumpTableCrc.p");

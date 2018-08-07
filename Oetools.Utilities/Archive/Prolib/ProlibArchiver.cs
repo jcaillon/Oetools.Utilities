@@ -32,10 +32,22 @@ namespace Oetools.Utilities.Archive.Prolib {
     ///     Allows to pack files into a prolib file
     /// </summary>
     public class ProlibArchiver : Archiver, IArchiver {
-        protected readonly string ProlibExePath;
+        
+        protected readonly string DlcPath;
+        
+        /// <summary>
+        /// Returns the path to _dbutil (or null if not found in the dlc folder)
+        /// </summary>
+        protected string ProliPath {
+            get {
+                string exeName = Utils.IsRuntimeWindowsPlatform ? "prolib.exe" : "prolib";
+                var outputPath = Path.Combine(DlcPath, "bin", exeName);
+                return File.Exists(outputPath) ? outputPath : null;
+            }
+        }
 
-        public ProlibArchiver(string prolibExePath) {
-            ProlibExePath = prolibExePath;
+        public ProlibArchiver(string dlcPath) {
+            DlcPath = dlcPath;
         }
 
         public virtual void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
@@ -66,7 +78,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                         }
                     }
 
-                    var prolibExe = new ProcessIo(ProlibExePath) {
+                    var prolibExe = new ProcessIo(ProliPath) {
                         WorkingDirectory = uniqueTempFolder
                     };
 
@@ -86,8 +98,8 @@ namespace Oetools.Utilities.Archive.Prolib {
                         
                         // for files containing a space, we don't have a choice, call extract for each...
                         foreach (var file in subFolder.Value.Where(f => f.RelativePath.ContainsFast(" "))) {
-                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -create -nowarn -add {file.RelativePath.Quoter()}")) {
-                                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.ErrorOutput.ToString())));
+                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -create -nowarn -add {file.RelativePath.CliQuoter()}")) {
+                                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.BatchOutput.ToString())));
                             }
                         }
 
@@ -104,9 +116,9 @@ namespace Oetools.Utilities.Archive.Prolib {
 
                             File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
 
-                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -pf {pfPath.Quoter()}")) {
+                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
                                 foreach (var file in remainingFiles) {
-                                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.ErrorOutput.ToString())));
+                                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.BatchOutput.ToString())));
                                 }
                             }
 
@@ -130,7 +142,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                     }
 
                     // compress .pl
-                    prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -compress -nowarn");
+                    prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -compress -nowarn");
 
                     // delete temp folder
                     Directory.Delete(uniqueTempFolder, true);
@@ -141,29 +153,32 @@ namespace Oetools.Utilities.Archive.Prolib {
         }
 
         public List<IFileArchived> ListFiles(string archivePath) {
-            var prolibExe = new ProcessIo(ProlibExePath);
+            var prolibExe = new ProcessIo(ProliPath);
 
-            if (!prolibExe.TryExecute($"{archivePath.Quoter()} -list")) {
-                throw new Exception("Error while listing files from a .pl", new Exception(prolibExe.ErrorOutput.ToString()));
+            if (!prolibExe.TryExecute($"{archivePath.CliQuoter()} -list")) {
+                throw new Exception("Error while listing files from a .pl", new Exception(prolibExe.BatchOutput.ToString()));
             }
 
             var outputList = new List<IFileArchived>();
-            var matches = new Regex(@"^(.+)\s+(\d+)\s+(\w+)\s+(\d+)\s+(\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2})\s(\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2})", RegexOptions.Multiline).Matches(prolibExe.StandardOutput.ToString());
-            foreach (Match match in matches) {
-                var newFile = new ProlibFileArchived {
-                    RelativePathInArchive = match.Groups[1].Value.TrimEnd(),
-                    SizeInBytes = ulong.Parse(match.Groups[2].Value),
-                    Type = match.Groups[3].Value
-                };
-                if (DateTime.TryParseExact(match.Groups[5].Value, @"MM/dd/yy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) {
-                    newFile.DateAdded = date;
-                }
+            var regex = new Regex(@"^(.+)\s+(\d+)\s+(\w+)\s+(\d+)\s+(\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2})\s(\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2})");
+            foreach (var output in prolibExe.StandardOutputArray) {
+                var match = regex.Match(output);
+                if (match.Success) {
+                    var newFile = new ProlibFileArchived {
+                        RelativePathInArchive = match.Groups[1].Value.TrimEnd(),
+                        SizeInBytes = ulong.Parse(match.Groups[2].Value),
+                        Type = match.Groups[3].Value
+                    };
+                    if (DateTime.TryParseExact(match.Groups[5].Value, @"MM/dd/yy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) {
+                        newFile.DateAdded = date;
+                    }
 
-                if (DateTime.TryParseExact(match.Groups[6].Value, @"MM/dd/yy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out date)) {
-                    newFile.LastWriteTime = date;
-                }
+                    if (DateTime.TryParseExact(match.Groups[6].Value, @"MM/dd/yy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out date)) {
+                        newFile.LastWriteTime = date;
+                    }
 
-                outputList.Add(newFile);
+                    outputList.Add(newFile);
+                }
             }
 
             return outputList;
@@ -175,7 +190,7 @@ namespace Oetools.Utilities.Archive.Prolib {
         /// <param name="files"></param>
         /// <param name="extractionFolder"></param>
         public void ExtractFiles(List<IFileArchived> files, string extractionFolder) {
-            var prolibExe = new ProcessIo(ProlibExePath);
+            var prolibExe = new ProcessIo(ProliPath);
             foreach (var plGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 prolibExe.WorkingDirectory = extractionFolder;
 
@@ -186,8 +201,8 @@ namespace Oetools.Utilities.Archive.Prolib {
 
                 // for files containing a space, we don't have a choice, call extract for each...
                 foreach (var file in files.Where(deploy => deploy.RelativePathInArchive.ContainsFast(" "))) {
-                    if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -extract {file.RelativePathInArchive.Quoter()}")) {
-                        throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.ErrorOutput.ToString()));
+                    if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -extract {file.RelativePathInArchive.CliQuoter()}")) {
+                        throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.BatchOutput.ToString()));
                     }
                 }
 
@@ -204,8 +219,8 @@ namespace Oetools.Utilities.Archive.Prolib {
 
                     File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
 
-                    if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -pf {pfPath.Quoter()}")) {
-                        throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.ErrorOutput.ToString()));
+                    if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
+                        throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.BatchOutput.ToString()));
                     }
 
                     if (File.Exists(pfPath)) {

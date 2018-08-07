@@ -51,9 +51,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         
         public string DatabaseConnectionString {
             get {
-                return DatabaseConnectionStringAppendMaxTryOne ? _databaseConnectionString.Replace("-db", "-ct 1 -db") : _databaseConnectionString;
+                return DatabaseConnectionStringAppendMaxTryOne ? _databaseConnectionString?.Replace("-db", "-ct 1 -db") : _databaseConnectionString;
             }
-            set => _databaseConnectionString = value.CompactWhitespaces();
+            set => _databaseConnectionString = value.CliCompactWhitespaces();
         }
 
         public List<IEnvExecutionDatabaseAlias> DatabaseAliases { get; set; }
@@ -61,14 +61,18 @@ namespace Oetools.Utilities.Openedge.Execution {
         public string IniFilePath {
             get {
                 if (_tempIniFilePath == null) {
-                    _tempIniFilePath = Path.Combine(_tempDirectory, $"ini_{DateTime.Now:HHmmssfff}_{Path.GetRandomFileName()}.ini");
+                    if (!string.IsNullOrEmpty(_iniFilePath) && File.Exists(_iniFilePath)) {
+                        _tempIniFilePath = Path.Combine(TempDirectory, $"ini_{DateTime.Now:HHmmssfff}_{Path.GetRandomFileName()}.ini");
 
-                    // we need to copy the .ini but we must delete the PROPATH= part, as stupid as it sounds, if we leave a huge PROPATH 
-                    // in this file, it increases the compilation time by a stupid amount... unbelievable i know, but trust me, it does...
-                    var fileContent = Utils.ReadAllText(_iniFilePath, Encoding.Default);
-                    var regex = new Regex("^PROPATH=.*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
-                    fileContent = regex.Replace(fileContent, @"PROPATH=");
-                    File.WriteAllText(_tempIniFilePath, fileContent, Encoding.Default);
+                        // we need to copy the .ini but we must delete the PROPATH= part, as stupid as it sounds, if we leave a huge PROPATH 
+                        // in this file, it increases the compilation time by a stupid amount... unbelievable i know, but trust me, it does...
+                        var fileContent = Utils.ReadAllText(_iniFilePath, Encoding.Default);
+                        var regex = new Regex("^PROPATH=.*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+                        fileContent = regex.Replace(fileContent, @"PROPATH=");
+                        File.WriteAllText(_tempIniFilePath, fileContent, Encoding.Default);
+                    } else {
+                        return _iniFilePath;
+                    }
                 }
                 return _tempIniFilePath;
             }
@@ -93,7 +97,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         public string TempDirectory {
-            get => _tempDirectory ?? Path.Combine(Path.GetTempPath(), ".oe");
+            get => _tempDirectory ?? Utils.GetTempDirectory();
             set {
                 _tempIniFilePath = null;
                 _tempDirectory = value;

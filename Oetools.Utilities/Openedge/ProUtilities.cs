@@ -24,13 +24,21 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Openedge {
     public static class ProUtilities {
+        
         public static string GetDlcPathFromEnv() {
             return Environment.GetEnvironmentVariable("dlc");
         }
 
+        /// <summary>
+        /// Returns the detailed message found in the prohelp folder of dlc corresponding to the given error number
+        /// </summary>
+        /// <param name="dlcPath"></param>
+        /// <param name="errorNumber"></param>
+        /// <returns></returns>
         public static string GetOpenedgeErrorDetailedMessage(string dlcPath, int errorNumber) {
             var messageDir = Path.Combine(dlcPath, "prohelp", "msgdata");
             if (!Directory.Exists(messageDir)) {
@@ -157,7 +165,7 @@ namespace Oetools.Utilities.Openedge {
         /// </summary>
         /// <param name="dlcPath"></param>
         /// <param name="useCharacterModeOfProgress"></param>
-        /// <exception cref="Exception">invalid mode (gui/char) or path not found</exception>
+        /// <exception cref="ExecutionParametersException">invalid mode (gui/char) or path not found</exception>
         /// <returns></returns>
         public static string GetProExecutableFromDlc(string dlcPath, bool useCharacterModeOfProgress = false) {
             string outputPath;
@@ -165,20 +173,20 @@ namespace Oetools.Utilities.Openedge {
                 outputPath = Path.Combine(dlcPath, "bin", useCharacterModeOfProgress ? "_progres.exe" : "prowin32.exe");
                 if (!File.Exists(outputPath)) {
                     if (useCharacterModeOfProgress) {
-                        throw new Exception($"Could not find the progress executable for character mode in {dlcPath}, check your DLC path or switch to graphical mode; the file searched was {outputPath}");
+                        throw new ExecutionParametersException($"Could not find the progress executable for character mode in {dlcPath}, check your DLC path or switch to graphical mode; the file searched was {outputPath}");
                     }
                     outputPath = Path.Combine(dlcPath, "bin", "prowin.exe");
                 }
             } else {
                 if (!useCharacterModeOfProgress) {
-                    throw new Exception("Graphical mode unavailable on non windows platform, use the character mode of openedge (_progres)");
+                    throw new ExecutionParametersException("Graphical mode unavailable on non windows platform, use the character mode of openedge (_progres)");
                 }
 
                 outputPath = Path.Combine(dlcPath, "bin", "_progres");
             }
 
             if (!File.Exists(outputPath)) {
-                throw new Exception($"Could not find the progress executable in {dlcPath}, check your DLC path; the file searched was {outputPath}");
+                throw new ExecutionParametersException($"Could not find the progress executable in {dlcPath}, check your DLC path; the file searched was {outputPath}");
             }
 
             return outputPath;
@@ -241,7 +249,7 @@ namespace Oetools.Utilities.Openedge {
                 }
             });
             connectionString.Append(" ");
-            return connectionString.CompactWhitespaces().ToString();
+            return connectionString.CliCompactWhitespaces().ToString();
         }
 
         /// <summary>
@@ -251,6 +259,24 @@ namespace Oetools.Utilities.Openedge {
         /// <returns></returns>
         public static List<string> ListProlibFilesInDirectory(string baseDirectory) {
             return Utils.EnumerateFiles(baseDirectory, $"*{OeConstants.ExtProlibFile}", SearchOption.TopDirectoryOnly).ToList();
+        }
+
+        /// <summary>
+        /// Returns the default propath used by a progress session, depending on the mode gui/tty
+        /// </summary>
+        /// <param name="dlcPath"></param>
+        /// <param name="useCharacterMode"></param>
+        /// <returns></returns>
+        public static List<string> ReturnProgressSessionDefaultPropath(string dlcPath, bool useCharacterMode) {
+            var path = Path.Combine(dlcPath, useCharacterMode ? "tty" : "gui");
+            if (!Directory.Exists(path)) {
+                return null;
+            }        
+            var output = new List<string> { path };
+            output.AddRange(ListProlibFilesInDirectory(path));
+            output.Add(dlcPath);
+            output.Add(Path.Combine(dlcPath, "bin"));
+            return output;
         }
     }
 }

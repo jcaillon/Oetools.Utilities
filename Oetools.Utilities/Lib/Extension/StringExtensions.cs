@@ -222,17 +222,26 @@ namespace Oetools.Utilities.Lib.Extension {
             } while (idxStart >= 0);
             return replacementString;
         }
+        
+        /// <summary>
+        /// A simple quote to use for result display
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static string PrettyQuote(this string text) {
+            return $"<<{text ?? ""}>>";
+        }
 
         /// <summary>
         ///     Replaces " by "", replaces new lines by spaces and add extra " at the start and end of the string
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
-        public static string Quoter(this string text) {
-            if (string.IsNullOrEmpty(text)) {
-                return "\"null\"";
+        public static string CliQuoter(this string text) {
+            if (Utils.IsRuntimeWindowsPlatform) {
+                return $"\"{text?.Replace("\"", "\"\"").Replace("\n", "").Replace("\r", "") ?? ""}\"";
             }
-            return $"\"{text.Replace("\"", "\"\"").Replace("\n", " ").Replace("\r", "")}\"";
+            return $"\"{text?.Replace("\"", "\\\"").Replace("\n", "").Replace("\r", "") ?? ""}\"";
         }
 
         /// <summary>
@@ -240,8 +249,9 @@ namespace Oetools.Utilities.Lib.Extension {
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
-        private static string ProQuoter(this string text) {
-            return $"\"{text?.Replace("\"", "~\"").Replace("\\", "~\\").Replace("/", "~/").Replace("*", "~*").Replace("\n", "~n").Replace("\r", "~r") ?? ""}\"";
+        /// <remarks>https://knowledgebase.progress.com/articles/Article/P27229</remarks>
+        public static string ProQuoter(this string text) {
+            return $"\"{text?.Replace("~", "~~").Replace("\"", "~\"").Replace("\\", "~\\").Replace("{", "~{").Replace("\n", "~n").Replace("\r", "~r").Replace("\t", "~t") ?? ""}\"";
         }
 
         /// <summary>
@@ -362,8 +372,8 @@ namespace Oetools.Utilities.Lib.Extension {
         /// </summary>
         /// <param name="s"></param>
         /// <returns></returns>
-        public static string CompactWhitespaces(this string s) {
-            return new StringBuilder(s).CompactWhitespaces().ToString();
+        public static string CliCompactWhitespaces(this string s) {
+            return new StringBuilder(s).CliCompactWhitespaces().ToString();
         }
     }
 }

@@ -198,3 +198,4 @@ FUNCTION fi_escape_special_char RETURNS CHARACTER PRIVATE ( INPUT ipc_text AS CH
     RETURN (IF ipc_text <> ? THEN REPLACE(REPLACE(REPLACE(ipc_text, "~t", "~~t"), "~r", ""), "~n", "~~n") ELSE "?").
 
 END FUNCTION.
+

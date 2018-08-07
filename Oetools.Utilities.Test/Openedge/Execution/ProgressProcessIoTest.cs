@@ -43,7 +43,7 @@ namespace Oetools.Utilities.Test.Lib {
         /// char mode silent = Bread and butter as it works silently on both platform (win + linux)
         /// </summary>
         [TestMethod]
-        [DataRow(@"DISPLAY ""ok"". PUT UNFORMATTED ""ok"".", "", 0, "okok", false)]
+        [DataRow(@"DISPLAY ""ok"". PUT UNFORMATTED ""ok"".", "", 0, "ok\r\nok", false)]
         [DataRow(@"compilation error!!", "", 2, null, true)]
         [DataRow(@"quit.", "-errorparameters", 2, null, true)]
         [DataRow(@"return error ""my error"".", "", 0, "", false)]
@@ -90,7 +90,7 @@ END.
         /// char mode silent, try the exit event
         /// </summary>
         [TestMethod]
-        [DataRow(@"DISPLAY ""ok"". PUT UNFORMATTED ""_nice"".", "", 0, "ok_nice", false)]
+        [DataRow(@"DISPLAY ""ok"".", "", 0, "ok", false)]
         public void ProgressProcessIo_TestCharMode_Batch_ExitedEvent(string procContent, string parameters, int expectedExitCode, string expectedStandard, bool expectErrors) {
             _hasExited1 = false;
             StartProc(procContent, false, true, parameters, expectedExitCode, expectedStandard, expectErrors, (sender, args) => _hasExited1 = true);
@@ -129,8 +129,8 @@ END.
             
             process.WaitForExit();
 
-            Assert.AreEqual(expectedExitCode, Math.Abs(process.ExitCode), $"{process.ExecutablePath} {process.StartParameters}");
-            Assert.AreEqual(expectedStandard, process.BatchModeOutput.ToString());
+            Assert.AreEqual(expectedExitCode, Math.Abs(process.ExitCode), $"{process.ExecutablePath} {process.StartParametersUsed}");
+            Assert.AreEqual(expectedStandard, process.BatchOutput.ToString());
             Assert.IsTrue(_hasExited2);
             Assert.AreEqual(kill, process.Killed);
         
@@ -153,14 +153,14 @@ END.
             }
             process.Execute($"-p test.p {parameters}", silent);
             
-            Assert.AreEqual(expectedExitCode, process.ExitCode, $"{process.ExecutablePath} {process.StartParameters}");
+            Assert.AreEqual(expectedExitCode, process.ExitCode, $"{process.ExecutablePath} {process.StartParametersUsed}");
             if (expectedStandard != null) {
-                Assert.AreEqual(expectedStandard, process.BatchModeOutput.ToString());
+                Assert.AreEqual(expectedStandard, process.BatchOutput.ToString());
             }
 
             if (expectErrors) {
-                Debug.WriteLine(process.BatchModeOutput);
-                Assert.IsTrue(process.BatchModeOutput.Length > 1, process.BatchModeOutput.Length.ToString());
+                Debug.WriteLine(process.BatchOutput);
+                Assert.IsTrue(process.BatchOutput.Length > 1, process.BatchOutput.Length.ToString());
             }
         }
 

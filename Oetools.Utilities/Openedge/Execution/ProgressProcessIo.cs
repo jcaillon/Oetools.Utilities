@@ -19,10 +19,8 @@
 #endregion
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Timers;
 using Oetools.Utilities.Lib;
 
@@ -57,33 +55,12 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Whether or not the executable can use the -nosplash parameter
         /// </summary>
-        public bool? CanUseNoSplash { get; set; }
+        public bool CanUseNoSplash { get; set; }
         
         /// <summary>
         /// The complete start parameters used
         /// </summary>
-        public string StartParameters { get; private set; }
-
-        private StringBuilder _batchModeOutput;
-        
-        /// <summary>
-        /// Returns all the messages send by progres to the standard output, should be used once the process has exited
-        /// </summary>
-        /// <remarks>we also append the error output but it seems that _progres always outputs to the standard output, even errors</remarks>
-        public StringBuilder BatchModeOutput {
-            get {
-                if (_batchModeOutput == null || _process != null && !_process.HasExited) {
-                    _batchModeOutput = new StringBuilder();
-                    foreach (var s in ErrorOutputArray) {
-                        _batchModeOutput.Append(s);
-                    }
-                    foreach (var s in StandardOutputArray) {
-                        _batchModeOutput.Append(s);
-                    }
-                }
-                return _batchModeOutput;
-            }
-        }
+        public string StartParametersUsed { get; private set; }
 
         /// <summary>
         ///     Constructor
@@ -91,7 +68,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         public ProgressProcessIo(string dlcPath, bool useCharacterModeOfProgress, bool? canUseNoSplash = null) : base (null) {
             DlcPath = dlcPath;
             UseCharacterMode = useCharacterModeOfProgress;
-            CanUseNoSplash = canUseNoSplash;
+            CanUseNoSplash = canUseNoSplash ?? ProUtilities.CanProVersionUseNoSplashParameter(ProUtilities.GetProVersionFromDlc(DlcPath));
             ExecutablePath = ProUtilities.GetProExecutableFromDlc(DlcPath, UseCharacterMode);
         }
         
@@ -108,8 +85,8 @@ namespace Oetools.Utilities.Openedge.Execution {
 #if WINDOWSONLYBUILD
             if (silent && !UseCharacterMode) {
                 _timer = new Timer {
-                    Interval = 100,
-                    AutoReset = true
+                    Interval = 200,
+                    AutoReset = false
                 };
                 _timer.Elapsed += TimerOnElapsed;
                 _timer.Start();
@@ -129,14 +106,14 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
             
             if (!UseCharacterMode) {
-                if (CanUseNoSplash != null && CanUseNoSplash.Value || ProUtilities.CanProVersionUseNoSplashParameter(ProUtilities.GetProVersionFromDlc(DlcPath))) {
+                if (CanUseNoSplash)  {
                     arguments = $"{arguments ?? ""} -nosplash";
                 } else {
                     DisableSplashScreen();
                 }
             }
 
-            StartParameters = arguments;
+            StartParametersUsed = arguments;
 
             // we can only redirect output in -b batch mode 
             RedirectOutput = silent;
@@ -173,10 +150,10 @@ namespace Oetools.Utilities.Openedge.Execution {
 #if WINDOWSONLYBUILD
         
         private void TimerOnElapsed(object sender, ElapsedEventArgs e) {
-            Debug.WriteLine("timer tick");
-            if (HideProcessFromTaskBar(_process.Id) || _process.TotalProcessorTime.TotalMilliseconds > 1500) {
-                Debug.WriteLine("timer stopped");
+            if (HideProcessFromTaskBar(_process.Id) || _process.TotalProcessorTime.TotalMilliseconds > 3000) {
                 _timer.Dispose();
+            } else {
+                _timer.Start();
             }
         }
         

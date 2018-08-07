@@ -16,6 +16,8 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 
+using System.IO;
+
 namespace Oetools.Utilities.Openedge {
     public static class OeConstants {
         public const string ExtR = ".r";

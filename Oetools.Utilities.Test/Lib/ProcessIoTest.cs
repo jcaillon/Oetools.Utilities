@@ -20,7 +20,6 @@
 
 #endregion
 
-using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
 
@@ -37,13 +36,11 @@ namespace Oetools.Utilities.Test.Lib {
                 return;
             }
 
-            Directory.CreateDirectory(TestFolder);
             var process = new ProcessIo(@"C:\Windows\System32\net.exe");
             process.Execute("use");
             Assert.AreEqual(0, process.ExitCode);
-            Assert.IsTrue(process.ErrorOutput.Length == 0);
-            Assert.IsTrue(process.StandardOutput.Length > 0);
-            Directory.Delete(TestFolder);
+            Assert.IsTrue(process.ErrorOutputArray.Count == 0);
+            Assert.IsTrue(process.StandardOutputArray.Count > 0);
         }
 
         [TestMethod]
@@ -52,13 +49,11 @@ namespace Oetools.Utilities.Test.Lib {
                 return;
             }
 
-            Directory.CreateDirectory(TestFolder);
             var process = new ProcessIo(@"C:\Windows\System32\net.exe");
             process.Execute("use 7874987498");
             Assert.AreNotEqual(0, process.ExitCode);
-            Assert.IsTrue(process.ErrorOutput.Length > 0);
-            Assert.IsTrue(process.StandardOutput.Length == 0);
-            Directory.Delete(TestFolder);
+            Assert.IsTrue(process.ErrorOutputArray.Count > 0);
+            Assert.IsTrue(process.StandardOutputArray.Count == 0);
         }
     }
 }

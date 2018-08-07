@@ -31,7 +31,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// Will not compact whitespaces inside quotes or double quotes
         /// </summary>
         /// <param name="sb"></param>
-        public static StringBuilder CompactWhitespaces(this StringBuilder sb) {
+        public static StringBuilder CliCompactWhitespaces(this StringBuilder sb) {
             if (sb == null)
                 return null;
             if (sb.Length == 0)

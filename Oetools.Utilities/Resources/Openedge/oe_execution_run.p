@@ -1,0 +1,2 @@
+&GLOBAL-DEFINE useCatch TRUE
+&GLOBAL-DEFINE clientlog

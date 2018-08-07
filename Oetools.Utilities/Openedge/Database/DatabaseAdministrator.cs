@@ -19,19 +19,44 @@
 using System;
 using System.IO;
 using System.Net;
+using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Resources;
 
 namespace Oetools.Utilities.Openedge.Database {
     
-    public class DatabaseAdministrator : DatabaseOperator {
+    public class DatabaseAdministrator : DatabaseOperator, IDisposable {
 
         /// <summary>
         /// The temp folder to use when we need to write the openedge procedure for data administration
         /// </summary>
-        public string TempFolder { get; set; } = Path.GetTempPath();
+        public string TempFolder { get; set; } = Utils.GetTempDirectory();
         
         public DatabaseAdministrator(string dlcPath) : base(dlcPath) { }
+
+        private ProgressProcessIo _progres;
+        
+        private string _procedurePath;
+
+        private string ProcedurePath {
+            get {
+                if (_procedurePath == null) {
+                    _procedurePath = Path.Combine(TempFolder, $"db_admin_{Path.GetRandomFileName()}.p");
+                    File.WriteAllText(ProcedurePath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"database_administrator.p"));
+                }
+                return _procedurePath;
+            }
+        }
+
+        private ProgressProcessIo Progres {
+            get {
+                if (_progres == null) {
+                    _progres = new ProgressProcessIo(DlcPath, true);
+                }
+                return _progres;
+            }
+        }
         
         /// <summary>
         /// Load a .df in a database
@@ -48,61 +73,25 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             if (!File.Exists(dfFilePath)) {
-                throw new DatabaseOperationException($"The structure file does not exist : {dfFilePath}");
+                throw new DatabaseOperationException($"The structure file does not exist : {dfFilePath.PrettyQuote()}");
             }
 
             if (GetBusyMode(targetDbPath) != DatabaseBusyMode.NotBusy) {
                 throw new DatabaseOperationException("The database is currently busy, shut it down before this operation");
             }
 
-            var progres = GetExecutable(ProgresPath);
-            progres.WorkingDirectory = dbFolder;
+            Progres.WorkingDirectory = dbFolder;
 
-            using (var proc = new DatabaseAdministratorProcedure(TempFolder)) {
-                var executionOk = progres.TryExecute($"-b -db {dbPhysicalName}.db -1 -ld DICTDB -p {proc.ProcedurePath.Quoter()} -param {$"load-df|{dfFilePath}".Quoter()}");
-                if (!executionOk || progres.StandardOutput.ToString().EndsWith("**ERROR")) {
-                    throw new DatabaseOperationException(GetErrorFromProcessIo(progres));
-                }
-             }
-        }
-
-        /// <summary>
-        /// Returns the connection string to use to connect to a database
-        /// </summary>
-        /// <param name="targetDbPath"></param>
-        /// <param name="serviceName"></param>
-        /// <param name="singleUser"></param>
-        /// <returns></returns>
-        public static string GetConnectionString(string targetDbPath, string serviceName, bool singleUser = false) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
-            if (singleUser) {
-                return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {dbPhysicalName} -1";
-            }
-            return $"-db {dbPhysicalName} -ld {dbPhysicalName} -N TCP -H localhost -S {serviceName}";
-        }
-
-        private static string GetHostName() {
-            try {
-                var hostname = Dns.GetHostName();
-                Dns.GetHostEntry(hostname);
-                return hostname;
-            } catch (Exception) {
-                return "localhost";
+            var executionOk = Progres.TryExecute($"-db {dbPhysicalName}.db -1 -ld DICTDB -p {ProcedurePath.CliQuoter()} -param {$"load-df|{dfFilePath}".CliQuoter()}");
+            if (!executionOk || Progres.BatchOutput.ToString().EndsWith("**ERROR")) {
+                throw new DatabaseOperationException(Progres.BatchOutput.ToString());
             }
         }
         
-        private class DatabaseAdministratorProcedure : IDisposable {
-            
-            public DatabaseAdministratorProcedure(string folderPath) {
-                ProcedurePath = Path.Combine(folderPath, $"db_admin_{Path.GetRandomFileName()}.p");
-                File.WriteAllText(ProcedurePath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"database_administrator.p"));
-            }
-
-            public string ProcedurePath { get; }
-            
-            public void Dispose() {
-                File.Delete(ProcedurePath);
-            }
+        public void Dispose() {
+            _progres?.Dispose();
+            _progres = null;
+            File.Delete(ProcedurePath);
         }
     }
 }

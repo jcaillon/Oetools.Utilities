@@ -193,7 +193,41 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow(" mot     \t deux \n\r\n\rtrois     end     \t", @"mot deux trois end")]
         [DataRow(" mot     \t \"deux \t \t\t trois\"     end     \t", "mot \"deux \t \t\t trois\" end")]
         public void CompactWhitespaces_IsOk(string input, string expected) {
-            Assert.AreEqual(expected, input.CompactWhitespaces());
+            Assert.AreEqual(expected, input.CliCompactWhitespaces());
+        }
+        
+        [TestMethod]
+        [DataRow(@"", @"""""")]
+        [DataRow(null, @"""""")]
+        [DataRow("mot", @"""mot""")]
+#if NETFRAMEWORK
+        [DataRow("mot\ndeux", @"""motdeux""")]
+        [DataRow("mot\"\ndeux", @"""mot""""deux""")]
+#endif
+        public void CliQuoter_Test(string input, string expected) {
+            Assert.AreEqual(expected, input.CliQuoter());
+        }
+        
+        [TestMethod]
+        [DataRow(null, @"""""")]
+        [DataRow(@"", @"""""")]
+        [DataRow("mot", @"""mot""")]
+        [DataRow("mot\ndeux", @"""mot~ndeux""")]
+        [DataRow("mot\"\ndeux", @"""mot~""~ndeux""")]
+        [DataRow("mot~cool\"\nde{ux\r\t", @"""mot~~cool~""~nde~{ux~r~t""")]
+        public void ProQuoter_Test(string input, string expected) {
+            Assert.AreEqual(expected, input.ProQuoter());
+        }
+        
+        [TestMethod]
+        [DataRow(null, @"""""")]
+        [DataRow(@"", @"""""")]
+        [DataRow("mot", @"""mot""")]
+        [DataRow("mot\ndeux", @"""mot~~ndeux""")]
+        [DataRow("mot\"\ndeux", @"""mot~~""~~ndeux""")]
+        [DataRow("mot~cool\"\nde{ux\r\t", @"""mot~~~~cool~~""~~nde~~{ux~~r~~t""")]
+        public void PreProcQuoter_Test(string input, string expected) {
+            Assert.AreEqual(expected, input.PreProcQuoter());
         }
     }
 }

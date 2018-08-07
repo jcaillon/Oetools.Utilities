@@ -2,7 +2,6 @@
 
 namespace Oetools.Utilities.Openedge.Execution {
 
-    
     public class ExecutionException : Exception {
         public ExecutionException() { }
         public ExecutionException(string message) : base(message) { }

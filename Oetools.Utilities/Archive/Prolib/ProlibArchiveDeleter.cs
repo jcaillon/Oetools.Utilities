@@ -30,10 +30,11 @@ namespace Oetools.Utilities.Archive.Prolib {
     ///     Allows to delete files in a prolib file
     /// </summary>
     public class ProlibArchiveDeleter : ProlibArchiver {
-        public ProlibArchiveDeleter(string prolibExePath) : base(prolibExePath) { }
+        
+        public ProlibArchiveDeleter(string dlcPath) : base(dlcPath) { }
 
         public override void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
-            var prolibExe = new ProcessIo(ProlibExePath);
+            var prolibExe = new ProcessIo(ProliPath);
             foreach (var plGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 try {
                     var archiveFolder = Path.GetDirectoryName(plGroupedFiles.Key);
@@ -43,8 +44,8 @@ namespace Oetools.Utilities.Archive.Prolib {
 
                     // for files containing a space, we don't have a choice, call delete for each...
                     foreach (var file in plGroupedFiles.Where(deploy => deploy.RelativePathInArchive.ContainsFast(" "))) {
-                        if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -delete {file.RelativePathInArchive.Quoter()}")) {
-                            progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePathInArchive, new Exception(prolibExe.ErrorOutput.ToString())));
+                        if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -delete {file.RelativePathInArchive.CliQuoter()}")) {
+                            progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePathInArchive, new Exception(prolibExe.BatchOutput.ToString())));
                         }
                     }
 
@@ -62,9 +63,9 @@ namespace Oetools.Utilities.Archive.Prolib {
                         File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
                     
                         // now we just need to add the content of temp folders into the .pl
-                        if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -pf {pfPath.Quoter()}")) {
+                        if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
                             foreach (var file in remainingFiles) {
-                                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePathInArchive, new Exception(prolibExe.ErrorOutput.ToString())));
+                                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePathInArchive, new Exception(prolibExe.BatchOutput.ToString())));
                             }
                         }
                     

@@ -27,7 +27,7 @@ using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Openedge.Execution {
 
-    public abstract class ProExecutionHandleCompilation : ProExecution {
+    public abstract class OeExecutionHandleCompilation : OeExecution {
 
         /// <summary>
         /// Number of files already treated
@@ -40,24 +40,32 @@ namespace Oetools.Utilities.Openedge.Execution {
         ///     - the errors for each file compiled (if any)
         ///     - the list of all the deployments needed for the files compiled (move the .r but also .dbg and so on...)
         /// </summary>
-        public event Action<ProExecutionHandleCompilation, List<CompiledFile>> OnCompilationOk;
+        public event Action<OeExecutionHandleCompilation, List<CompiledFile>> OnCompilationOk;
+        
+        /// <summary>
+        ///     When true, we activate the log just before compiling with FileId active + we generate a file that list referenced
+        ///     table in the .r
+        /// </summary>
+        public bool IsAnalysisMode { get; set; }
+
+        public bool CompileWithDebugList { get; set; }
+        public bool CompileWithXref { get; set; }
+        public bool CompileWithListing { get; set; }
+        public bool CompileUseXmlXref { get; set; }
 
         /// <summary>
         /// List of the files to compile / run / prolint
         /// </summary>
         public List<FileToCompile> FilesToCompile { get; set; }
 
-        protected List<CompiledFile> CompiledFiles { get; } = new List<CompiledFile>();
-
-        /// <summary>
-        /// Pro environment to use
-        /// </summary>
-        public new IEnvExecutionCompilation Env { get; }
+        public List<CompiledFile> CompiledFiles { get; } = new List<CompiledFile>();
 
         /// <summary>
         /// Path to the file containing the COMPILE output
         /// </summary>
-        protected string _compilationLog;
+        private string _compilationLog;
+        
+        private string _filesListPath;
 
         /// <summary>
         /// Path to a file used to determine the progression of a compilation (useful when compiling multiple programs)
@@ -65,13 +73,15 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// </summary>
         private string _progressionFilePath;
 
-        public ProExecutionHandleCompilation(IEnvExecutionCompilation env) : base(env) {
-            Env = env;
+        public OeExecutionHandleCompilation(IEnvExecution env) : base(env) {
+            _filesListPath = Path.Combine(_tempDir, "files.list");
+            _progressionFilePath = Path.Combine(_tempDir, "compile.progression");
+            _compilationLog = Path.Combine(_tempDir, "compilation.log");
         }
 
         protected override void CheckParameters() {
             base.CheckParameters();
-            if (FilesToCompile == null) {
+            if (FilesToCompile == null || FilesToCompile.Count == 0) {
                 throw new ExecutionParametersException("No files specified");
             }
         }
@@ -86,38 +96,40 @@ namespace Oetools.Utilities.Openedge.Execution {
             
             foreach (var file in FilesToCompile) {
                 if (!File.Exists(file.CompiledPath)) {
-                    throw new ExecutionException($"Couldn\'t find the source file : {file.CompiledPath.Quoter()}");
+                    throw new ExecutionException($"Couldn\'t find the source file : {file.CompiledPath.PrettyQuote()}");
                 }
 
-                var localSubTempDir = Path.Combine(_localTempDir, count.ToString());
+                var localSubTempDir = Path.Combine(_tempDir, count.ToString());
                 var baseFileName = Path.GetFileNameWithoutExtension(file.CompiledPath);
 
-                // get the output directory that will be use to generate the .r (and listing debug-list...)
                 var compiledFile = new CompiledFile(file);
                 CompiledFiles.Add(compiledFile);
                 
+                // get the output directory that will be use to generate the .r (and listing debug-list...)
                 if (Path.GetExtension(file.SourcePath ?? "").Equals(OeConstants.ExtCls)) {
                     // for *.cls files, as many *.r files are generated, we need to compile in a temp directory
                     // we need to know which *.r files were generated for each input file
                     // so each file gets his own sub tempDir
                     compiledFile.CompilationOutputDir = Path.Combine(localSubTempDir, count.ToString());
-                } else if (string.IsNullOrEmpty(file.PreferedTargetPath)) {
-                    compiledFile.CompilationOutputDir = localSubTempDir;
-                } else {
+                } else if (!string.IsNullOrEmpty(file.PreferedTargetPath)) {
                     compiledFile.CompilationOutputDir = file.PreferedTargetPath;
+                } else {
+                    compiledFile.CompilationOutputDir = localSubTempDir;
                 }
 
                 Utils.CreateDirectoryIfNeeded(compiledFile.CompilationOutputDir);
 
                 compiledFile.CompOutputR = Path.Combine(compiledFile.CompilationOutputDir, $"{baseFileName}{OeConstants.ExtR}");
-                if (Env.CompileWithListing)
+                if (CompileWithListing) {
                     compiledFile.CompOutputLis = Path.Combine(compiledFile.CompilationOutputDir, $"{baseFileName}{OeConstants.ExtLis}");
-                if (Env.CompileWithXref)
-                    compiledFile.CompOutputXrf = Path.Combine(compiledFile.CompilationOutputDir, $"{baseFileName}{(Env.CompileUseXmlXref ? OeConstants.ExtXrfXml : OeConstants.ExtXrf)}");
-                if (Env.CompileWithDebugList)
+                }
+                if (CompileWithXref) {
+                    compiledFile.CompOutputXrf = Path.Combine(compiledFile.CompilationOutputDir, $"{baseFileName}{(CompileUseXmlXref ? OeConstants.ExtXrfXml : OeConstants.ExtXrf)}");
+                }
+                if (CompileWithDebugList) {
                     compiledFile.CompOutputDbg = Path.Combine(compiledFile.CompilationOutputDir, $"{baseFileName}{OeConstants.ExtDbg}");
-
-                if (Env.IsAnalysisMode) {
+                }
+                if (IsAnalysisMode) {
                     if (!Directory.Exists(localSubTempDir)) {
                         Directory.CreateDirectory(localSubTempDir);
                     }
@@ -126,42 +138,38 @@ namespace Oetools.Utilities.Openedge.Execution {
                 }
 
                 // feed files list
-                filesListcontent.AppendLine($"{file.CompiledPath.Quoter()} {compiledFile.CompilationOutputDir.Quoter()} {(compiledFile.CompOutputLis ?? "?").Quoter()} {(compiledFile.CompOutputXrf ?? "?").Quoter()} {(compiledFile.CompOutputDbg ?? "?").Quoter()} {(compiledFile.CompOutputFileIdLog ?? "").Quoter()} {(compiledFile.CompOutputRefTables ?? "").Quoter()}");
+                filesListcontent.AppendLine($"{file.CompiledPath.ProQuoter()} {compiledFile.CompilationOutputDir.ProQuoter()} {compiledFile.CompOutputLis.ProQuoter()} {compiledFile.CompOutputXrf.ProQuoter()} {compiledFile.CompOutputDbg.ProQuoter()} {compiledFile.CompOutputFileIdLog.ProQuoter()} {compiledFile.CompOutputRefTables.ProQuoter()}");
 
                 count++;
             }
             
-            var filesListPath = Path.Combine(_localTempDir, "files.list");
-            File.WriteAllText(filesListPath, filesListcontent.ToString(), Encoding.Default);
+            File.WriteAllText(_filesListPath, filesListcontent.ToString(), Encoding.Default);
 
-            _progressionFilePath = Path.Combine(_localTempDir, "compile.progression");
-            _compilationLog = Path.Combine(_localTempDir, "compilation.log");
-
-            SetPreprocessedVar("ToCompileListFile", filesListPath.PreProcQuoter());
-            SetPreprocessedVar("CompileProgressionFile", _progressionFilePath.PreProcQuoter());
-            SetPreprocessedVar("OutputPath", _compilationLog.PreProcQuoter());
-            SetPreprocessedVar("AnalysisMode", Env.IsAnalysisMode.ToString());
+            SetPreprocessedVar("CompileListFilePath", _filesListPath.PreProcQuoter());
+            SetPreprocessedVar("CompileProgressionFilePath", _progressionFilePath.PreProcQuoter());
+            SetPreprocessedVar("CompileLogPath", _compilationLog.PreProcQuoter());
+            SetPreprocessedVar("IsAnalysisMode", IsAnalysisMode.ToString());
         }
 
         /// <summary>
         ///     Also publish the end of compilation events
         /// </summary>
         protected override void PublishExecutionEndEvents() {
-            // Analysis mode, read output files
-            if (Env.IsAnalysisMode) {
-                try {
-                    // do a deployment action for each file
-                    Parallel.ForEach(CompiledFiles, file => {
-                        file.ReadAnalysisResults();
-                    });
-                } catch (Exception e) {
-                    HandledExceptions.Add(new ExecutionException("Error while reading the analysis results", e));
-                }
-            }
-
             // end of successful execution action
-            if (!ExecutionFailed && (!DbConnectionFailed || !NeedDatabaseConnection)) {
+            if (!ExecutionFailed) {
+                // Analysis mode, read output files
+                if (IsAnalysisMode) {
+                    try {
+                        Parallel.ForEach(CompiledFiles, file => {
+                            file.ReadAnalysisResults();
+                        });
+                    } catch (Exception e) {
+                        HandledExceptions.Add(new ExecutionException("Error while reading the analysis results", e));
+                    }
+                }
+                
                 try {
+                    // read the global log error and assign compilation problems to concerrned compiled files
                     LoadErrorLog();
                     CompiledFiles.ForEach(f => f.CorrectRcodePathForClassFiles());
 
@@ -181,7 +189,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         private void LoadErrorLog() {
             Utils.ForEachLine(_compilationLog, new byte[0], (i, line) => {
                 var fields = line.Split('\t').ToList();
-                if (fields.Count == 8) {
+                if (fields.Count == 7) {
                     var compiledFile = CompiledFiles.First(f => f.CompiledPath.Equals(fields[0], StringComparison.CurrentCultureIgnoreCase));
 
                     var error = new CompilationError {
@@ -202,7 +210,6 @@ namespace Oetools.Utilities.Openedge.Execution {
                     error.Level = compilationErrorLevel;
 
                     error.Message = fields[6].Replace("<br>", "\n").Replace(fields[0], compiledFile.BaseFileName).Trim();
-                    error.Help = fields[7].Replace("<br>", "\n").Trim();
                 }
             });
         }

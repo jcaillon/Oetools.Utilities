@@ -64,9 +64,10 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             // create .df
             var dfPath = Path.Combine(TestFolder, "ref.df");
             File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
-            
-            var dataAdmin = new DatabaseAdministrator(dlcPath);
-            dataAdmin.LoadDf(Path.Combine(TestFolder, "ref.db"), dfPath);
+
+            using (var dataAdmin = new DatabaseAdministrator(dlcPath)) {
+                dataAdmin.LoadDf(Path.Combine(TestFolder, "ref.db"), dfPath);
+            }
         }
         
         [TestMethod]
@@ -81,8 +82,9 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             Exception ex = null;
             try {
-                var dataAdmin = new DatabaseAdministrator(dlcPath);
-                dataAdmin.LoadDf(Path.Combine(TestFolder, "ref.db"), dfPath);
+                using (var dataAdmin = new DatabaseAdministrator(dlcPath)) {
+                    dataAdmin.LoadDf(Path.Combine(TestFolder, "ref.db"), dfPath);
+                }
             } catch (Exception e) {
                 ex = e;
             }

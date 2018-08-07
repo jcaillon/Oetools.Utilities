@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
 
 namespace Oetools.Utilities.Openedge.Execution {
+    
     public interface IEnvExecution {
+        
         /// <summary>
         /// Path to the dlc folder (openedge installation folder)
         /// </summary>
@@ -13,10 +15,13 @@ namespace Oetools.Utilities.Openedge.Execution {
         bool UseProgressCharacterMode { get; }
 
         /// <summary>
-        /// Connection string to use for the database connection in a CONNECT statement
+        /// Connection string to use for the database connection in a CONNECT statement (there can be several databases)
         /// </summary>
         string DatabaseConnectionString { get; }
 
+        /// <summary>
+        /// List of aliases to use for the connected databases
+        /// </summary>
         List<IEnvExecutionDatabaseAlias> DatabaseAliases { get; }
 
         /// <summary>

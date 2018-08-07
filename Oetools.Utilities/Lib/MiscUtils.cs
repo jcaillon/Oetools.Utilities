@@ -16,18 +16,17 @@
 // along with csdeployer. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
-using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
     /// <summary>
     ///     Class that exposes utility methods
     /// </summary>
     public static partial class Utils {
+
+#if !WINDOWSONLYBUILD
+        private static bool? _isRuntimeWindowsPlatform;
+#endif
         
         /// <summary>
         /// Returns true if the current execution is done on windows platform
@@ -37,7 +36,7 @@ namespace Oetools.Utilities.Lib {
 #if WINDOWSONLYBUILD
                 return true;
 #else
-                return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+                return (_isRuntimeWindowsPlatform ?? (_isRuntimeWindowsPlatform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows))).Value;
 #endif
             }
         }

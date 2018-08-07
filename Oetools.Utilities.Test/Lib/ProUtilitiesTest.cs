@@ -26,6 +26,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge;
+using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Test.Lib {
     
@@ -47,6 +48,20 @@ namespace Oetools.Utilities.Test.Lib {
             if (Directory.Exists(TestFolder)) {
                 Directory.Delete(TestFolder, true);
             }
+        }
+
+        [TestMethod]
+        public void ReturnProgressSessionDefaultPropath_Test() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            var output = ProUtilities.ReturnProgressSessionDefaultPropath(dlcPath, true);
+            Assert.IsTrue(output.Exists(p => p.Contains("tty")));
+            
+            output = ProUtilities.ReturnProgressSessionDefaultPropath(dlcPath, false);
+            Assert.IsTrue(output.Exists(p => p.Contains("gui")));
+
         }
         
         [TestMethod]
@@ -140,8 +155,8 @@ ending""|30|""last""|+")]
             }
             Assert.IsTrue(ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPathFromEnv()).StartsWith(Path.Combine(dlcPath, "bin", "prowin")));
             Assert.AreEqual(Path.Combine(ProUtilities.GetDlcPathFromEnv(), "bin", "_progres.exe"), ProUtilities.GetProExecutableFromDlc(dlcPath, true));
-            Assert.ThrowsException<Exception>(() => ProUtilities.GetProExecutableFromDlc(TestFolder, true));
-            Assert.ThrowsException<Exception>(() => ProUtilities.GetProExecutableFromDlc(TestFolder, false));
+            Assert.ThrowsException<ExecutionParametersException>(() => ProUtilities.GetProExecutableFromDlc(TestFolder, true));
+            Assert.ThrowsException<ExecutionParametersException>(() => ProUtilities.GetProExecutableFromDlc(TestFolder, false));
         }
         
         [TestMethod]

@@ -20,7 +20,6 @@
         public int Column { get; set; }
         public int ErrorNumber { get; set; }
         public string Message { get; set; }
-        public string Help { get; set; }
 
         /// <summary>
         ///     indicates if the error appears several times

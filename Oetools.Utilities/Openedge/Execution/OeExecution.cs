@@ -18,11 +18,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Resources;
@@ -32,22 +31,22 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// <summary>
     ///     Base class for all the progress execution (i.e. when we need to start a prowin process and do something)
     /// </summary>
-    public abstract class ProExecution : IDisposable {
+    public abstract class OeExecution : IDisposable {
         
         /// <summary>
         ///     The action to execute just after the end of a prowin process
         /// </summary>
-        public event Action<ProExecution> OnExecutionEnd;
+        public event Action<OeExecution> OnExecutionEnd;
 
         /// <summary>
         ///     The action to execute at the end of the process if it went well
         /// </summary>
-        public event Action<ProExecution> OnExecutionOk;
+        public event Action<OeExecution> OnExecutionOk;
 
         /// <summary>
         ///     The action to execute at the end of the process if something went wrong
         /// </summary>
-        public event Action<ProExecution> OnExecutionFailed;
+        public event Action<OeExecution> OnExecutionFailed;
 
         /// <summary>
         ///     set to true if a valid database connection is mandatory (if so, failing to connect will be considered as an error)
@@ -75,26 +74,40 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool DbConnectionFailed { get; private set; }
 
         /// <summary>
-        /// List of handled exceptions
+        /// List of handled exceptions :
+        /// - <see cref="ExecutionException"/>
+        /// - <see cref="ExecutionParametersException"/>
+        /// - <see cref="ExecutionOpenedgeException"/>
+        /// - <see cref="ExecutionOpenedgeDbConnectionException"/>
         /// </summary>
         public List<ExecutionException> HandledExceptions { get; } = new List<ExecutionException>();
+
+        /// <summary>
+        /// Temporary directory used for the execution
+        /// </summary>
+        public string ExecutionTemporaryDirectory => _tempDir;
         
         /// <summary>
         /// if the exe should be executed silently (hidden) or not
         /// </summary>
-        protected virtual bool SilentExecution => false;
+        protected virtual bool SilentExecution => true;
         
         /// <summary>
         /// can only be executed with the gui version of progres (e.g. windows only)
         /// </summary>
         protected virtual bool RequiresGraphicalMode => false;
         
+        /// <summary>
+        /// forces to use the character mode of progres (imcompatible with <see cref="RequiresGraphicalMode"/>
+        /// </summary>
+        protected virtual bool ForceCharacterModeUse => false;
+        
         protected readonly Dictionary<string, string> PreprocessedVars;
 
         /// <summary>
         ///     Path to the output .log file (for compilation)
         /// </summary>
-        protected string _ErrorLogPath;
+        protected string _errorLogPath;
 
         /// <summary>
         ///     log to the database connection log (not existing if everything is ok)
@@ -104,7 +117,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     Full path to the directory containing all the files needed for the execution
         /// </summary>
-        protected string _localTempDir;
+        protected string _tempDir;
 
         /// <summary>
         ///     Full path to the directory used as the working directory to start the prowin process
@@ -130,25 +143,25 @@ namespace Oetools.Utilities.Openedge.Execution {
                 _process?.Dispose();
 
                 // delete temp dir
-                if (_localTempDir != null) {
-                    Utils.DeleteDirectoryIfExists(_localTempDir, true);
+                if (_tempDir != null) {
+                    Utils.DeleteDirectoryIfExists(_tempDir, true);
                 }
             } catch (Exception e) {
                 HandledExceptions.Add(new ExecutionException("Error when disposing of the process", e));
             }
         }
 
-        public ProExecution(IEnvExecution env) {
+        public OeExecution(IEnvExecution env) {
             Env = env;
             PreprocessedVars = new Dictionary<string, string>();
             
             // unique temporary folder
-            _localTempDir = Path.Combine(Env.TempDirectory, $"exec_{DateTime.Now:HHmmssfff}_{Path.GetRandomFileName()}");
-            _ErrorLogPath = Path.Combine(_localTempDir, "run.errors");
-            _dbErrorLogPath = Path.Combine(_localTempDir, "db.errors");
-            _propathFilePath = Path.Combine(_localTempDir, "oe.propath");
-            _runnerPath = Path.Combine(_localTempDir, $"run_{DateTime.Now:HHmmssfff}.p");
-            _processStartDir = _localTempDir;
+            _tempDir = Path.Combine(Env.TempDirectory, $"exec_{DateTime.Now:HHmmssfff}_{Path.GetRandomFileName()}");
+            _errorLogPath = Path.Combine(_tempDir, "run.errors");
+            _dbErrorLogPath = Path.Combine(_tempDir, "db.errors");
+            _propathFilePath = Path.Combine(_tempDir, "oe.propath");
+            _runnerPath = Path.Combine(_tempDir, $"run_{DateTime.Now:HHmmssfff}.p");
+            _processStartDir = _tempDir;
         }
         
         /// <summary>
@@ -159,47 +172,57 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <returns></returns>
         /// <exception cref="ExecutionException"></exception>
         public void Start() {
+            DbConnectionFailed = false;
+            ExecutionFailed = false;
+            HasBeenKilled = false;
+            HandledExceptions.Clear();
+            Utils.DeleteFileIfNeeded(_errorLogPath);
+            Utils.DeleteFileIfNeeded(_dbErrorLogPath);
+            
+            if (!Directory.Exists(Env.DlcDirectoryPath)) {
+                throw new ExecutionParametersException($"Couldn\'t start an execution, the DLC directory does not exist : {Env.DlcDirectoryPath.PrettyQuote()}");
+            }
             
             // check parameters
             CheckParameters();
             
-            Utils.CreateDirectoryIfNeeded(_localTempDir);
+            Utils.CreateDirectoryIfNeeded(_tempDir);
 
             // write propath
-            File.WriteAllText(_propathFilePath, $"{_localTempDir + "," + string.Join(",", Env.ProPathList)}", Encoding.Default);
+            File.WriteAllText(_propathFilePath, $"{_tempDir},{(Env.ProPathList != null ? string.Join(",", Env.ProPathList) : "")}\n", Encoding.Default);
 
             // Set info
             SetExecutionInfo();
-            SetPreprocessedVar("ErrorLogPath", _ErrorLogPath.PreProcQuoter());
+            SetPreprocessedVar("ErrorLogPath", _errorLogPath.PreProcQuoter());
             SetPreprocessedVar("DbErrorLogPath", _dbErrorLogPath.PreProcQuoter());
             SetPreprocessedVar("PropathFilePath", _propathFilePath.PreProcQuoter());
             SetPreprocessedVar("DbConnectString", Env.DatabaseConnectionString.PreProcQuoter());
             SetPreprocessedVar("DatabaseAliasList", (Env.DatabaseAliases != null ? string.Join(";", Env.DatabaseAliases.Select(a => $"{a.AliasLogicalName},{a.DatabaseLogicalName}")) : "").PreProcQuoter()); // Format : ALIAS,DATABASE;ALIAS2,DATABASE;...
             SetPreprocessedVar("DbConnectionRequired", NeedDatabaseConnection.ToString());
-            SetPreprocessedVar("PreExecutionProgram", Env.PreExecutionProgramPath.Trim().PreProcQuoter());
-            SetPreprocessedVar("PostExecutionProgram", Env.PostExecutionProgramPath.Trim().PreProcQuoter());
+            SetPreprocessedVar("PreExecutionProgramPath", Env.PreExecutionProgramPath.PreProcQuoter());
+            SetPreprocessedVar("PostExecutionProgramPath", Env.PostExecutionProgramPath.PreProcQuoter());
 
             // prepare the .p runner
             var runnerProgram = new StringBuilder();
             foreach (var var in PreprocessedVars) {
                 runnerProgram.AppendLine($"&SCOPED-DEFINE {var.Key} {var.Value}");
             }
-            runnerProgram.Append(ProgramProgressRun);
-            SetProgramToRun(runnerProgram);
+            runnerProgram.AppendLine(ProgramProgressRun);
+            AppendProgramToRun(runnerProgram);
             File.WriteAllText(_runnerPath, runnerProgram.ToString(), Encoding.Default);
 
             // Parameters
-            _exeParameters = new StringBuilder($"-p {_runnerPath.Quoter()}");
+            _exeParameters = new StringBuilder($"-p {_runnerPath.CliQuoter()}");
             AppendProgressParameters(_exeParameters);
             if (!string.IsNullOrWhiteSpace(Env.ProExeCommandLineParameters)) {
                 _exeParameters.Append($" {Env.ProExeCommandLineParameters.Trim()}");
             }
             if (!string.IsNullOrEmpty(Env.IniFilePath)) {
-                _exeParameters.Append($" -ininame {Env.IniFilePath.Quoter()} -basekey {"INI".Quoter()}");
+                _exeParameters.Append($" -ininame {Env.IniFilePath.CliQuoter()} -basekey {"INI".CliQuoter()}");
             }
-
+            
             // start the process
-            _process = new ProgressProcessIo(Env.DlcDirectoryPath, Env.UseProgressCharacterMode && !RequiresGraphicalMode, Env.CanProVersionUseNoSplash) {
+            _process = new ProgressProcessIo(Env.DlcDirectoryPath, ForceCharacterModeUse || Env.UseProgressCharacterMode && !RequiresGraphicalMode, Env.CanProVersionUseNoSplash) {
                 WorkingDirectory = _processStartDir
             };
             _process.OnProcessExit += ProcessOnExited;
@@ -228,17 +251,16 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <summary>
-        ///     Should return null or the message error that indicates which parameter is incorrect
+        ///     Should throw an error if some parameters are incorrect
         /// </summary>
         /// <exception cref="ExecutionException"></exception>
-        protected virtual void CheckParameters() {
-            // check prowin
-            if (!Directory.Exists(Env.DlcDirectoryPath)) {
-                throw new ExecutionParametersException($"Couldn\'t start an execution, the DLC directory does not exist : {Env.DlcDirectoryPath.Quoter()}");
-            }
-        }
+        protected virtual void CheckParameters() { }
         
-        protected virtual void SetProgramToRun(StringBuilder runnerProgram) {}
+        /// <summary>
+        /// Method that appends the program_to_run procedure to the runned .p file
+        /// </summary>
+        /// <param name="runnerProgram"></param>
+        protected virtual void AppendProgramToRun(StringBuilder runnerProgram) {}
         
         /// <summary>
         ///     Extra stuff to do before executing
@@ -249,8 +271,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     Add stuff to the command line
         /// </summary>
-        protected virtual void AppendProgressParameters(StringBuilder sb) {
-        }
+        protected virtual void AppendProgressParameters(StringBuilder sb) { }
 
         /// <summary>
         ///     set pre-processed variable for the runner program
@@ -271,21 +292,45 @@ namespace Oetools.Utilities.Openedge.Execution {
                 if (File.Exists(_dbErrorLogPath)) {
                     HandledExceptions.AddRange(GetOpenedgeExceptions<ExecutionOpenedgeDbConnectionException>(_dbErrorLogPath));
                     DbConnectionFailed = true;
+                    ExecutionFailed = NeedDatabaseConnection;
                 }
                 
                 if (_process.ExitCode > 0) {
-                    HandledExceptions.Add(new ExecutionProcessException(_process.ExecutablePath, _process.StartParameters, _process.WorkingDirectory, _process.BatchModeOutput.ToString(), _process.ExitCode));
+                    HandledExceptions.Add(new ExecutionProcessException(_process.ExecutablePath, _process.StartParametersUsed, _process.WorkingDirectory, _process.BatchOutput.ToString(), _process.ExitCode));
                     ExecutionFailed = true;              
 
-                } else if (!File.Exists(_ErrorLogPath)) {
+                } else if (!File.Exists(_errorLogPath)) {
                     // the log file wasn't created, indicating that the procedure didn't run until the end correctly
-                    HandledExceptions.Add(new ExecutionProcessException(_process.ExecutablePath, _process.StartParameters, _process.WorkingDirectory, _process.BatchModeOutput.ToString(), _process.ExitCode));
+                    HandledExceptions.Add(new ExecutionProcessException(_process.ExecutablePath, _process.StartParametersUsed, _process.WorkingDirectory, _process.BatchOutput.ToString(), _process.ExitCode));
                     ExecutionFailed = true;     
                     
-                } else if (new FileInfo(_ErrorLogPath).Length > 0) {
+                } else if (new FileInfo(_errorLogPath).Length > 0) {
                     // else if the log isn't empty, something went wrong
-                    HandledExceptions.AddRange(GetOpenedgeExceptions<ExecutionOpenedgeException>(_ErrorLogPath));
+                    HandledExceptions.AddRange(GetOpenedgeExceptions<ExecutionOpenedgeException>(_errorLogPath));
                     ExecutionFailed = true;
+                    
+                } else if (_process.StandardOutputArray.Count > 0 || _process.ErrorOutputArray.Count > 0) {
+                    // we do not put anything in the standard output, if there is something then it is a runtime error!
+                    // but we do not consider that the execution failed since it actually went till the end
+                    foreach (var output in _process.StandardOutputArray.Union(_process.ErrorOutputArray)) {
+                        // extract message and number from format "error (nb)"
+                        var idx = output.LastIndexOf('(');
+                        if (output.Length == 0 || 
+                            output[output.Length - 1] != ')' || 
+                            idx < 0 ||  
+                            output.Length - 1 - idx - 1 <= 0 || 
+                            !int.TryParse(output.Substring(idx + 1, output.Length - 1 - idx - 1), out int nb)) {
+                            nb = 0;
+                            idx = output.Length + 1;
+                        }
+
+                        if (nb > 0) {
+                            HandledExceptions.Add(new ExecutionOpenedgeException {
+                                ErrorNumber = nb,
+                                ErrorMessage = output.Substring(0, idx - 1)
+                            });
+                        }
+                    }
                 }
 
             } catch (Exception e) {
@@ -324,7 +369,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected virtual void PublishExecutionEndEvents() {
             // end of successful/unsuccessful execution action
             try {
-                if (ExecutionFailed || DbConnectionFailed && NeedDatabaseConnection) {
+                if (ExecutionFailed) {
                     OnExecutionFailed?.Invoke(this);
                 } else {
                     OnExecutionOk?.Invoke(this);

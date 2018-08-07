@@ -40,7 +40,7 @@ namespace Oetools.Utilities.Lib {
                     }
                 }
             } catch (Exception e) {
-                throw new Exception($"Couldn\'t read the file {path.Quoter()}", e);
+                throw new Exception($"Couldn\'t read the file {path.PrettyQuote()}", e);
             }
         }
 
@@ -53,6 +53,18 @@ namespace Oetools.Utilities.Lib {
             }
             try {
                 Directory.Delete(path, recursive);
+            } catch (DirectoryNotFoundException) {
+                return false;
+            }
+            return true;
+        }
+
+        public static bool DeleteFileIfNeeded(string path) {
+            if (string.IsNullOrEmpty(path)) {
+                return false;
+            }
+            try {
+                File.Delete(path);
             } catch (DirectoryNotFoundException) {
                 return false;
             }
@@ -187,6 +199,19 @@ namespace Oetools.Utilities.Lib {
                     Action(reader);
                 }
             }
+        }
+
+        /// <summary>
+        /// Returns a temporary directory for this application
+        /// </summary>
+        /// <returns></returns>
+        public static string GetTempDirectory(string subfolder = null) {
+            var tmpDir = Path.Combine(Path.GetTempPath(), ".oe_tmp");
+            if (!string.IsNullOrEmpty(subfolder)) {
+                tmpDir = Path.Combine(tmpDir, subfolder);
+            }
+            CreateDirectoryIfNeeded(tmpDir);
+            return tmpDir;
         }
     }
 }

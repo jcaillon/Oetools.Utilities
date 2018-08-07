@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
 
@@ -53,8 +54,9 @@ namespace Oetools.Utilities.Lib {
                 if (_standardOutput == null || _process != null && !_process.HasExited) {
                     _standardOutput = new StringBuilder();
                     foreach (var s in StandardOutputArray) {
-                        _standardOutput.Append(s);
+                        _standardOutput.AppendLine(s);
                     }
+                    _standardOutput.TrimEnd();
                 }
                 return _standardOutput;
             }
@@ -70,10 +72,38 @@ namespace Oetools.Utilities.Lib {
                 if (_errorOutput == null || _process != null && !_process.HasExited) {
                     _errorOutput = new StringBuilder();
                     foreach (var s in ErrorOutputArray) {
-                        _errorOutput.Append(s);
+                        _errorOutput.AppendLine(s);
                     }
+                    _errorOutput.TrimEnd();
                 }
                 return _errorOutput;
+            }
+        }
+        
+        private StringBuilder _batchModeOutput;
+        
+        /// <summary>
+        /// Returns all the messages sent to the standard or error output, should be used once the process has exited
+        /// </summary>
+        public StringBuilder BatchOutput {
+            get {
+                if (_batchModeOutput == null || _process != null && !_process.HasExited) {
+                    _batchModeOutput = new StringBuilder();
+                    if (ErrorOutputArray.Count > 0) {
+                        foreach (var s in ErrorOutputArray) {
+                            _batchModeOutput.AppendLine(s);
+                        }
+                        _batchModeOutput.TrimEnd();
+                    }
+
+                    if (StandardOutputArray.Count > 0) {
+                        foreach (var s in StandardOutputArray) {
+                            _batchModeOutput.AppendLine(s);
+                        }
+                        _batchModeOutput.TrimEnd();
+                    }
+                }
+                return _batchModeOutput;
             }
         }
         
@@ -87,10 +117,22 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         public List<string> ErrorOutputArray { get; private set; } = new List<string>();
 
+        private int? _exitCode;
+        
         /// <summary>
         /// Exit code of the process
         /// </summary>
-        public int ExitCode { get; private set; }
+        public int ExitCode {
+            get {
+                if (!_exitCode.HasValue && _process != null) {
+                    _process.WaitForExit();
+                    _exitCode = _process.ExitCode;
+                }
+                return _exitCode ?? 0;
+            }
+            set { _exitCode = value; }
+        }
+
         
         /// <summary>
         /// Whether or not this process has been killed
@@ -115,9 +157,9 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         public bool TryExecute(string arguments = null, bool silent = true) {
             try {
-                return Execute(arguments, silent) && ErrorOutput.Length == 0;
+                return Execute(arguments, silent) && ErrorOutputArray.Count == 0;
             } catch (Exception e) {
-                ErrorOutput.AppendLine(e.ToString());
+                ErrorOutputArray.Add(e.ToString());
                 return false;
             }
         }
@@ -177,7 +219,11 @@ namespace Oetools.Utilities.Lib {
 
         protected virtual void PrepareStart(string arguments, bool silent) {
             StandardOutputArray.Clear();
+            _standardOutput = null;
             ErrorOutputArray.Clear();
+            _errorOutput = null;
+            _batchModeOutput = null;
+            Killed = false;
             ExitCode = 0;
 
             _startInfo = new ProcessStartInfo {
@@ -231,9 +277,6 @@ namespace Oetools.Utilities.Lib {
         }
 
         protected virtual void ProcessOnExited(object sender, EventArgs e) {
-            if (_process != null) {
-                ExitCode = _process.ExitCode;
-            }
             OnProcessExit?.Invoke(sender, e);
         }
     }
