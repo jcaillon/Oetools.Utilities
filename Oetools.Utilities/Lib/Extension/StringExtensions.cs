@@ -245,22 +245,55 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Format a text to use as a single line CHARACTER string encapsulated in double quotes "
+        ///     Replaces " by "", add extra " at the start and end of the string,
+        /// should be used to write a sring to a file that will be read by progress using IMPORT
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static string ProExportFormat(this string text) {
+            return $"\"{text?.Replace("\"", "\"\"").Replace("\n", "").Replace("\r", "") ?? ""}\"";
+        }
+
+        /// <summary>
+        ///  Format a text to use as a single line CHARACTER string encapsulated in double quotes ",
+        /// to use in CHARACTER string definition in openedge code
+        /// i.e. $"assign lc = {"toescape".ProQuoter()}"
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
         /// <remarks>https://knowledgebase.progress.com/articles/Article/P27229</remarks>
-        public static string ProQuoter(this string text) {
-            return $"\"{text?.Replace("~", "~~").Replace("\"", "~\"").Replace("\\", "~\\").Replace("{", "~{").Replace("\n", "~n").Replace("\r", "~r").Replace("\t", "~t") ?? ""}\"";
+        public static string ProStringify(this string text) {
+            if (text == null) {
+                return "?";
+            }
+            return $"\"{text.Replace("~", "~~").Replace("\"", "~\"").Replace("\\", "~\\").Replace("{", "~{").Replace("\n", "~n").Replace("\r", "~r").Replace("\t", "~t")}\"";
         }
 
         /// <summary>
-        ///     Uses ProQuoter then make sure to escape every ~ with a double ~~
+        /// Format a text to use as a single line &amp;SCOPE-DEFINE CHARACTER string encapsulated in double quotes " and with ~ escaped,
+        /// to be used in a &amp;SCOPE-DEFINE definition
+        /// i.e. $"&amp;SCOPE-DEFINE myvar {"toescape".ProQuoter()}"
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
-        public static string PreProcQuoter(this string text) {
-            return text.ProQuoter().Replace("~", "~~");
+        public static string ProPreProcStringify(this string text) {
+            return (text ?? "").ProStringify().Replace("~", "~~");
+        }
+        
+        /// <summary>
+        /// The opposite function of proquoter
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static string ProUnescapeString(this string text) {
+            if (string.IsNullOrEmpty(text)) {
+                return text;
+            }           
+            text = text.StripQuotes();
+            if (text.Equals("?")) {
+                return null;
+            }
+            return text.Replace("~~", "~").Replace("~\"", "\"").Replace("~\\", "\\").Replace("~{", "{").Replace("~n", "\n").Replace("~r", "\r").Replace("~t", "\t");
         }
 
         /// <summary>

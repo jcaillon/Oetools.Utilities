@@ -26,6 +26,7 @@ using System.IO;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge;
+using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Test.Archive;
 
 namespace Oetools.Utilities.Test {
@@ -66,21 +67,33 @@ namespace Oetools.Utilities.Test {
             }
         }
 
-        public static List<IFileToArchive> GetPackageTestFilesList(string testFolder, string outCab) {
+        public static void CreateDatabaseFromDf(string targetDatabasePath, string dfPath) {
+            if (!GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            using (var dbAdministrator = new DatabaseAdministrator(dlcPath)) {
+                dbAdministrator.ProstrctCreate(targetDatabasePath, dbAdministrator.GenerateStructureFileFromDf(targetDatabasePath, dfPath), DatabaseBlockSize.S4096);
+                dbAdministrator.Procopy(targetDatabasePath, DatabaseBlockSize.S4096);
+                dbAdministrator.LoadDf(targetDatabasePath, dfPath);
+            }
+        }
+
+        public static List<IFileToArchive> GetPackageTestFilesList(string testFolder, string outPackName) {
             return new List<IFileToArchive> {
                 new FileToArchive {
                     SourcePath = Path.Combine(testFolder, "file1.txt"),
-                    ArchivePath = Path.Combine(testFolder, outCab),
+                    ArchivePath = Path.Combine(testFolder, outPackName),
                     RelativePathInArchive = "file1.txt"
                 },
                 new FileToArchive {
                     SourcePath = Path.Combine(testFolder, "file2.txt"),
-                    ArchivePath = Path.Combine(testFolder, outCab),
+                    ArchivePath = Path.Combine(testFolder, outPackName),
                     RelativePathInArchive = Path.Combine("subfolder1", "file2.txt")
                 },
                 new FileToArchive {
                     SourcePath = Path.Combine(testFolder, "file3.txt"),
-                    ArchivePath = Path.Combine(testFolder, outCab),
+                    ArchivePath = Path.Combine(testFolder, outPackName),
                     RelativePathInArchive = Path.Combine("subfolder1", "bla", "file3.txt")
                 }
             };

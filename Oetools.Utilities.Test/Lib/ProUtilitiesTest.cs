@@ -74,21 +74,17 @@ namespace Oetools.Utilities.Test.Lib {
                 return;
             }
             
-            var res = ProUtilities.GetOpenedgeErrorDetailedMessage(dlcPath, errorNumber);
+            var res = ProUtilities.GetOpenedgeProMessage(dlcPath, errorNumber);
             Debug.WriteLine(res);
-            Assert.IsNotNull(res, res);
+            Assert.IsNotNull(res, "null");
         }
         
         [TestMethod]
-        [DataRow("1", "1|+")]
-        [DataRow(@"1 """" 2", @"1|""""|2|+")]
-        [DataRow(@"""field"" 2", @"""field""|2|+")]
-        [DataRow(@"3 ""field"" 2", @"3|""field""|2|+")]
-        [DataRow(@"3 ""field""", @"3|""field""|+")]
+        [DataRow("1\"", "1\"|+")]
         [DataRow(@"
 ""f k"" 10 ""f k"" 20 ""long
 very
-long
+l""""o""""ng
 line
 ""
 10 ""long
@@ -99,13 +95,19 @@ ending"" 30 ""last""
 
 ", @"""f k""|10|""f k""|20|""long
 very
-long
+l""o""ng
 line
 ""|+10|""long
 very
 long
 line
 ending""|30|""last""|+")]
+        [DataRow(@"3 ""field""", @"3|""field""|+")]
+        [DataRow("1", "1|+")]
+        [DataRow(@"1 """" 2", @"1|""""|2|+")]
+        [DataRow(@"""field"" 2", @"""field""|2|+")]
+        [DataRow(@"3 ""field"" 2", @"3|""field""|2|+")]
+        [DataRow(@"3 ""field""", @"3|""field""|+")]
         public void ReadOpenedgeUnformattedExportFile_Test(string content, string expected) {
            var path = Path.Combine(TestFolder, "data.d");
             File.WriteAllText(path, content);

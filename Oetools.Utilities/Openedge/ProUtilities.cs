@@ -39,7 +39,7 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="dlcPath"></param>
         /// <param name="errorNumber"></param>
         /// <returns></returns>
-        public static string GetOpenedgeErrorDetailedMessage(string dlcPath, int errorNumber) {
+        public static ProMsg GetOpenedgeProMessage(string dlcPath, int errorNumber) {
             var messageDir = Path.Combine(dlcPath, "prohelp", "msgdata");
             if (!Directory.Exists(messageDir)) {
                 return null;
@@ -49,20 +49,37 @@ namespace Oetools.Utilities.Openedge {
                 return null;
             }
 
-            string outputMessage = null;
+            ProMsg outputMessage = null;
             ReadOpenedgeUnformattedExportFile(messageFile, record => {
-                if (record.Count >= 5 && !record[2].StartsWith("syserr")) {
-                    var categories = new List<string> {
-                        "Compiler", "Database", "Index", "Miscellaneous", "Operating System", "Program/Execution", "Syntax"
+                if (record.Count >= 5) {
+                    outputMessage = new ProMsg {
+                        Number = errorNumber,
+                        Text = record[1].StripQuotes(),
+                        Description = record[2].StripQuotes(),
+                        Category = record[3].StripQuotes(),
+                        KnowledgeBase = record[4].StripQuotes()
                     };
-                    var catFirstLetter = record[3].StripQuotes();
-                    var cat = categories.FirstOrDefault(c => c.StartsWith(catFirstLetter, StringComparison.CurrentCultureIgnoreCase));
-                    outputMessage = string.Format("{0}{1}{2}", cat != null ? $"({cat}) " : "", record[2].StripQuotes(), record[4].Length > 2 ? $" ({record[4].StripQuotes()})": "");
                 }
                 return false;
             }, (lineNumber, line) => line.StartsWith($"{errorNumber} "));
 
             return outputMessage;
+        }
+
+        public class ProMsg {
+            public int Number { get; set; }
+            public string Text { get; set; }
+            public string Description { get; set; }
+            public string Category { get; set; }
+            public string KnowledgeBase { get; set; }
+
+            public override string ToString() {
+                var categories = new List<string> {
+                    "Compiler", "Database", "Index", "Miscellaneous", "Operating System", "Program/Execution", "Syntax"
+                };
+                var cat = categories.FirstOrDefault(c => c.StartsWith(Category, StringComparison.CurrentCultureIgnoreCase));
+                return string.Format("{0}{1}{2}", cat != null ? $"({cat}) " : "", Description, KnowledgeBase.Length > 2 ? $" ({KnowledgeBase.StripQuotes()})" : "");
+            }
         }
 
         /// <summary>
@@ -97,13 +114,21 @@ namespace Oetools.Utilities.Openedge {
                                 int fieldEnd;
                                 if (line[fieldBegin] == '"' || inStringField) {
                                     fieldEnd = fieldBegin + (inStringField ? 0 : 1) - 1;
+                                    bool firstLoop = true;
                                     do {
+                                        if (!firstLoop && line[fieldEnd + 1] == '"') {
+                                            fieldEnd++;
+                                        }
+                                        firstLoop = false;
                                         fieldEnd = line.IndexOf('"', fieldEnd + 1);
                                         if (fieldEnd < 0) {
                                             fieldEnd = line.Length - 1;
                                         }
                                     } while (fieldEnd < line.Length - 1 && line[fieldEnd + 1] == '"');
                                     var currentRecordValue = line.Substring(fieldBegin, fieldEnd - fieldBegin + 1);
+                                    if (currentRecordValue.Length > 2) {
+                                        currentRecordValue = currentRecordValue.Replace("\"\"", "\"");
+                                    }
                                     if (inStringField) {
                                         record[record.Count - 1] = $"{record.Last()}{Environment.NewLine}{currentRecordValue}";
                                     } else {

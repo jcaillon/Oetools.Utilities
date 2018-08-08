@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
@@ -36,11 +37,13 @@ namespace Oetools.Utilities.Openedge.Execution {
         private string _dlcDirectoryPath;
         private string _tempDirectory;
         private string _databaseConnectionString;
+        private Version _proVersion;
 
         public string DlcDirectoryPath {
             get => _dlcDirectoryPath;
             set {
                 _canProVersionUseNoSplash = null;
+                _proVersion = null;
                 _dlcDirectoryPath = value;
             }
         }
@@ -90,7 +93,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool CanProVersionUseNoSplash {
             get {
                 if (!_canProVersionUseNoSplash.HasValue) {
-                    _canProVersionUseNoSplash = ProUtilities.CanProVersionUseNoSplashParameter(ProUtilities.GetProVersionFromDlc(DlcDirectoryPath));
+                    _canProVersionUseNoSplash = ProUtilities.CanProVersionUseNoSplashParameter(ProVersion);
                 }
                 return _canProVersionUseNoSplash.Value;
             }
@@ -102,6 +105,19 @@ namespace Oetools.Utilities.Openedge.Execution {
                 _tempIniFilePath = null;
                 _tempDirectory = value;
             }
+        }
+
+        public Version ProVersion {
+            get {
+                if (_proVersion == null) {
+                    _proVersion = ProUtilities.GetProVersionFromDlc(DlcDirectoryPath);
+                }
+                return _proVersion;
+            }
+        }
+
+        public bool IsProVersionHigherOrEqualTo(Version version) {
+            return ProVersion.CompareTo(version) >= 0;
         }
     }
 }

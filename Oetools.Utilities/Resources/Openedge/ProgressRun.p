@@ -274,9 +274,9 @@ PROCEDURE pi_handleCompilErrors PRIVATE:
             IF RETURN-VALUE > "" THEN
                 ASSIGN lc_msg = RETURN-VALUE + "~n".
             IF ERROR-STATUS:NUM-MESSAGES > 0 THEN DO:
-                DEFINE VARIABLE li_ AS INTEGER NO-UNDO.
-                DO li_ = 1 TO ERROR-STATUS:NUM-MESSAGES:
-                    ASSIGN lc_msg = lc_msg + "(" + STRING(li_) + "): " + ERROR-STATUS:GET-MESSAGE(li_) + "~n".
+                DEFINE VARIABLE li_i AS INTEGER NO-UNDO.
+                DO li_i = 1 TO ERROR-STATUS:NUM-MESSAGES:
+                    ASSIGN lc_msg = lc_msg + "(" + STRING(li_i) + "): " + ERROR-STATUS:GET-MESSAGE(li_i) + "~n".
                 END.
             END.
             ASSIGN lc_msg = SUBSTITUTE("&1~t&2~t&3~t&4~t&5~t&6~t&7~t&8&9",

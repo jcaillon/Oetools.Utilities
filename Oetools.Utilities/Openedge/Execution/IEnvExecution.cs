@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Oetools.Utilities.Openedge.Execution {
     
@@ -58,5 +59,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Temporary folder used when executing openedge
         /// </summary>
         string TempDirectory { get; }
+
+        bool IsProVersionHigherOrEqualTo(Version version);
     }
 }

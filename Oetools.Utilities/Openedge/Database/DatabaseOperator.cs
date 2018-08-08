@@ -240,6 +240,17 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Start a databaser server
         /// </summary>
         /// <param name="targetDbPath"></param>
+        /// <param name="nbUsers"></param>
+        /// <param name="options"></param>
+        /// <returns>start parameters string</returns>
+        public string ProServe(string targetDbPath, int? nbUsers = null, string options = null) {
+            return ProServe(targetDbPath, null, nbUsers, options);
+        }
+
+        /// <summary>
+        /// Start a databaser server
+        /// </summary>
+        /// <param name="targetDbPath"></param>
         /// <param name="servicePort"></param>
         /// <param name="nbUsers"></param>
         /// <param name="options"></param>
@@ -258,11 +269,21 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <exception cref="DatabaseOperationException"></exception>
         /// <returns>start parameters string</returns>
         public string ProServe(string targetDbPath, string serviceName, int? nbUsers = null, string options = null) {
+            return ProServe(targetDbPath, null, serviceName, nbUsers, options);
+        }
+
+        /// <summary>
+        /// Start a database server
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="hostname"></param>
+        /// <param name="serviceName"></param>
+        /// <param name="nbUsers"></param>
+        /// <param name="options"></param>
+        /// <exception cref="DatabaseOperationException"></exception>
+        /// <returns>start parameters string</returns>
+        public string ProServe(string targetDbPath, string hostname, string serviceName, int? nbUsers = null, string options = null) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
-            
-            if (string.IsNullOrEmpty(serviceName)) {
-                throw new DatabaseOperationException("The service name/port can't be null");
-            }
             
             if (nbUsers != null) {
                 var mn = 1;
@@ -279,8 +300,16 @@ namespace Oetools.Utilities.Openedge.Database {
             if (busyMode == DatabaseBusyMode.MultiUser) {
                 throw new DatabaseOperationException("Database already used in multi user mode");
             }
-            
-            options = $"{dbPhysicalName} -S {serviceName} {options ?? ""}".CliCompactWhitespaces();
+
+            if (!string.IsNullOrEmpty(hostname)) {
+                options = $"-N TCP -H {hostname} {options ?? ""}";
+            }
+
+            if (!string.IsNullOrEmpty(serviceName)) {
+                options = $"-S {serviceName} {options ?? ""}";
+            }
+
+            options = $"{dbPhysicalName} {options ?? ""}".CliCompactWhitespaces();
 
             GetExecutable(ProservePath);
             var proc = Process.Start(new ProcessStartInfo {

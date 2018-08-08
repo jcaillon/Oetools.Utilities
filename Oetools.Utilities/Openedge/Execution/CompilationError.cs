@@ -20,11 +20,6 @@
         public int Column { get; set; }
         public int ErrorNumber { get; set; }
         public string Message { get; set; }
-
-        /// <summary>
-        ///     indicates if the error appears several times
-        /// </summary>
-        public int Times { get; set; }
     }
 
     public enum CompilationErrorLevel {

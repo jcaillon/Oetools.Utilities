@@ -54,6 +54,11 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool NeedDatabaseConnection { get; set; }
 
         /// <summary>
+        /// Set the openedge working directory (would default to <see cref="ExecutionTemporaryDirectory"/>)
+        /// </summary>
+        public string WorkingDirectory { get; set; }
+        
+        /// <summary>
         ///     Environment to use
         /// </summary>
         public IEnvExecution Env { get; }
@@ -135,6 +140,8 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected string _runnerPath;
 
+        private bool _executed;
+
         /// <summary>
         ///     Deletes temp directory and everything in it
         /// </summary>
@@ -172,12 +179,10 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <returns></returns>
         /// <exception cref="ExecutionException"></exception>
         public void Start() {
-            DbConnectionFailed = false;
-            ExecutionFailed = false;
-            HasBeenKilled = false;
-            HandledExceptions.Clear();
-            Utils.DeleteFileIfNeeded(_errorLogPath);
-            Utils.DeleteFileIfNeeded(_dbErrorLogPath);
+            if (_executed) {
+                throw new ExecutionException($"This process has already been executed, you can't start it again");
+            }
+            _executed = true;
             
             if (!Directory.Exists(Env.DlcDirectoryPath)) {
                 throw new ExecutionParametersException($"Couldn\'t start an execution, the DLC directory does not exist : {Env.DlcDirectoryPath.PrettyQuote()}");
@@ -193,14 +198,14 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             // Set info
             SetExecutionInfo();
-            SetPreprocessedVar("ErrorLogPath", _errorLogPath.PreProcQuoter());
-            SetPreprocessedVar("DbErrorLogPath", _dbErrorLogPath.PreProcQuoter());
-            SetPreprocessedVar("PropathFilePath", _propathFilePath.PreProcQuoter());
-            SetPreprocessedVar("DbConnectString", Env.DatabaseConnectionString.PreProcQuoter());
-            SetPreprocessedVar("DatabaseAliasList", (Env.DatabaseAliases != null ? string.Join(";", Env.DatabaseAliases.Select(a => $"{a.AliasLogicalName},{a.DatabaseLogicalName}")) : "").PreProcQuoter()); // Format : ALIAS,DATABASE;ALIAS2,DATABASE;...
+            SetPreprocessedVar("ErrorLogPath", _errorLogPath.ProPreProcStringify());
+            SetPreprocessedVar("DbErrorLogPath", _dbErrorLogPath.ProPreProcStringify());
+            SetPreprocessedVar("PropathFilePath", _propathFilePath.ProPreProcStringify());
+            SetPreprocessedVar("DbConnectString", Env.DatabaseConnectionString.ProPreProcStringify());
+            SetPreprocessedVar("DatabaseAliasList", (Env.DatabaseAliases != null ? string.Join(";", Env.DatabaseAliases.Select(a => $"{a.AliasLogicalName},{a.DatabaseLogicalName}")) : "").ProPreProcStringify()); // Format : ALIAS,DATABASE;ALIAS2,DATABASE;...
             SetPreprocessedVar("DbConnectionRequired", NeedDatabaseConnection.ToString());
-            SetPreprocessedVar("PreExecutionProgramPath", Env.PreExecutionProgramPath.PreProcQuoter());
-            SetPreprocessedVar("PostExecutionProgramPath", Env.PostExecutionProgramPath.PreProcQuoter());
+            SetPreprocessedVar("PreExecutionProgramPath", Env.PreExecutionProgramPath.ProPreProcStringify());
+            SetPreprocessedVar("PostExecutionProgramPath", Env.PostExecutionProgramPath.ProPreProcStringify());
 
             // prepare the .p runner
             var runnerProgram = new StringBuilder();
@@ -219,6 +224,10 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
             if (!string.IsNullOrEmpty(Env.IniFilePath)) {
                 _exeParameters.Append($" -ininame {Env.IniFilePath.CliQuoter()} -basekey {"INI".CliQuoter()}");
+            }
+            if (!string.IsNullOrEmpty(WorkingDirectory) && Directory.Exists(WorkingDirectory)) {
+                _processStartDir = WorkingDirectory;
+                _exeParameters.Append($" -T {_tempDir.CliQuoter()}");
             }
             
             // start the process
@@ -295,14 +304,19 @@ namespace Oetools.Utilities.Openedge.Execution {
                     ExecutionFailed = NeedDatabaseConnection;
                 }
                 
-                if (_process.ExitCode > 0) {
-                    HandledExceptions.Add(new ExecutionProcessException(_process.ExecutablePath, _process.StartParametersUsed, _process.WorkingDirectory, _process.BatchOutput.ToString(), _process.ExitCode));
-                    ExecutionFailed = true;              
+                if (_process.ExitCode > 0 || !File.Exists(_errorLogPath)) {
+                    // exit code not 0 or the log file wasn't created, indicating that the procedure didn't run until the end correctly
+                    foreach (var output in _process.StandardOutputArray.Union(_process.ErrorOutputArray)) {
+                        var ex = ExecutionOpenedgeException.GetFromString(output);
+                        if (ex != null) {
+                            HandledExceptions.Add(ex);
+                        }
+                    }
 
-                } else if (!File.Exists(_errorLogPath)) {
-                    // the log file wasn't created, indicating that the procedure didn't run until the end correctly
-                    HandledExceptions.Add(new ExecutionProcessException(_process.ExecutablePath, _process.StartParametersUsed, _process.WorkingDirectory, _process.BatchOutput.ToString(), _process.ExitCode));
-                    ExecutionFailed = true;     
+                    if (HandledExceptions.Count == 0) {
+                        HandledExceptions.Add(new ExecutionProcessException(_process.ExecutablePath, _process.StartParametersUsed, _process.WorkingDirectory, _process.BatchOutput.ToString(), _process.ExitCode));
+                    }
+                    ExecutionFailed = true;              
                     
                 } else if (new FileInfo(_errorLogPath).Length > 0) {
                     // else if the log isn't empty, something went wrong
@@ -313,22 +327,9 @@ namespace Oetools.Utilities.Openedge.Execution {
                     // we do not put anything in the standard output, if there is something then it is a runtime error!
                     // but we do not consider that the execution failed since it actually went till the end
                     foreach (var output in _process.StandardOutputArray.Union(_process.ErrorOutputArray)) {
-                        // extract message and number from format "error (nb)"
-                        var idx = output.LastIndexOf('(');
-                        if (output.Length == 0 || 
-                            output[output.Length - 1] != ')' || 
-                            idx < 0 ||  
-                            output.Length - 1 - idx - 1 <= 0 || 
-                            !int.TryParse(output.Substring(idx + 1, output.Length - 1 - idx - 1), out int nb)) {
-                            nb = 0;
-                            idx = output.Length + 1;
-                        }
-
-                        if (nb > 0) {
-                            HandledExceptions.Add(new ExecutionOpenedgeException {
-                                ErrorNumber = nb,
-                                ErrorMessage = output.Substring(0, idx - 1)
-                            });
+                        var ex = ExecutionOpenedgeException.GetFromString(output);
+                        if (ex != null) {
+                            HandledExceptions.Add(ex);
                         }
                     }
                 }
@@ -354,7 +355,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     if (split.Length == 2) {
                         var t = new T {
                             ErrorNumber = int.Parse(split[0]),
-                            ErrorMessage = split[1]
+                            ErrorMessage = split[1].ProUnescapeString()
                         };
                         output.Add(t);
                     }

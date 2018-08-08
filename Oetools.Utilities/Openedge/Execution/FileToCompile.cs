@@ -40,13 +40,12 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <summary>
-        /// Directory in which to compile this file, if null or innapropriate a temporary directory will be used
+        /// Directory in which to compile this file, if null a temporary directory will be used
         /// </summary>
         public string PreferedTargetPath { get; set; }
 
-        public FileToCompile(string sourcePath, string preferedTargetPath) {
+        public FileToCompile(string sourcePath) {
             SourcePath = sourcePath;
-            PreferedTargetPath = preferedTargetPath;
         }
     }
 

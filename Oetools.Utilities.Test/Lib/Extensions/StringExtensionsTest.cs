@@ -209,14 +209,15 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         }
         
         [TestMethod]
-        [DataRow(null, @"""""")]
+        [DataRow(null, @"?")]
         [DataRow(@"", @"""""")]
         [DataRow("mot", @"""mot""")]
         [DataRow("mot\ndeux", @"""mot~ndeux""")]
         [DataRow("mot\"\ndeux", @"""mot~""~ndeux""")]
         [DataRow("mot~cool\"\nde{ux\r\t", @"""mot~~cool~""~nde~{ux~r~t""")]
-        public void ProQuoter_Test(string input, string expected) {
-            Assert.AreEqual(expected, input.ProQuoter());
+        public void ProQuoter_ProUnescape_Test(string input, string expected) {
+            Assert.AreEqual(expected, input.ProStringify());
+            Assert.AreEqual(input, expected.ProUnescapeString());
         }
         
         [TestMethod]
@@ -227,7 +228,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow("mot\"\ndeux", @"""mot~~""~~ndeux""")]
         [DataRow("mot~cool\"\nde{ux\r\t", @"""mot~~~~cool~~""~~nde~~{ux~~r~~t""")]
         public void PreProcQuoter_Test(string input, string expected) {
-            Assert.AreEqual(expected, input.PreProcQuoter());
+            Assert.AreEqual(expected, input.ProPreProcStringify());
         }
     }
 }

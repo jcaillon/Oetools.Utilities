@@ -15,6 +15,31 @@ namespace Oetools.Utilities.Openedge.Execution {
         public int ErrorNumber { get; set; }
         public string ErrorMessage { get; set; }
         public override string Message => $"({ErrorNumber}) {ErrorMessage}";
+
+        /// <summary>
+        /// Get an exception from a formatted string "error (nb)",
+        /// returns null if the format is incorrect
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static ExecutionOpenedgeException GetFromString(string input) {
+            var idx = input.LastIndexOf('(');
+            if (input.Length == 0 || 
+                input[input.Length - 1] != ')' || 
+                idx < 0 ||  
+                input.Length - 1 - idx - 1 <= 0 || 
+                !int.TryParse(input.Substring(idx + 1, input.Length - 1 - idx - 1), out int nb)) {
+                nb = 0;
+                idx = input.Length + 1;
+            }
+            if (nb > 0) {
+                return new ExecutionOpenedgeException {
+                    ErrorNumber = nb,
+                    ErrorMessage = input.Substring(0, idx - 1)
+                };
+            }
+            return null;
+        }
     }
         
     /// <summary>

@@ -94,7 +94,11 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForProcessExit();
                 Assert.IsFalse(exec.ExecutionFailed, "ok");
                 Assert.AreEqual(3, _iOeExecutionTestEvents);
-
+            }
+            using (var exec = new OeExecutionCustomTest(env)) {
+                exec.OnExecutionEnd += execution => _iOeExecutionTestEvents++;
+                exec.OnExecutionOk += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 2;
+                exec.OnExecutionFailed += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 4;
                 _iOeExecutionTestEvents = 0;
                 exec.ProgramContent = "to fail";
                 exec.Start();
@@ -138,12 +142,14 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForProcessExit();
                 Assert.IsTrue(exec.ExecutionFailed, "failed");
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionProcessException));
-                
+            }
+            using (var exec = new OeExecutionCustomTest(env)) {
                 exec.ProgramContent = "";
                 exec.Start();
                 exec.WaitForProcessExit();
                 Assert.IsFalse(exec.ExecutionFailed, "not failed");
-                
+            }
+            using (var exec = new OeExecutionCustomTest(env)) {
                 // error in log
                 exec.ProgramContent = "return error \"oups\".";
                 exec.Start();
@@ -151,6 +157,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.ExecutionFailed, "failed2");
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorMessage.Equals("oups")));
                 
+            }
+            using (var exec = new OeExecutionCustomTest(env)) {
                 // runtime error (this won't work in non batch mode)
                 exec.ProgramContent = @"
                 DEFINE VARIABLE lc_1 AS CHARACTER NO-UNDO.
@@ -243,6 +251,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.ExecutionFailed, "failed");
                 Assert.IsTrue(exec.DbConnectionFailed, "no connection");
                 
+            }
+            using (var exec = new OeExecutionCustomTest(env)) {
                 exec.NeedDatabaseConnection = false;
                 exec.Start();
                 exec.WaitForProcessExit();
@@ -330,14 +340,19 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         }
         
         [TestMethod]
-        public void Test1() {
-            var content1 = @"USING namespacerandom.*.
-CLASS namespacerandom.Class1 INHERITS Class2:
-END CLASS.";
-            var content2 = @"CLASS namespacerandom.Class2 ABSTRACT:
-END CLASS.";
-            
-            
+        public void OeExecution_Test_WorkingDirectory() {
+            if (!GetEnvExecution(out EnvExecution env)) {
+                return;
+            }
+            env.UseProgressCharacterMode = true;
+            using (var exec = new OeExecutionCustomTest(env)) {
+                exec.WorkingDirectory = Path.Combine(TestFolder);
+                exec.ProgramContent = "FILE-INFO:FILE-NAME = \".\". PUT UNFORMATTED SESSION:TEMP-DIRECTORY SKIP FILE-INFO:FULL-PATHNAME.";
+                exec.Start();
+                exec.WaitForProcessExit();
+                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.AreEqual(exec.Output.Replace("\r", "").Replace("\\\n", "\n").TrimEnd('\\'), $"{exec.ExecutionTemporaryDirectory}\n{TestFolder}");
+            }
         }
 
         private bool GetEnvExecution(out EnvExecution env) {

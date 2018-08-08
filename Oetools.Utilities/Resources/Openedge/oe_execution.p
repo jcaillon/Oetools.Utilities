@@ -31,6 +31,13 @@ FUNCTION fi_escape_special_char RETURNS CHARACTER PRIVATE ( INPUT ipc_text AS CH
 
 /* ***************************  Main Block  *************************** */
 
+IF NOT SESSION:BATCH-MODE THEN DO:
+    SESSION:SYSTEM-ALERT-BOXES = TRUE.
+    SESSION:APPL-ALERT-BOXES = TRUE.
+    SESSION:DEBUG-ALERT = TRUE.
+    SESSION:SUPPRESS-WARNINGS = FALSE.
+END.
+
 RUN main NO-ERROR.
 fi_output_last_error(INPUT {&ErrorLogPath}).
 

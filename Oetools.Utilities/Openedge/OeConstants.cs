@@ -21,10 +21,12 @@ using System.IO;
 namespace Oetools.Utilities.Openedge {
     public static class OeConstants {
         public const string ExtR = ".r";
+        public const string ExtCompileErrorsLog = ".celog";
         public const string ExtDbg = ".dbg";
         public const string ExtLis = ".lis";
         public const string ExtXrf = ".xrf";
         public const string ExtXrfXml = ".xrf.xml";
+        public const string ExtPreprocessed = ".preprocessed";
         public const string ExtCls = ".cls";
         public const string ExtFileIdLog = ".fileidlog";
         public const string ExtRefTables = ".reftables";

@@ -41,13 +41,13 @@ namespace Oetools.Utilities.Openedge.Execution {
             base.SetExecutionInfo();
 
             OutputPath = Path.Combine(_tempDir, "db.extract");
-            SetPreprocessedVar("OutputPath", OutputPath.PreProcQuoter());
+            SetPreprocessedVar("OutputPath", OutputPath.ProPreProcStringify());
 
             var fileToExecute = "db_" + DateTime.Now.ToString("yyMMdd_HHmmssfff") + ".p";
             File.WriteAllText(Path.Combine(_tempDir, fileToExecute), ProgramDumpTableCrc);
-            SetPreprocessedVar("CurrentFilePath", fileToExecute.PreProcQuoter());
-            SetPreprocessedVar("DatabaseExtractCandoTblType", DatabaseExtractCandoTblType.Trim().PreProcQuoter());
-            SetPreprocessedVar("DatabaseExtractCandoTblName", DatabaseExtractCandoTblName.Trim().PreProcQuoter());
+            SetPreprocessedVar("CurrentFilePath", fileToExecute.ProPreProcStringify());
+            SetPreprocessedVar("DatabaseExtractCandoTblType", DatabaseExtractCandoTblType.Trim().ProPreProcStringify());
+            SetPreprocessedVar("DatabaseExtractCandoTblName", DatabaseExtractCandoTblName.Trim().ProPreProcStringify());
         }
         
         private string ProgramDumpTableCrc => OpenedgeResources.GetOpenedgeAsStringFromResources(@"DumpTableCrc.p");
