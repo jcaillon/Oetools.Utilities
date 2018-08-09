@@ -31,13 +31,6 @@ FUNCTION fi_escape_special_char RETURNS CHARACTER PRIVATE ( INPUT ipc_text AS CH
 
 /* ***************************  Main Block  *************************** */
 
-IF NOT SESSION:BATCH-MODE THEN DO:
-    SESSION:SYSTEM-ALERT-BOXES = TRUE.
-    SESSION:APPL-ALERT-BOXES = TRUE.
-    SESSION:DEBUG-ALERT = TRUE.
-    SESSION:SUPPRESS-WARNINGS = FALSE.
-END.
-
 RUN main NO-ERROR.
 fi_output_last_error(INPUT {&ErrorLogPath}).
 
@@ -45,7 +38,7 @@ fi_output_last_error(INPUT {&ErrorLogPath}).
 We write a final char in the standard output to let the C# side that it went ok */
 fi_write(INPUT {&ErrorLogPath}, INPUT "").
 
-/* Must be QUIT in GUI MODE or prowin32.exe opens an empty editor! */
+/* Must be QUIT in non batch mode or progress opens an empty editor! */
 QUIT.
 
 /* **********************  Internal Procedures  *********************** */
@@ -63,8 +56,10 @@ PROCEDURE main PRIVATE:
 
     /* Session options */
     IF NOT SESSION:BATCH-MODE THEN DO:
-        SESSION:SYSTEM-ALERT-BOXES = YES.
-        SESSION:APPL-ALERT-BOXES = YES.
+        SESSION:SYSTEM-ALERT-BOXES = TRUE.
+        SESSION:APPL-ALERT-BOXES = TRUE.
+        SESSION:DEBUG-ALERT = TRUE.
+        SESSION:SUPPRESS-WARNINGS = FALSE.
     END.
 
     /* Assign the PROPATH here (maximum length is 31990 and the file shouldn't contain more!) */

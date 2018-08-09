@@ -53,7 +53,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         [TestMethod]
         public void OeExecution_Expect_Exception() {
             Assert.ThrowsException<ExecutionParametersException>(() => {
-                using (var exec = new OeExecutionCustomTest(new EnvExecution())) {
+                using (var exec = new OeExecutionCustomTest(new EnvExecution { DlcDirectoryPath = null})) {
                     exec.Start();
                     exec.WaitForProcessExit();
                 }
@@ -141,7 +141,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 Assert.IsTrue(exec.ExecutionFailed, "failed");
-                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionProcessException));
+                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException), "HandledExceptions 1");
             }
             using (var exec = new OeExecutionCustomTest(env)) {
                 exec.ProgramContent = "";
@@ -155,7 +155,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 Assert.IsTrue(exec.ExecutionFailed, "failed2");
-                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorMessage.Equals("oups")));
+                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorMessage.Equals("oups")), "HandledExceptions 2");
                 
             }
             using (var exec = new OeExecutionCustomTest(env)) {
@@ -170,7 +170,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 Assert.IsFalse(exec.ExecutionFailed, "not failed2");
-                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorNumber > 0));
+                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorNumber > 0), "HandledExceptions 3");
             }
 
             env.ProExeCommandLineParameters = "random derp";
@@ -179,7 +179,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 Assert.IsTrue(exec.ExecutionFailed, "failed3");
-                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionProcessException));
+                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException), "HandledExceptions 4");
             }
         }
         
@@ -206,7 +206,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, dbPn2)));
             
             // try if connected well and can manage aliases
-            env.DatabaseConnectionString = $"{DatabaseOperator.GetConnectionString(Path.Combine(TestFolder, dbPn))} {DatabaseOperator.GetConnectionString(Path.Combine(TestFolder, dbPn2))}";
+            env.DatabaseConnectionString = $"{DatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, dbPn))} {DatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, dbPn2))}";
             env.DatabaseAliases = new List<IEnvExecutionDatabaseAlias> {
                 new EnvExecutionDatabaseAlias {
                     DatabaseLogicalName = "test1",
@@ -243,7 +243,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = true;
             
             // try if connected well and can manage aliases
-            env.DatabaseConnectionString = DatabaseOperator.GetConnectionString(Path.Combine(TestFolder, "random.db"));
+            env.DatabaseConnectionString = DatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, "random.db"));
             using (var exec = new OeExecutionCustomTest(env)) {
                 exec.NeedDatabaseConnection = true;
                 exec.Start();

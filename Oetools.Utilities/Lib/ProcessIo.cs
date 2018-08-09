@@ -47,6 +47,11 @@ namespace Oetools.Utilities.Lib {
         public bool RedirectOutput { get; set; } = true;
 
         /// <summary>
+        /// Choose the encoding for the standard/error output
+        /// </summary>
+        public virtual Encoding RedirectedOutputEncoding { get; set; }
+
+        /// <summary>
         /// Standard output, to be called after the process exits
         /// </summary>
         public StringBuilder StandardOutput {
@@ -247,6 +252,10 @@ namespace Oetools.Utilities.Lib {
             if (RedirectOutput) {
                 _startInfo.RedirectStandardError = true;
                 _startInfo.RedirectStandardOutput = true;
+                if (RedirectedOutputEncoding != null) {
+                    _startInfo.StandardErrorEncoding = RedirectedOutputEncoding;
+                    _startInfo.StandardOutputEncoding = RedirectedOutputEncoding;
+                }
             }
 
             _process = new Process {

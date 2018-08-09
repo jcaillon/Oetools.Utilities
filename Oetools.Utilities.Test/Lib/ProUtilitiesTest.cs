@@ -80,7 +80,7 @@ namespace Oetools.Utilities.Test.Lib {
         }
         
         [TestMethod]
-        [DataRow("1\"", "1\"|+")]
+        [DataRow("1\"", "1\"|+", false)]
         [DataRow(@"
 ""f k"" 10 ""f k"" 20 ""long
 very
@@ -101,14 +101,16 @@ line
 very
 long
 line
-ending""|30|""last""|+")]
-        [DataRow(@"3 ""field""", @"3|""field""|+")]
-        [DataRow("1", "1|+")]
-        [DataRow(@"1 """" 2", @"1|""""|2|+")]
-        [DataRow(@"""field"" 2", @"""field""|2|+")]
-        [DataRow(@"3 ""field"" 2", @"3|""field""|2|+")]
-        [DataRow(@"3 ""field""", @"3|""field""|+")]
-        public void ReadOpenedgeUnformattedExportFile_Test(string content, string expected) {
+ending""|30|""last""|+", false)]
+        [DataRow(@"3 ""field""", @"3|""field""|+", false)]
+        [DataRow("1", "1|+", false)]
+        [DataRow(@"1 """" 2", @"1|""""|2|+", false)]
+        [DataRow(@"""field"" 2", @"""field""|2|+", false)]
+        [DataRow(@"3 ""field"" 2", @"3|""field""|2|+", false)]
+        [DataRow(@"3 ""field""", @"3|""field""|+", false)]
+        [DataRow(@"3    ""field""", "+", true)]
+        [DataRow(@" ", "+", true)]
+        public void ReadOpenedgeUnformattedExportFile_Test(string content, string expected, bool hasExceptions) {
            var path = Path.Combine(TestFolder, "data.d");
             File.WriteAllText(path, content);
 
@@ -120,9 +122,10 @@ ending""|30|""last""|+")]
                 }
                 sb.Append("+");
                 return true;
-            });
-            
+            }, out List<Exception> el);
+
             Assert.AreEqual(expected, sb.ToString(), content);
+            Assert.AreEqual(hasExceptions, el != null && el.Count > 0, "exceptions");
         }
         
         [TestMethod]

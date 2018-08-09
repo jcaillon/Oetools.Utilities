@@ -14,7 +14,7 @@
         public CompilationErrorLevel Level { get; set; }
         
         /// <summary>
-        /// Line starts at 0
+        /// Line starts at 1
         /// </summary>
         public int Line { get; set; }
         public int Column { get; set; }

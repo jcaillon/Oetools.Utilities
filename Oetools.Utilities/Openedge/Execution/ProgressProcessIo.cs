@@ -21,6 +21,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Timers;
 using Oetools.Utilities.Lib;
 
@@ -61,6 +62,11 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// The complete start parameters used
         /// </summary>
         public string StartParametersUsed { get; private set; }
+        
+        /// <summary>
+        /// Choose the encoding for the standard/error output
+        /// </summary>
+        public override Encoding RedirectedOutputEncoding { get; set; } = Encoding.Default;
 
         /// <summary>
         ///     Constructor
@@ -85,7 +91,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 #if WINDOWSONLYBUILD
             if (silent && !UseCharacterMode) {
                 _timer = new Timer {
-                    Interval = 200,
+                    Interval = 250,
                     AutoReset = false
                 };
                 _timer.Elapsed += TimerOnElapsed;
@@ -178,13 +184,18 @@ namespace Oetools.Utilities.Openedge.Execution {
         // ReSharper disable once InconsistentNaming
         private const int WS_EX_TOOLWINDOW = 0x00000080;
         
+        [DllImport("user32.dll", EntryPoint = "ShowWindow", SetLastError = true)]
+        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        
         private bool HideProcessFromTaskBar(int procId) {
             var hWnd = IntPtr.Zero;
             do {
                 hWnd = FindWindowEx(IntPtr.Zero, hWnd, OeConstants.ProwinWindowClass, null);
                 GetWindowThreadProcessId(hWnd, out var hWndProcessId);
                 if (hWndProcessId == procId) {
+                    ShowWindow(hWnd, 1);
                     SetWindowLong(hWnd, GWL_EX_STYLE, (GetWindowLong(hWnd, GWL_EX_STYLE) | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW);
+                    ShowWindow(hWnd, 0);
                     return true;
                 }
             } while(hWnd != IntPtr.Zero);	

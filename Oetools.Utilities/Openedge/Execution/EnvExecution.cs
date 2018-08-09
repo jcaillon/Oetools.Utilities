@@ -30,6 +30,10 @@ using Oetools.Utilities.Lib.Extension;
 namespace Oetools.Utilities.Openedge.Execution {
     
     public class EnvExecution : IEnvExecution {
+        
+        public EnvExecution() {
+            DlcDirectoryPath = ProUtilities.GetDlcPathFromEnv();
+        }
 
         private string _iniFilePath;
         private string _tempIniFilePath;
@@ -80,6 +84,9 @@ namespace Oetools.Utilities.Openedge.Execution {
                 return _tempIniFilePath;
             }
             set {
+                if (!string.IsNullOrEmpty(_tempIniFilePath)) {
+                    Utils.DeleteFileIfNeeded(_tempIniFilePath);
+                }
                 _tempIniFilePath = null;
                 _iniFilePath = value;
             }
@@ -116,8 +123,8 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        public bool IsProVersionHigherOrEqualTo(Version version) {
-            return ProVersion.CompareTo(version) >= 0;
+        public virtual bool IsProVersionHigherOrEqualTo(Version version) {
+            return ProVersion != null && version != null && ProVersion.CompareTo(version) >= 0;
         }
     }
 }

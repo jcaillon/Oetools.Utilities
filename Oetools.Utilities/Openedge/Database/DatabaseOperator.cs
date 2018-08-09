@@ -540,26 +540,40 @@ namespace Oetools.Utilities.Openedge.Database {
 
             return 0;
         }
-        
+
         /// <summary>
         /// Returns the multi user connection string to use to connect to a locally hosted database
         /// </summary>
         /// <param name="targetDbPath"></param>
         /// <param name="serviceName"></param>
+        /// <param name="hostname"></param>
+        /// <param name="logicalName"></param>
         /// <returns></returns>
-        public static string GetConnectionString(string targetDbPath, string serviceName) {
+        public static string GetMultiConnectionString(string targetDbPath, string serviceName, string hostname = null, string logicalName = null) {
             GetDatabaseFolderAndName(targetDbPath, out string _, out string dbPhysicalName);
-            return $"-db {dbPhysicalName} -ld {dbPhysicalName} -N TCP -H localhost -S {serviceName}";
+            return $"-db {dbPhysicalName} -ld {logicalName ?? dbPhysicalName} -N TCP -H {hostname ?? "localhost"} -S {serviceName}";
         }
-        
+
+        /// <summary>
+        /// Returns the multi user connection string to use to connect to a locally hosted database
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="logicalName"></param>
+        /// <returns></returns>
+        public static string GetMultiConnectionString(string targetDbPath, string logicalName = null) {
+            GetDatabaseFolderAndName(targetDbPath, out string _, out string dbPhysicalName);
+            return $"-db {dbPhysicalName} -ld {logicalName ?? dbPhysicalName}";
+        }
+
         /// <summary>
         /// Returns the mono user connection string to use to connect to a database
         /// </summary>
         /// <param name="targetDbPath"></param>
+        /// <param name="logicalName"></param>
         /// <returns></returns>
-        public static string GetConnectionString(string targetDbPath) {
+        public static string GetMonoConnectionString(string targetDbPath, string logicalName = null) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
-            return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {dbPhysicalName} -1";
+            return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {logicalName ?? dbPhysicalName} -1";
         }
 
         private static string GetHostName() {
@@ -582,7 +596,9 @@ namespace Oetools.Utilities.Openedge.Database {
                     throw new ArgumentException($"Invalid path {path.PrettyQuote()}");
                 }
 
-                _processIos.Add(path, new ProcessIo(path));
+                _processIos.Add(path, new ProcessIo(path) {
+                    RedirectedOutputEncoding = Encoding.Default
+                });
             }
 
             _lastUsedProcess = _processIos[path];

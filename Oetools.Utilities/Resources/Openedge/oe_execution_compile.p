@@ -19,10 +19,14 @@ This file was created with the 3P :  https://jcaillon.github.io/3P/
     &SCOPED-DEFINE CompileProgressionFilePath ""
     /* LOG-MANAGER doesn't exist prior 10.2 so we can't analyse in early versions */
     &SCOPED-DEFINE IsAnalysisMode FALSE
-    /* XML-XREF if valid for version >= 10.2 */
-    &SCOPED-DEFINE ProVerHigherOrEqualTo10.2 false
+    /* for version >= 10.2 */
+    &SCOPED-DEFINE ProVerHigherOrEqualTo10.2 true
     &SCOPED-DEFINE UseXmlXref false
-    &SCOPED-DEFINE CompileStatementExtraOptions ""
+    &SCOPED-DEFINE CompileStatementExtraOptions 
+    &SCOPED-DEFINE CompilerMultiCompile false 
+    &SCOPED-DEFINE ProVerHigherOrEqualTo11.7 true
+    /* the OPTIONS option was introduced in 11.7 */
+    &SCOPED-DEFINE CompileOptions "" 
 &ENDIF
 
 &IF DEFINED(RunProgramMode) = 0 &THEN
@@ -43,7 +47,6 @@ DEFINE TEMP-TABLE tt_list NO-UNDO
     FIELD dbgPath AS CHARACTER
     FIELD preprocessedPath AS CHARACTER
     FIELD fileIdLogPath AS CHARACTER
-    FIELD refTablesPath AS CHARACTER
     INDEX idxfld order ASCENDING
     .
 
@@ -59,6 +62,10 @@ PROCEDURE program_to_run PRIVATE:
     ------------------------------------------------------------------------------*/
 
     DEFINE VARIABLE li_order AS INTEGER NO-UNDO INITIAL 0.
+    
+    &IF {&ProVerHigherOrEqualTo10.2} &THEN
+        COMPILER:MULTI-COMPILE = {&CompilerMultiCompile}.
+    &ENDIF
 
     /* loop through all the files to compile and store them in a tt */
     INPUT STREAM str_rw FROM VALUE({&CompileListFilePath}) NO-ECHO.
@@ -116,8 +123,13 @@ PROCEDURE program_to_run PRIVATE:
                         .
                 END.
             &ENDIF
+            DEFINE VARIABLE ll_save AS LOGICAL NO-UNDO INITIAL TRUE.
+            ASSIGN ll_save = tt_list.outDirectory > "".
             COMPILE VALUE(tt_list.sourcePath)
-                SAVE INTO VALUE(tt_list.outDirectory)
+                SAVE = ll_save INTO VALUE(tt_list.outDirectory)
+                &IF {&ProVerHigherOrEqualTo11.7} AND {&CompileOptions} > "" &THEN
+                    OPTIONS {&CompileOptions}
+                &ENDIF                
                 LISTING VALUE(tt_list.listingPath)
                 &IF NOT {&UseXmlXref} OR NOT {&ProVerHigherOrEqualTo10.2} OR {&IsAnalysisMode} &THEN
                     XREF VALUE(tt_list.xrfPath)
@@ -126,18 +138,13 @@ PROCEDURE program_to_run PRIVATE:
                 &ENDIF
                 DEBUG-LIST VALUE(tt_list.dbgPath)
                 PREPROCESS VALUE(tt_list.preprocessedPath)
-                &IF {&CompileStatementExtraOptions} > "" &THEN
+                &IF "{&CompileStatementExtraOptions}" > "" &THEN
                     {&CompileStatementExtraOptions}
                 &ENDIF
                 NO-ERROR.
             &IF {&IsAnalysisMode} AND {&ProVerHigherOrEqualTo10.2} &THEN
                 IF tt_list.fileIdLogPath > "" THEN DO:
                     LOG-MANAGER:CLOSE-LOG().
-                END.
-                IF tt_list.refTablesPath > "" THEN DO:
-                    /* Here we generate a file that lists all db.tables + CRC referenced in the .r code produced */
-                    RUN pi_generateTableRef (INPUT tt_list.sourcePath, INPUT tt_list.outDirectory, INPUT tt_list.xrf, INPUT tt_list.refTablesPath) NO-ERROR.
-                    fi_output_last_error(INPUT {&ErrorLogPath}).
                 END.
             &ENDIF
         &ENDIF
@@ -193,8 +200,8 @@ PROCEDURE pi_handleCompilationErrors PRIVATE:
                     ipc_from,
                     IF COMPILER:FILE-NAME > "" THEN COMPILER:FILE-NAME ELSE ipc_from,
                     IF COMPILER:WARNING AND lc_m BEGINS "WARNING" THEN "Warning" ELSE "Error",
-                    IF COMPILER:ERROR-ROW > 0 THEN COMPILER:ERROR-ROW ELSE 0,
-                    IF COMPILER:ERROR-COLUMN > 0 THEN COMPILER:ERROR-COLUMN ELSE 0,
+                    IF COMPILER:ERROR-ROW > 0 THEN COMPILER:ERROR-ROW ELSE 1,
+                    IF COMPILER:ERROR-COLUMN > 0 THEN COMPILER:ERROR-COLUMN ELSE 1,
                     ERROR-STATUS:GET-NUMBER(li_j),
                     lc_m,
                     "~r~n"
@@ -211,140 +218,5 @@ PROCEDURE pi_handleCompilationErrors PRIVATE:
     RETURN "".
 
 END PROCEDURE.
-
-&IF {&IsAnalysisMode} AND {&ProVerHigherOrEqualTo10.2} &THEN
-    PROCEDURE pi_generateTableRef PRIVATE:
-        /*------------------------------------------------------------------------------
-        Summary    : generate a file that lists all db.tables + CRC referenced in the .r code produced
-                     format : <TABLE>~t<CRC>
-        Parameters : <none>
-        ------------------------------------------------------------------------------*/
-
-        DEFINE INPUT PARAMETER ipc_compiledSource AS CHARACTER NO-UNDO.
-        DEFINE INPUT PARAMETER ipc_compilationDir AS CHARACTER NO-UNDO.
-        DEFINE INPUT PARAMETER ipc_xrefPath AS CHARACTER NO-UNDO.
-        DEFINE INPUT PARAMETER ipc_outTableRefPath AS CHARACTER NO-UNDO.
-
-        DEFINE VARIABLE li_i AS INTEGER NO-UNDO.
-        DEFINE VARIABLE lc_tableList AS CHARACTER NO-UNDO INITIAL "".
-        DEFINE VARIABLE lc_crcList AS CHARACTER NO-UNDO INITIAL "".
-        DEFINE VARIABLE lc_rcode AS CHARACTER NO-UNDO.
-        DEFINE VARIABLE lc_rcodePath AS CHARACTER NO-UNDO.
-
-        ASSIGN
-            lc_rcode = ipc_compiledSource
-            lc_rcode = SUBSTRING(lc_rcode, R-INDEX(lc_rcode, "~\") + 1)
-            lc_rcode = SUBSTRING(lc_rcode, 1, R-INDEX(lc_rcode, ".") - 1)
-            lc_rcode = lc_rcode + ".r"
-            lc_rcodePath = RIGHT-TRIM(ipc_compilationDir, "~\") + "~\" + lc_rcode
-            .
-
-        /* The only difficulty is to find the .r code for classes */
-        ASSIGN FILE-INFORMATION:FILE-NAME = lc_rcodePath.
-        IF FILE-INFORMATION:FILE-TYPE = ? THEN DO:
-
-            /* need to find the right .r code in the directories created during compilation */
-            RUN pi_findInFolders (INPUT lc_rcode, INPUT ipc_compilationDir) NO-ERROR.
-            ASSIGN
-                lc_rcodePath = RETURN-VALUE
-                FILE-INFORMATION:FILE-NAME = lc_rcodePath.
-        END.
-        /* Retrieve table list as well as their CRC values */
-        IF FILE-INFORMATION:FILE-TYPE <> ? THEN
-            ASSIGN
-                RCODE-INFORMATION:FILE-NAME = lc_rcodePath
-                lc_tableList = TRIM(RCODE-INFORMATION:TABLE-LIST)
-                lc_crcList = TRIM(RCODE-INFORMATION:TABLE-CRC-LIST)
-                .
-
-        DEFINE VARIABLE lc_sourcePath AS CHARACTER NO-UNDO.
-        DEFINE VARIABLE lc_filePath AS CHARACTER NO-UNDO.
-        DEFINE VARIABLE lc_lineNumber AS CHARACTER NO-UNDO.
-        DEFINE VARIABLE lc_xrefType AS CHARACTER NO-UNDO.
-        DEFINE VARIABLE lc_info AS CHARACTER NO-UNDO.
-        DEFINE VARIABLE lh_buff AS HANDLE.
-
-        /* okay, since RCODE-INFO:TABLE-LIST doesn't list table references in LIKE TABLE sentences, we HAVE */
-        INPUT STREAM str_rw FROM VALUE(ipc_xrefPath) NO-ECHO.
-        REPEAT:
-            IMPORT STREAM str_rw lc_sourcePath lc_filePath lc_lineNumber lc_xrefType lc_info NO-ERROR.
-            IF lc_xrefType = "REFERENCE" AND lc_info MATCHES "*~~.*" AND LOOKUP(lc_info, lc_tableList) = 0 THEN DO:
-                ASSIGN lc_tableList = lc_tableList + "," + lc_info.
-                CREATE BUFFER lh_buff FOR TABLE lc_info NO-ERROR.
-                IF NOT VALID-HANDLE(lh_buff) THEN
-                    ASSIGN lc_crcList = lc_crcList + ",?".
-                ELSE DO:
-                    ASSIGN lc_crcList = lc_crcList + "," + STRING(lh_buff:CRC-VALUE).
-                    DELETE OBJECT lh_buff NO-ERROR.
-                END.
-            END.
-        END.
-        INPUT STREAM str_rw CLOSE.
-
-        ASSIGN
-            lc_crcList = LEFT-TRIM(lc_crcList, ",")
-            lc_tableList = LEFT-TRIM(lc_tableList, ",")
-            .
-
-        /* Store tables referenced in the file */
-        OUTPUT STREAM str_rw TO VALUE(ipc_outTableRefPath) APPEND BINARY.
-        PUT STREAM str_rw UNFORMATTED "".
-        REPEAT li_i = 1 TO NUM-ENTRIES(lc_tableList):
-            PUT STREAM str_rw UNFORMATTED ENTRY(li_i, lc_tableList) + "~t" + ENTRY(li_i, lc_crcList) SKIP.
-        END.
-        OUTPUT STREAM str_rw CLOSE.
-
-        RETURN "".
-
-    END PROCEDURE.
-
-    PROCEDURE pi_findInFolders PRIVATE:
-        /*------------------------------------------------------------------------------
-        Summary    : Allows to find the fullpath of the given file in a given folder (recursively)
-        Parameters : <none>
-        ------------------------------------------------------------------------------*/
-
-        DEFINE INPUT PARAMETER ipc_fileToFind AS CHARACTER NO-UNDO.
-        DEFINE INPUT PARAMETER ipc_dir AS CHARACTER NO-UNDO.
-
-        DEFINE VARIABLE lc_listSubdir AS CHARACTER NO-UNDO INITIAL "".
-        DEFINE VARIABLE li_subDir AS INTEGER NO-UNDO.
-        DEFINE VARIABLE lc_listFilesSubDir AS CHARACTER NO-UNDO INITIAL "".
-        DEFINE VARIABLE lc_filename AS CHARACTER NO-UNDO.
-        DEFINE VARIABLE lc_fullPath AS CHARACTER NO-UNDO.
-        DEFINE VARIABLE lc_fileType AS CHARACTER NO-UNDO.
-        DEFINE VARIABLE lc_outputFullPath AS CHARACTER NO-UNDO INITIAL "".
-
-        INPUT STREAM str_rw FROM OS-DIR(ipc_dir).
-        dirRepeat:
-        REPEAT:
-            IMPORT STREAM str_rw lc_filename lc_fullPath lc_fileType.
-            IF lc_filename = "." OR lc_filename = ".." THEN
-                NEXT dirRepeat.
-            IF lc_filename = ipc_fileToFind THEN DO:
-                ASSIGN lc_outputFullPath = lc_fullPath.
-                LEAVE dirRepeat.
-            END.
-            ELSE IF lc_fileType MATCHES "*D*" THEN
-                ASSIGN lc_listSubdir = lc_listSubdir + lc_fullPath + ",".
-        END.
-        INPUT STREAM str_rw CLOSE.
-
-        IF lc_outputFullPath > "" THEN
-            RETURN lc_outputFullPath.
-
-        ASSIGN lc_listSubdir = TRIM(lc_listSubdir, ",").
-        DO li_subDir = 1 TO NUM-ENTRIES(lc_listSubdir):
-            RUN pi_findInFolders (INPUT ipc_fileToFind, INPUT ENTRY(li_subDir, lc_listSubdir)) NO-ERROR.
-            ASSIGN lc_outputFullPath = RETURN-VALUE.
-            IF NOT fi_output_last_error(INPUT {&ErrorLogPath}) AND lc_outputFullPath > "" THEN
-                RETURN lc_outputFullPath.
-        END.
-
-        RETURN "".
-
-    END PROCEDURE.
-
-&ENDIF
 
 /* ************************  Function Implementations ***************** */

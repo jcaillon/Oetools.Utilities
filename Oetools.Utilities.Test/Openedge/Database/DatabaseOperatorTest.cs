@@ -195,9 +195,10 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             Procopy_existing_db();
             ProstrctRepair_ok();
             GetBusyMode_isnone_ok();
+            Proserve_simple();
             ProShut_normal_ok();
-            ProShut_hard_ok();
             Proserve_with_options();
+            ProShut_hard_ok();
         }
 
         private void Procopy_existing_db() {
@@ -237,19 +238,10 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             }
 
             var db = new DatabaseOperator(dlcPath);
-            var nextPort = DatabaseOperator.GetNextAvailablePort(0);
-            
-            Assert.IsTrue(nextPort > 0);
-                
-            db.ProServe(Path.Combine(TestFolder, "ref.db"), nextPort);
-            
-            Assert.AreEqual(DatabaseBusyMode.MultiUser, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
             
             DatabaseOperator.KillAllMproSrv();
 
             Assert.AreEqual(DatabaseBusyMode.NotBusy, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
-
-            //-minport ${OE_MINPORT} -maxport ${OE_MAXPORT} -L ${OE_LOCKS}
         }
 
         private void ProShut_normal_ok() {
@@ -258,9 +250,6 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             }
 
             var db = new DatabaseOperator(dlcPath);
-            db.ProServe(Path.Combine(TestFolder, "ref.db"), DatabaseOperator.GetNextAvailablePort());
-            
-            Assert.AreEqual(DatabaseBusyMode.MultiUser, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
             
             db.Proshut(Path.Combine(TestFolder, "ref.db"));
             
@@ -280,9 +269,21 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             db.ProServe(Path.Combine(TestFolder, "ref.db"), nextPort, 20, "-minport 50000 -maxport 50100 -L 20000");
             // https://community.progress.com/community_groups/openedge_rdbms/f/18/t/9300
             
-            DatabaseOperator.KillAllMproSrv();
+            Assert.AreEqual(DatabaseBusyMode.MultiUser, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
+        }
+
+        private void Proserve_simple() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            var db = new DatabaseOperator(dlcPath);
             
-            Assert.AreEqual(DatabaseBusyMode.NotBusy, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
+                
+            db.ProServe(Path.Combine(TestFolder, "ref.db"));
+            // https://community.progress.com/community_groups/openedge_rdbms/f/18/t/9300
+            
+            Assert.AreEqual(DatabaseBusyMode.MultiUser, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
         }
 
 

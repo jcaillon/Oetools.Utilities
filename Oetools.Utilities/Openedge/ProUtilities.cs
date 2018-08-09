@@ -27,8 +27,18 @@ using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Openedge {
+    
     public static class ProUtilities {
+
+        public static List<DatabaseReference> GetReferences(CompiledFile compiledFile, List<TableCrc> tables) {
+            // TODO : this
+            throw new NotImplementedException();
+        }
         
+        /// <summary>
+        /// Returns the environment variable DLC value
+        /// </summary>
+        /// <returns></returns>
         public static string GetDlcPathFromEnv() {
             return Environment.GetEnvironmentVariable("dlc");
         }
@@ -61,7 +71,7 @@ namespace Oetools.Utilities.Openedge {
                     };
                 }
                 return false;
-            }, (lineNumber, line) => line.StartsWith($"{errorNumber} "));
+            }, out _, (lineNumber, line) => line.StartsWith($"{errorNumber} "));
 
             return outputMessage;
         }
@@ -84,19 +94,21 @@ namespace Oetools.Utilities.Openedge {
 
         /// <summary>
         /// Read records in an openedge .d file
-        /// Each line is a record with multiple fields separated by a space, you can use spaces in a field by double quoting the field
+        /// Each line is a record with multiple fields separated by a single space, you can use spaces in a field by double quoting the field
         /// and you can use double quotes by doubling them. A quoted field can extend on multiple lines.
         /// This method doesn't expect all the records to have the same number of fields, even less the same type
         /// </summary>
         /// <param name="filePath"></param>
         /// <param name="recordHandler"></param>
+        /// <param name="catchedExceptions"></param>
         /// <param name="filterLinePredicate"></param>
         /// <param name="encoding"></param>
         /// <exception cref="Exception"></exception>
-        public static void ReadOpenedgeUnformattedExportFile(string filePath, Func<List<string>, bool> recordHandler, Func<int, string, bool> filterLinePredicate = null, Encoding encoding = null) {
+        public static void ReadOpenedgeUnformattedExportFile(string filePath, Func<List<string>, bool> recordHandler, out List<Exception> catchedExceptions, Func<int, string, bool> filterLinePredicate = null, Encoding encoding = null) {
             if (encoding == null) {
                 encoding = Encoding.Default;
             }
+            catchedExceptions = null;
             using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)) {
                 using (var reader = new StreamReader(fileStream, encoding)) {
                     var i = -1;
@@ -104,65 +116,70 @@ namespace Oetools.Utilities.Openedge {
                     var record = new List<string>();
                     bool inStringField = false;
                     while ((line = reader.ReadLine()) != null) {
-                        i++;
-                        if (!inStringField && filterLinePredicate != null && !filterLinePredicate(i, line)) {
-                            continue;
-                        }
-                        if (line.Length > 0) {
-                            int fieldBegin = 0;
-                            do {
-                                int fieldEnd;
-                                if (line[fieldBegin] == '"' || inStringField) {
-                                    fieldEnd = fieldBegin + (inStringField ? 0 : 1) - 1;
-                                    bool firstLoop = true;
-                                    do {
-                                        if (!firstLoop && line[fieldEnd + 1] == '"') {
-                                            fieldEnd++;
+                        try {
+                            i++;
+                            if (!inStringField && filterLinePredicate != null && !filterLinePredicate(i, line)) {
+                                continue;
+                            }
+                            if (line.Length > 0) {
+                                int fieldBegin = 0;
+                                do {
+                                    int fieldEnd;
+                                    if (line[fieldBegin] == '"' || inStringField) {
+                                        fieldEnd = fieldBegin + (inStringField ? 0 : 1) - 1;
+                                        bool firstLoop = true;
+                                        do {
+                                            if (!firstLoop && line[fieldEnd + 1] == '"') {
+                                                fieldEnd++;
+                                            }
+                                            firstLoop = false;
+                                            fieldEnd = line.IndexOf('"', fieldEnd + 1);
+                                            if (fieldEnd < 0) {
+                                                fieldEnd = line.Length - 1;
+                                            }
+                                        } while (fieldEnd < line.Length - 1 && line[fieldEnd + 1] == '"');
+                                        var currentRecordValue = line.Substring(fieldBegin, fieldEnd - fieldBegin + 1);
+                                        if (currentRecordValue.Length > 2) {
+                                            currentRecordValue = currentRecordValue.Replace("\"\"", "\"");
                                         }
-                                        firstLoop = false;
-                                        fieldEnd = line.IndexOf('"', fieldEnd + 1);
+                                        if (inStringField) {
+                                            record[record.Count - 1] = $"{record.Last()}{Environment.NewLine}{currentRecordValue}";
+                                        } else {
+                                            record.Add(currentRecordValue);
+                                        }
+                                        inStringField = line[fieldEnd] != '"';
+        
+                                    } else {
+                                        fieldEnd = line.IndexOf(' ', fieldBegin + 1) - 1;
                                         if (fieldEnd < 0) {
                                             fieldEnd = line.Length - 1;
                                         }
-                                    } while (fieldEnd < line.Length - 1 && line[fieldEnd + 1] == '"');
-                                    var currentRecordValue = line.Substring(fieldBegin, fieldEnd - fieldBegin + 1);
-                                    if (currentRecordValue.Length > 2) {
-                                        currentRecordValue = currentRecordValue.Replace("\"\"", "\"");
+                                        var fieldLength = fieldEnd - fieldBegin + 1;
+                                        if (fieldLength == 0) {
+                                            (catchedExceptions ?? (catchedExceptions = new List<Exception>())).Add(new Exception($"Bad line format (line {i}), consecutive spaces or line beggining by space"));
+                                            
+                                        }
+                                        record.Add(line.Substring(fieldBegin, fieldLength));
                                     }
-                                    if (inStringField) {
-                                        record[record.Count - 1] = $"{record.Last()}{Environment.NewLine}{currentRecordValue}";
-                                    } else {
-                                        record.Add(currentRecordValue);
-                                    }
-                                    inStringField = line[fieldEnd] != '"';
-        
-                                } else {
-                                    fieldEnd = line.IndexOf(' ', fieldBegin + 1) - 1;
-                                    if (fieldEnd < 0) {
-                                        fieldEnd = line.Length - 1;
-                                    }
-                                    var fieldLength = fieldEnd - fieldBegin + 1;
-                                    if (fieldLength == 0) {
-                                        throw new Exception("Bad line format, consecutive spaces or line beggining by space");
-                                    }
-                                    record.Add(line.Substring(fieldBegin, fieldLength));
-                                }
-                                fieldBegin = fieldEnd + 2;
-                            } while (fieldBegin <= line.Length - 1);
+                                    fieldBegin = fieldEnd + 2; // next char + skip the space = 2
+                                } while (fieldBegin <= line.Length - 1);
 
-                            if (!inStringField) {
-                                if (!recordHandler(record)) {
-                                    // stop reading
-                                    break;
+                                if (!inStringField) {
+                                    if (!recordHandler(record)) {
+                                        // stop reading
+                                        break;
+                                    }
+                                    record.Clear();
                                 }
-                                record.Clear();
                             }
+                        } catch (Exception e) {
+                            (catchedExceptions ?? (catchedExceptions = new List<Exception>())).Add(new Exception($"Unexpected error reading line {i} : {e}"));
                         }
                     }
                 }
             }
         }
-
+        
         /// <summary>
         /// Returns the openedge version currently installed
         /// </summary>

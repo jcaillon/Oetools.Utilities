@@ -194,7 +194,12 @@ namespace Oetools.Utilities.Openedge.Execution {
             Utils.CreateDirectoryIfNeeded(_tempDir);
 
             // write propath
-            File.WriteAllText(_propathFilePath, $"{_tempDir},{(Env.ProPathList != null ? string.Join(",", Env.ProPathList) : "")}\n", Encoding.Default);
+            var propath = $"{_tempDir},{(Env.ProPathList != null ? string.Join(",", Env.ProPathList) : "")}\n";
+            if (propath.Length > OeConstants.MaximumPropathLength) {
+                // TODO : find a better working directory that would shorten the propath
+                throw new ExecutionParametersException($"The propath used is too long (>{OeConstants.MaximumPropathLength}) : {propath.PrettyQuote()}");
+            }
+            File.WriteAllText(_propathFilePath, propath, Encoding.Default);
 
             // Set info
             SetExecutionInfo();
@@ -341,7 +346,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 PublishExecutionEndEvents();
             }
         }
-
+        
         /// <summary>
         /// Read the exceptions from a log file
         /// </summary>
