@@ -561,8 +561,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="logicalName"></param>
         /// <returns></returns>
         public static string GetMultiConnectionString(string targetDbPath, string logicalName = null) {
-            GetDatabaseFolderAndName(targetDbPath, out string _, out string dbPhysicalName);
-            return $"-db {dbPhysicalName} -ld {logicalName ?? dbPhysicalName}";
+            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {logicalName ?? dbPhysicalName}";
         }
 
         /// <summary>

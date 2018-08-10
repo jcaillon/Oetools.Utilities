@@ -69,7 +69,12 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool HasBeenKilled { get; private set; }
 
         /// <summary>
-        ///     Set to true after the process is over if the execution failed
+        ///     Set to true after the process is over if there was errors during the execution
+        /// </summary>
+        public bool ExecutionHandledExceptions => HandledExceptions != null && HandledExceptions.Count > 0;
+        
+        /// <summary>
+        ///     Set to true if the process failed to go to the end or didn't event start
         /// </summary>
         public bool ExecutionFailed { get; private set; }
 
@@ -341,7 +346,6 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             } catch (Exception e) {
                 HandledExceptions.Add(new ExecutionException("Error when checking the process results", e));
-                ExecutionFailed = true;
             } finally {
                 PublishExecutionEndEvents();
             }
@@ -375,7 +379,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected virtual void PublishExecutionEndEvents() {
             // end of successful/unsuccessful execution action
             try {
-                if (ExecutionFailed) {
+                if (ExecutionHandledExceptions) {
                     OnExecutionFailed?.Invoke(this);
                 } else {
                     OnExecutionOk?.Invoke(this);

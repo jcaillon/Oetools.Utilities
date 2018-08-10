@@ -19,6 +19,7 @@ This file was created with the 3P :  https://jcaillon.github.io/3P/
     &SCOPED-DEFINE CompileProgressionFilePath ""
     /* LOG-MANAGER doesn't exist prior 10.2 so we can't analyse in early versions */
     &SCOPED-DEFINE IsAnalysisMode FALSE
+    &SCOPED-DEFINE GetRcodeTableList FALSE
     /* for version >= 10.2 */
     &SCOPED-DEFINE ProVerHigherOrEqualTo10.2 true
     &SCOPED-DEFINE UseXmlXref false
@@ -47,6 +48,7 @@ DEFINE TEMP-TABLE tt_list NO-UNDO
     FIELD dbgPath AS CHARACTER
     FIELD preprocessedPath AS CHARACTER
     FIELD fileIdLogPath AS CHARACTER
+    FIELD rcodeTableList AS CHARACTER
     INDEX idxfld order ASCENDING
     .
 
@@ -131,7 +133,7 @@ PROCEDURE program_to_run PRIVATE:
                     OPTIONS {&CompileOptions}
                 &ENDIF                
                 LISTING VALUE(tt_list.listingPath)
-                &IF NOT {&UseXmlXref} OR NOT {&ProVerHigherOrEqualTo10.2} OR {&IsAnalysisMode} &THEN
+                &IF NOT {&UseXmlXref} OR NOT {&ProVerHigherOrEqualTo10.2} &THEN
                     XREF VALUE(tt_list.xrfPath)
                 &ELSE
                     XREF-XML VALUE(tt_list.xmlxrfPath)
@@ -154,6 +156,12 @@ PROCEDURE program_to_run PRIVATE:
         
         RUN pi_handleCompilationErrors (INPUT tt_list.sourcePath, INPUT tt_list.errorLogPath) NO-ERROR.
         fi_output_last_error(INPUT {&ErrorLogPath}).
+        
+        &IF {&IsAnalysisMode} AND {&GetRcodeTableList} AND {&ProVerHigherOrEqualTo10.2} &THEN
+            /* Here we generate a file that lists all db.tables + CRC referenced in the .r code produced */
+            RUN pi_getRcodeTableList (INPUT tt_list.sourcePath, INPUT tt_list.outDirectory, INPUT tt_list.rcodeTableList) NO-ERROR.
+            fi_output_last_error(INPUT {&ErrorLogPath}).
+        &ENDIF
 
         /* the following stream / file is used to inform the C# side of the progression */
         fi_write(INPUT {&CompileProgressionFilePath}, INPUT "x").
@@ -218,5 +226,111 @@ PROCEDURE pi_handleCompilationErrors PRIVATE:
     RETURN "".
 
 END PROCEDURE.
+
+
+&IF {&IsAnalysisMode} AND {&GetRcodeTableList} AND {&ProVerHigherOrEqualTo10.2} &THEN
+    PROCEDURE pi_getRcodeTableList PRIVATE:
+        /*------------------------------------------------------------------------------
+        Summary    : generate a file that lists all db.tables + CRC referenced in the .r code produced
+        Parameters : <none>
+        ------------------------------------------------------------------------------*/
+
+        DEFINE INPUT PARAMETER ipc_compiledSource AS CHARACTER NO-UNDO.
+        DEFINE INPUT PARAMETER ipc_compilationDir AS CHARACTER NO-UNDO.
+        DEFINE INPUT PARAMETER ipc_outTableRefPath AS CHARACTER NO-UNDO.
+
+        DEFINE VARIABLE li_i AS INTEGER NO-UNDO.
+        DEFINE VARIABLE lc_tableList AS CHARACTER NO-UNDO INITIAL "".
+        DEFINE VARIABLE lc_crcList AS CHARACTER NO-UNDO INITIAL "".
+        DEFINE VARIABLE lc_rcode AS CHARACTER NO-UNDO.
+        DEFINE VARIABLE lc_rcodePath AS CHARACTER NO-UNDO.
+
+        ASSIGN
+            lc_rcode = REPLACE(ipc_compiledSource, "/", "~\")
+            lc_rcode = SUBSTRING(lc_rcode, R-INDEX(lc_rcode, "~\") + 1)
+            lc_rcode = SUBSTRING(lc_rcode, 1, R-INDEX(lc_rcode, ".") - 1)
+            lc_rcode = lc_rcode + ".r"
+            lc_rcodePath = RIGHT-TRIM(ipc_compilationDir, "~\") + "~\" + lc_rcode
+            .
+
+        /* The only difficulty is to find the .r code for classes */
+        ASSIGN FILE-INFORMATION:FILE-NAME = lc_rcodePath.
+        IF FILE-INFORMATION:FILE-TYPE = ? THEN DO:
+
+            /* need to find the right .r code in the directories created during compilation */
+            RUN pi_findInFolders (INPUT lc_rcode, INPUT ipc_compilationDir) NO-ERROR.
+            ASSIGN
+                lc_rcodePath = RETURN-VALUE
+                FILE-INFORMATION:FILE-NAME = lc_rcodePath.
+        END.
+        
+        /* Retrieve table list as well as their CRC values */
+        IF FILE-INFORMATION:FILE-TYPE <> ? THEN
+            ASSIGN
+                RCODE-INFORMATION:FILE-NAME = lc_rcodePath
+                lc_tableList = TRIM(RCODE-INFORMATION:TABLE-LIST)
+                lc_crcList = TRIM(RCODE-INFORMATION:TABLE-CRC-LIST)
+                .
+
+        /* Store tables referenced in the file */
+        OUTPUT STREAM str_rw TO VALUE(ipc_outTableRefPath) APPEND BINARY.
+        PUT STREAM str_rw UNFORMATTED "".
+        REPEAT li_i = 1 TO NUM-ENTRIES(lc_tableList):
+            PUT STREAM str_rw UNFORMATTED ENTRY(li_i, lc_tableList) + " " + ENTRY(li_i, lc_crcList) SKIP.
+        END.
+        OUTPUT STREAM str_rw CLOSE.
+
+        RETURN "".
+
+    END PROCEDURE.
+
+    PROCEDURE pi_findInFolders PRIVATE:
+        /*------------------------------------------------------------------------------
+        Summary    : Allows to find the fullpath of the given file in a given folder (recursively)
+        Parameters : <none>
+        ------------------------------------------------------------------------------*/
+
+        DEFINE INPUT PARAMETER ipc_fileToFind AS CHARACTER NO-UNDO.
+        DEFINE INPUT PARAMETER ipc_dir AS CHARACTER NO-UNDO.
+
+        DEFINE VARIABLE lc_listSubdir AS CHARACTER NO-UNDO INITIAL "".
+        DEFINE VARIABLE li_subDir AS INTEGER NO-UNDO.
+        DEFINE VARIABLE lc_listFilesSubDir AS CHARACTER NO-UNDO INITIAL "".
+        DEFINE VARIABLE lc_filename AS CHARACTER NO-UNDO.
+        DEFINE VARIABLE lc_fullPath AS CHARACTER NO-UNDO.
+        DEFINE VARIABLE lc_fileType AS CHARACTER NO-UNDO.
+        DEFINE VARIABLE lc_outputFullPath AS CHARACTER NO-UNDO INITIAL "".
+
+        INPUT STREAM str_rw FROM OS-DIR(ipc_dir).
+        dirRepeat:
+        REPEAT:
+            IMPORT STREAM str_rw lc_filename lc_fullPath lc_fileType.
+            IF lc_filename = "." OR lc_filename = ".." THEN
+                NEXT dirRepeat.
+            IF lc_filename = ipc_fileToFind THEN DO:
+                ASSIGN lc_outputFullPath = lc_fullPath.
+                LEAVE dirRepeat.
+            END.
+            ELSE IF lc_fileType MATCHES "*D*" THEN
+                ASSIGN lc_listSubdir = lc_listSubdir + lc_fullPath + ",".
+        END.
+        INPUT STREAM str_rw CLOSE.
+
+        IF lc_outputFullPath > "" THEN
+            RETURN lc_outputFullPath.
+
+        ASSIGN lc_listSubdir = TRIM(lc_listSubdir, ",").
+        DO li_subDir = 1 TO NUM-ENTRIES(lc_listSubdir):
+            RUN pi_findInFolders (INPUT ipc_fileToFind, INPUT ENTRY(li_subDir, lc_listSubdir)) NO-ERROR.
+            ASSIGN lc_outputFullPath = RETURN-VALUE.
+            IF NOT fi_output_last_error(INPUT {&ErrorLogPath}) AND lc_outputFullPath > "" THEN
+                RETURN lc_outputFullPath.
+        END.
+
+        RETURN "".
+
+    END PROCEDURE.
+
+&ENDIF
 
 /* ************************  Function Implementations ***************** */

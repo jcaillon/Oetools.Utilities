@@ -72,7 +72,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.ProgramContent = "PUT UNFORMATTED SESSION:DISPLAY-TYPE.";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "failed");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "failed");
                 Assert.IsFalse(exec.HasBeenKilled, "killed");
                 Assert.AreEqual(expected, exec.Output.ToLower(), "checking DISPLAY-TYPE");
             }
@@ -92,7 +92,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.OnExecutionFailed += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 4;
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual(3, _iOeExecutionTestEvents);
             }
             using (var exec = new OeExecutionCustomTest(env)) {
@@ -103,7 +103,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.ProgramContent = "to fail";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsTrue(exec.ExecutionFailed, "failed");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "failed");
                 Assert.AreEqual(5, _iOeExecutionTestEvents);
             }
         }
@@ -122,7 +122,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     exec.KillProcess();
                 });
                 exec.WaitForProcessExit();
-                Assert.IsTrue(exec.ExecutionFailed, "failed");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "failed");
                 Assert.IsTrue(exec.HasBeenKilled, "failed");
             }
         }
@@ -140,21 +140,21 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.ProgramContent = "compilation error!!";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsTrue(exec.ExecutionFailed, "failed");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "failed");
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException), "HandledExceptions 1");
             }
             using (var exec = new OeExecutionCustomTest(env)) {
                 exec.ProgramContent = "";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "not failed");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "not failed");
             }
             using (var exec = new OeExecutionCustomTest(env)) {
                 // error in log
                 exec.ProgramContent = "return error \"oups\".";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsTrue(exec.ExecutionFailed, "failed2");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "failed2");
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorMessage.Equals("oups")), "HandledExceptions 2");
                 
             }
@@ -169,7 +169,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     END.";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "not failed2");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "not failed2");
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorNumber > 0), "HandledExceptions 3");
             }
 
@@ -178,7 +178,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 // error in command line
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsTrue(exec.ExecutionFailed, "failed3");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "failed3");
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException), "HandledExceptions 4");
             }
         }
@@ -230,7 +230,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 END.";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual("dictdb alias1 alias2 alias3", exec.Output.CliCompactWhitespaces());
             }
         }
@@ -249,6 +249,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 Assert.IsTrue(exec.ExecutionFailed, "failed");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "ex");
                 Assert.IsTrue(exec.DbConnectionFailed, "no connection");
                 
             }
@@ -256,7 +257,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.NeedDatabaseConnection = false;
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.IsFalse(exec.ExecutionFailed, "failed2");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "ex2");
                 Assert.IsTrue(exec.DbConnectionFailed, "no connection 2");
             }
         }
@@ -272,7 +274,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.ProgramContent = "PUT UNFORMATTED SESSION:STARTUP-PARAMETERS.";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.IsTrue(exec.Output.Contains("-s 2000"), "startup params");
             }
         }
@@ -288,7 +290,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.ProgramContent = "PUT UNFORMATTED PROPATH.";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.IsTrue(exec.Output.Contains(TestFolder), "propath 1");
                 Assert.IsTrue(exec.Output.Contains(Path.Combine(TestFolder, "random")), "propath 2");
             }
@@ -309,7 +311,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.ProgramContent = "PUT UNFORMATTED COLOR-TABLE:GET-RGB-VALUE(0).";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual("1", exec.Output);
             }
         }
@@ -325,7 +327,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             using (var exec = new OeExecutionCustomTest(env)) {
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual("okay", exec.Output);
             }
 
@@ -334,7 +336,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             using (var exec = new OeExecutionCustomTest(env)) {
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual("okay", exec.Output);
             }
         }
@@ -350,7 +352,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.ProgramContent = "FILE-INFO:FILE-NAME = \".\". PUT UNFORMATTED SESSION:TEMP-DIRECTORY SKIP FILE-INFO:FULL-PATHNAME.";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionFailed, "ok");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual(exec.Output.Replace("\r", "").Replace("\\\n", "\n").TrimEnd('\\'), $"{exec.ExecutionTemporaryDirectory}\n{TestFolder}");
             }
         }

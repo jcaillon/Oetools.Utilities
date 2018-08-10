@@ -29,6 +29,7 @@ namespace Oetools.Utilities.Openedge {
         public const string ExtPreprocessed = ".preprocessed";
         public const string ExtCls = ".cls";
         public const string ExtFileIdLog = ".fileidlog";
+        public const string ExtTableList = ".tablelist";
         
         public const string ExtProlibFile = ".pl";
         

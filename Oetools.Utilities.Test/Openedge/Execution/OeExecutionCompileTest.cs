@@ -37,15 +37,36 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         private static string _testFolder;
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(OeExecutionCompileTest)));
-
+        
         [ClassInitialize]
-        public static void Init(TestContext context) {           
+        public static void Init(TestContext context) {
             Cleanup();
             Directory.CreateDirectory(TestFolder);
+            CreateDummyBaseIfNeeded();
         }
-        
+
+        private static void CreateDummyBaseIfNeeded() {
+            // create dummy database
+            if (TestHelper.GetDlcPath(out string dlcPath)) {
+                if (!File.Exists(Path.Combine(TestFolder, "dummy.db"))) {
+                    var dfPath = Path.Combine(TestFolder, "dummy.df");
+                    File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+                    TestHelper.CreateDatabaseFromDf(Path.Combine(TestFolder, "dummy.db"), Path.Combine(TestFolder, "dummy.df"));
+                }
+                if (new DatabaseOperator(dlcPath).GetBusyMode(Path.Combine(TestFolder, "dummy.db")) != DatabaseBusyMode.MultiUser) {
+                    new DatabaseOperator(dlcPath).ProServe(Path.Combine(TestFolder, "dummy.db"));
+                }
+            }
+        }
+
         [ClassCleanup]
         public static void Cleanup() {
+            // stop dummy database
+            if (TestHelper.GetDlcPath(out string dlcPath)) {
+                if (File.Exists(Path.Combine(TestFolder, "dummy.db"))) {
+                    new DatabaseOperator(dlcPath).Proshut(Path.Combine(TestFolder, "dummy.db"));
+                }
+            }
             if (Directory.Exists(TestFolder)) {
                 Directory.Delete(TestFolder, true);
             }
@@ -112,7 +133,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.CompileInAnalysisMode = analyze;
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.IsTrue(exec.CompiledFiles != null && exec.CompiledFiles.Count == 1, "One file compiled");
                 var compiledFile = exec.CompiledFiles.First();
                 Assert.AreEqual(Path.Combine(TestFolder, "ok.p"), compiledFile.SourceFilePath, "SourcePath");
@@ -167,7 +188,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 };
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.IsTrue(exec.CompiledFiles != null && exec.CompiledFiles.Count == 2, "two files compiled");
                 
                 var compiledFile = exec.CompiledFiles.First();
@@ -215,7 +236,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 };
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.IsTrue(exec.CompiledFiles != null && exec.CompiledFiles.Count == 1, "1 file compiled");
                 
                 var compiledFile = exec.CompiledFiles.First();
@@ -259,7 +280,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 };
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.IsTrue(exec.CompiledFiles != null && exec.CompiledFiles.Count == 1, "1 file compiled");
                 
                 var compiledFile = exec.CompiledFiles.First();
@@ -297,7 +318,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 };
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.AreEqual(false, exec.ExecutionFailed, $"not ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"not ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(4, exec.NumberOfFilesTreated, "NumberOfFilesTreated");
             }
         }
@@ -323,7 +344,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 };
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.AreEqual(!executionSuccess, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(!executionSuccess, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(executionSuccess, exec.CompiledFiles[0].CompiledCorrectly);
             }
         }
@@ -349,7 +370,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 };
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(compileSuccess, exec.CompiledFiles[0].CompiledCorrectly);
             }
         }
@@ -373,7 +394,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 
                 var compiledFile = exec.CompiledFiles.First();
                 Assert.AreEqual(false, compiledFile.CompiledCorrectly, "not CompiledCorrectly");
@@ -411,7 +432,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 
                 var compiledFile = exec.CompiledFiles.First();
                 Assert.AreEqual(true, compiledFile.CompiledCorrectly, "not CompiledCorrectly");
@@ -449,7 +470,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(2, exec.CompiledFiles[0].CompilationErrors.Count, $"exec.CompiledFiles[0].CompilationErrors : {string.Join("\n", exec.CompiledFiles[0].CompilationErrors)}");
             }
         }
@@ -474,7 +495,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             File.WriteAllText(Path.Combine(TestFolder, "namespace", "random", "Class2.cls"), @"
             CLASS namespace.random.Class2 ABSTRACT:
-            END CLASS.");        
+            END CLASS.");
             
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = false;
@@ -490,7 +511,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), "all compile ok");
                 
@@ -530,7 +551,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), "all compile ok");
                 
                 Assert.AreEqual(2, exec.CompiledFiles[0].RequiredFiles.Count, "required files");
@@ -540,43 +561,51 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         }
         
         [TestMethod]
-        [DataRow("MESSAGE STRING(CURRENT-VALUE(sequence1)).", "sequence1")]
-        [DataRow("ASSIGN CURRENT-VALUE(sequence1) = 1. FIND FIRST table1.", "sequence1,table1")]
-        [DataRow("FOR EACH table1 BY table1.field1:\nEND.", "table1")]
-        [DataRow("CREATE table1.", "table1")]
-        [DataRow("ASSIGN table1.field1 = \"\".", "table1")]
-        [DataRow("DELETE table1.", "table1")]
-        [DataRow("DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.", "table1")]
-        [DataRow("DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.", "table1")]
-        [DataRow("DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.", "table1")]
-        [DataRow("DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.", "table1")]
-        [DataRow("DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "table1")]
-        [DataRow("DEFINE TEMP-TABLE tt1 LIKE table1.", "table1")]
-        public void OeExecutionCompile_Test_Analysis_mode_referenced_tables_or_sequences(string codeThatReferencesDatabase, string references) {
+        [DataRow("MESSAGE STRING(CURRENT-VALUE(sequence1)).", "dummy.sequence1", false)]
+        [DataRow("ASSIGN CURRENT-VALUE(sequence1) = 1. FIND FIRST table1.", "dummy.sequence1,dummy.table1", false)]
+        [DataRow("FOR EACH table1 BY table1.field1:\nEND.", "dummy.table1", false)]
+        [DataRow("CREATE table1.", "dummy.table1", false)]
+        [DataRow("FIND table1. ASSIGN table1.field1 = \"\".", "dummy.table1", false)]
+        [DataRow("DELETE table1.", "dummy.table1", false)]
+        [DataRow("DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.", "dummy.table1", false)]
+        [DataRow("DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.", "dummy.table1", false)]
+        [DataRow("DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.", "dummy.table1", false)]
+        [DataRow("DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.", "dummy.table1", false)]
+        [DataRow("DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "dummy.table1", false)]
+        [DataRow("DEFINE TEMP-TABLE tt1 LIKE table1.", "dummy.table1", false)]
+        // in simplified mode, the tables referenced in "LIKE" statement do not appear
+        // also, referenced sequences all appear as "dummy._Sequence"
+        [DataRow("MESSAGE STRING(CURRENT-VALUE(sequence1)).", "dummy._Sequence", true)]
+        [DataRow("ASSIGN CURRENT-VALUE(sequence1) = 1. FIND FIRST table1.", "dummy._Sequence,dummy.table1", true)]
+        [DataRow("FOR EACH table1 BY table1.field1:\nEND.", "dummy.table1", true)]
+        [DataRow("CREATE table1.", "dummy.table1", true)]
+        [DataRow("FIND table1. ASSIGN table1.field1 = \"\".", "dummy.table1", true)]
+        [DataRow("DELETE table1.", "dummy.table1", true)]
+        [DataRow("DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.", "", true)]
+        [DataRow("DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.", "", true)]
+        [DataRow("DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.", "", true)]
+        [DataRow("DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.", "", true)]
+        [DataRow("DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "", true)]
+        [DataRow("DEFINE TEMP-TABLE tt1 LIKE table1.", "", true)]
+        public void OeExecutionCompile_Test_Analysis_mode_referenced_tables_or_sequences(string codeThatReferencesDatabase, string references, bool analysisModeSimplifiedDatabaseReferences) {
             if (!GetEnvExecution(out EnvExecution env)) {
                 return;
             }
-            
-            // create dummy database
-            if (!File.Exists(Path.Combine(TestFolder, "dummy.db"))) {
-                var dfPath = Path.Combine(TestFolder, "dummy.df");
-                File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
-                TestHelper.CreateDatabaseFromDf(Path.Combine(TestFolder, "dummy.db"), Path.Combine(TestFolder, "dummy.df"));
-            }
+
+            CreateDummyBaseIfNeeded();
 
             // write procedures and includes
             File.WriteAllText(Path.Combine(TestFolder, "analyserefdb.p"), @"
-            {includes/firstrefdb.i}            
-            ");
+        {includes/firstrefdb.i}            
+        ");
             Utils.CreateDirectoryIfNeeded(Path.Combine(TestFolder, "includes"));
             File.WriteAllText(Path.Combine(TestFolder, "includes", "firstrefdb.i"), @"
-            DEF VAR lc_ AS CHAR NO-UNDO.
-            {secondrefdb.i}");
-            File.WriteAllText(Path.Combine(TestFolder, "secondrefdb.i"), codeThatReferencesDatabase);        
-            
+        {secondrefdb.i}");
+            File.WriteAllText(Path.Combine(TestFolder, "secondrefdb.i"), codeThatReferencesDatabase);
+
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
-            env.DatabaseConnectionString = DatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, "dummy.db"));
+            env.DatabaseConnectionString = DatabaseOperator.GetMultiConnectionString(Path.Combine(TestFolder, "dummy.db"));
             
             using (var exec = new OeExecutionCompile(env)) {
                 exec.FilesToCompile = new List<FileToCompile> {
@@ -584,13 +613,71 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 };
                 exec.CompileUseXmlXref = true;
                 exec.CompileInAnalysisMode = true;
+                exec.AnalysisModeSimplifiedDatabaseReferences = analysisModeSimplifiedDatabaseReferences;
                 exec.Start();
                 exec.WaitForProcessExit();
                 
-                Assert.AreEqual(false, exec.ExecutionFailed, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all compile ok : {string.Join(",", exec.CompiledFiles[0].CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
                 
-                Assert.AreEqual(references, string.Join(",", exec.CompiledFiles[0].RequiredDatabaseReferences), "ref");
+                Assert.AreEqual(references, exec.CompiledFiles[0].RequiredDatabaseReferences != null ? string.Join(",", exec.CompiledFiles[0].RequiredDatabaseReferences) : "", "ref");
+            }
+        }
+        
+        [TestMethod]
+        // in simplified mode and when compiling class file, we need to find the generated .r in the progress
+        // execution to get the RCODE-INFO
+        [DataRow("MESSAGE STRING(CURRENT-VALUE(sequence1)).", "dummy._Sequence", true, true)]
+        [DataRow("ASSIGN CURRENT-VALUE(sequence1) = 1. FIND FIRST table1.", "dummy._Sequence,dummy.table1", true, true)]
+        [DataRow("FOR EACH table1 BY table1.field1:\nEND.", "dummy.table1", true, true)]
+        [DataRow("CREATE table1.", "dummy.table1", true, true)]
+        [DataRow("FIND table1. ASSIGN table1.field1 = \"\".", "dummy.table1", true, true)]
+        [DataRow("DELETE table1.", "dummy.table1", true, true)]
+        [DataRow("DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "", true, true)]
+        [DataRow("DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.", "", false, true)]
+        [DataRow("DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.", "", false, true)]
+        [DataRow("DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.", "", false, true)]
+        [DataRow("DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.", "", false, true)]
+        [DataRow("DEFINE TEMP-TABLE tt1 LIKE table1.", "", false, true)]
+        public void OeExecutionCompile_Test_Analysis_mode_referenced_tables_or_sequences_for_classes(string codeThatReferencesDatabase, string references, bool inMethod, bool useClassFile) {
+            if (!GetEnvExecution(out EnvExecution env)) {
+                return;
+            }
+
+            CreateDummyBaseIfNeeded();
+
+            Utils.CreateDirectoryIfNeeded(Path.Combine(TestFolder, "namespace", "cool"));
+            File.WriteAllText(Path.Combine(TestFolder, "namespace", "cool", "Class1.cls"), @"
+            USING namespace.cool.*.
+            CLASS namespace.cool.Class1 INHERITS Class2:
+            END CLASS.");
+
+            File.WriteAllText(Path.Combine(TestFolder, "namespace", "cool", "Class2.cls"), @"
+            CLASS namespace.cool.Class2 ABSTRACT:
+                " + (inMethod ? "" : codeThatReferencesDatabase) + @"
+                METHOD PUBLIC VOID InitializeDate ():
+                " + (inMethod ? codeThatReferencesDatabase : "") + @"
+                END METHOD.
+            END CLASS.");
+
+            env.ProPathList = new List<string> { TestFolder };
+            env.UseProgressCharacterMode = true;
+            env.DatabaseConnectionString = DatabaseOperator.GetMultiConnectionString(Path.Combine(TestFolder, "dummy.db"));
+            
+            using (var exec = new OeExecutionCompile(env)) {
+                exec.FilesToCompile = new List<FileToCompile> {
+                    new FileToCompile(useClassFile ? Path.Combine(TestFolder, "namespace", "cool", "Class1.cls") : Path.Combine(TestFolder, "analyserefdb.p"))
+                };
+                exec.CompileUseXmlXref = true;
+                exec.CompileInAnalysisMode = true;
+                exec.AnalysisModeSimplifiedDatabaseReferences = true;
+                exec.Start();
+                exec.WaitForProcessExit();
+                
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all compile ok : {string.Join(",", exec.CompiledFiles[0].CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
+                
+                Assert.AreEqual(references, exec.CompiledFiles[0].RequiredDatabaseReferences != null ? string.Join(",", exec.CompiledFiles[0].RequiredDatabaseReferences) : "", "ref");
             }
         }
         

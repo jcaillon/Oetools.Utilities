@@ -11,15 +11,19 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// <summary>
     ///     Allows to output a file containing the structure of the database
     /// </summary>
-    public abstract class OeExecutionDb : OeExecution {
+    public abstract class OeExecutionDbExtract : OeExecution {
         
         protected override bool ForceCharacterModeUse => true;
 
-        public string DatabaseExtractCandoTblType { get; set; } = "T";
+        public virtual string DatabaseExtractCandoTblType { get; set; } = "T";
         
-        public string DatabaseExtractCandoTblName { get; set; } = "*";
+        public virtual string DatabaseExtractCandoTblName { get; set; } = "*";
 
-        public OeExecutionDb(IEnvExecution env) : base(env) { }
+        protected string _databaseExtractFilePath;
+
+        public OeExecutionDbExtract(IEnvExecution env) : base(env) {
+            _databaseExtractFilePath = Path.Combine(_tempDir, "db.dump");
+        }
 
     }
 }

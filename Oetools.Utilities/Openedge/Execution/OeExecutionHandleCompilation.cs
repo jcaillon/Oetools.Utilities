@@ -39,6 +39,13 @@ namespace Oetools.Utilities.Openedge.Execution {
         ///     table of the .r
         /// </summary>
         public bool CompileInAnalysisMode { get; set; }
+       
+        /// <summary>
+        /// A "cheapest" analysis mode where we don't compute the database references from the xref file but use the
+        /// RCODE-INFO:TABLE-LIST instead
+        /// Less accurate since it won't list referenced sequences or referenced tables in LIKE TABLE statements
+        /// </summary>
+        public bool AnalysisModeSimplifiedDatabaseReferences { get; set; }
 
         /// <summary>
         /// Activate the debug list compile option, preprocess the file replacing preproc variables and includes and printing the result
@@ -57,7 +64,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool CompileWithListing { get; set; }
         
         /// <summary>
-        /// Activate the xml-xref compile option, incompatible with <see cref="CompileInAnalysisMode"/>
+        /// Activate the xml-xref compile option,
+        /// it is incompatible with <see cref="CompileInAnalysisMode"/> but you can analyze and generate xml-xref at the same time
+        /// using <see cref="AnalysisModeSimplifiedDatabaseReferences"/>
         /// </summary>
         public bool CompileUseXmlXref { get; set; }
         
@@ -98,7 +107,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         private string _compilationLog;
         
         private string _filesListPath;
-
+        
+        private bool _useXmlXref;
+        
         /// <summary>
         /// Path to a file used to determine the progression of a compilation (useful when compiling multiple programs)
         /// 1 byte = 1 file treated
@@ -116,9 +127,14 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (FilesToCompile == null || FilesToCompile.Count == 0) {
                 throw new ExecutionParametersException("No files specified");
             }
+            if ((CompileInAnalysisMode || AnalysisModeSimplifiedDatabaseReferences) && !Env.IsProVersionHigherOrEqualTo(new Version(10, 2, 0))) {
+                throw new ExecutionParametersException("The analysis mode (computes file and database references required to compile) is only available for openedge >= 10.2");
+            }
         }
 
         protected override void SetExecutionInfo() {
+
+            _useXmlXref = CompileUseXmlXref && (!CompileInAnalysisMode || AnalysisModeSimplifiedDatabaseReferences);
             
             base.SetExecutionInfo();
 
@@ -156,10 +172,11 @@ namespace Oetools.Utilities.Openedge.Execution {
                 if (CompileWithListing) {
                     compiledFile.CompilationListingFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{OeConstants.ExtListing}");
                 }
-                if (CompileWithXref && !CompileUseXmlXref) {
+                
+                if (CompileWithXref && !_useXmlXref) {
                     compiledFile.CompilationXrefFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{OeConstants.ExtXref}");
                 }
-                if (!CompileInAnalysisMode && CompileWithXref && CompileUseXmlXref) {
+                if (CompileWithXref && _useXmlXref) {
                     compiledFile.CompilationXmlXrefFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{OeConstants.ExtXrefXml}");
                 }
                 if (CompileWithDebugList) {
@@ -168,12 +185,15 @@ namespace Oetools.Utilities.Openedge.Execution {
                 if (CompileWithPreprocess) {
                     compiledFile.CompilationPreprocessedFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{OeConstants.ExtPreprocessed}");
                 }
+
+                compiledFile.IsAnalysisMode = CompileInAnalysisMode;
+                
                 if (CompileInAnalysisMode) {
-                    if (!Directory.Exists(localSubTempDir)) {
-                        Directory.CreateDirectory(localSubTempDir);
-                    }
+                    Utils.CreateDirectoryIfNeeded(localSubTempDir);
                     compiledFile.CompilationFileIdLogFilePath = Path.Combine(localSubTempDir, $"{baseFileName}{OeConstants.ExtFileIdLog}");
-                    if (string.IsNullOrEmpty(compiledFile.CompilationXrefFilePath)) {
+                    if (AnalysisModeSimplifiedDatabaseReferences) {
+                        compiledFile.CompilationRcodeTableListFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{OeConstants.ExtTableList}");
+                    } else if (string.IsNullOrEmpty(compiledFile.CompilationXrefFilePath)) {
                         compiledFile.CompilationXrefFilePath = Path.Combine(localSubTempDir, $"{baseFileName}{OeConstants.ExtXref}");
                     }
                 }
@@ -197,6 +217,8 @@ namespace Oetools.Utilities.Openedge.Execution {
                     .Append(compiledFile.CompilationPreprocessedFilePath.ProExportFormat())
                     .Append(" ")
                     .Append(compiledFile.CompilationFileIdLogFilePath.ProExportFormat())
+                    .Append(" ")
+                    .Append(compiledFile.CompilationRcodeTableListFilePath.ProExportFormat())
                     .AppendLine();
 
                 count++;
@@ -209,8 +231,9 @@ namespace Oetools.Utilities.Openedge.Execution {
             SetPreprocessedVar("CompileProgressionFilePath", _progressionFilePath.ProPreProcStringify());
             SetPreprocessedVar("CompileLogPath", _compilationLog.ProPreProcStringify());
             SetPreprocessedVar("IsAnalysisMode", CompileInAnalysisMode.ToString());
+            SetPreprocessedVar("GetRcodeTableList", AnalysisModeSimplifiedDatabaseReferences.ToString());
             SetPreprocessedVar("ProVerHigherOrEqualTo10.2", Env.IsProVersionHigherOrEqualTo(new Version(10, 2, 0)).ToString());
-            SetPreprocessedVar("UseXmlXref", CompileUseXmlXref.ToString());
+            SetPreprocessedVar("UseXmlXref", _useXmlXref.ToString());
             SetPreprocessedVar("CompileStatementExtraOptions", CompileStatementExtraOptions.ProPreProcStringify().StripQuotes());
             SetPreprocessedVar("CompilerMultiCompile", CompilerMultiCompile.ToString());
             SetPreprocessedVar("ProVerHigherOrEqualTo11.7", Env.IsProVersionHigherOrEqualTo(new Version(11, 7, 0)).ToString());
