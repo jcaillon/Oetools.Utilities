@@ -21,6 +21,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -30,48 +31,57 @@ namespace Oetools.Utilities.Openedge {
 
         private IOeExportStream _stream;
         private int _recordNb;
-        private int _fieldNb;
+        private int _fieldNb = -1;
         private int _fieldStartPosition;
-        private int _nbPreviousQuotes;
-        private bool _inQuote;
-        private ReadType _type;
+        private ReadType _type = ReadType.EndOfStream;
 
         public OeExportReader(string inputString) {
             _stream = new OeStringStream(inputString);
         }
 
         public OeExportReader(string filePath, Encoding encoding) {
-            _stream = new OeFileStream(filePath, encoding);
+            _stream = new OeStringStream(File.ReadAllText(filePath, encoding));
         }
 
         public void Dispose() {
             _stream?.Dispose();
         }
-
-        public void Reset() {
-            _type = ReadType.NewLine;
-            _recordNb = -1;
-            _fieldNb = -1;
-            _fieldStartPosition = 0;
-            _inQuote = false;
-            _nbPreviousQuotes = 0;
-        }
-
+        
         public int RecordNumber => _recordNb;
 
         public int RecordFieldNumber => _fieldNb;
 
-        public string RecordValue {
-            get {
-                var recordLength = _stream.Position - _fieldStartPosition - 1;
-                _stream.Position = _fieldStartPosition;
-                var fieldValue = recordLength > 0 ? _stream.Read(recordLength) : null;
-                _stream.Position++;
-                return fieldValue;
-            }
+        public string RecordValue => GetRecordValueInternal(false);
+
+        public string RecordValueNoQuotes => GetRecordValueInternal(true);
+
+        public bool ReadNextRecordField() {
+            return ReadNextRecordFieldInternal();
         }
         
-        public bool ReadNextRecordField() {
+        public List<string> GetNextRecord(bool noQuotesValues = false) {
+            var output = new List<string>();
+            var initialRecordNb = _recordNb;
+            bool canRead;
+            do {
+                canRead = ReadNextRecordFieldInternal();
+                if (canRead) {
+                    output.Add(noQuotesValues ? RecordValueNoQuotes : RecordValue);
+                }
+            } while (canRead && _recordNb == initialRecordNb);
+            return output.Count > 0 ? output : null;
+        }
+
+        public bool ReadNextRecord() {
+            var initialRecordNb = _recordNb;
+            bool canRead;
+            do {
+                canRead = ReadNextRecordFieldInternal();
+            } while (canRead && _recordNb == initialRecordNb);
+            return canRead;
+        }
+
+        private bool ReadNextRecordFieldInternal() {
             _fieldNb++;
             if (_type == ReadType.NewLine) {
                 _recordNb++;
@@ -79,17 +89,11 @@ namespace Oetools.Utilities.Openedge {
             }
             _fieldStartPosition = _stream.Position;
             do {
-                _type = _stream.Read();
+                _type = _stream.ReadToNextFieldEnd();
                 switch (_type) {
                     case ReadType.EndOfStream:
                     case ReadType.WhiteSpace:
                     case ReadType.NewLine:
-                        if (_inQuote && _nbPreviousQuotes % 2 == 0) {
-                            _nbPreviousQuotes = 0;
-                            continue;
-                        }
-                        _inQuote = false;
-                        _nbPreviousQuotes = 0;
                         // is record length > 0
                         if (_stream.Position - _fieldStartPosition - 1 > 0) {
                             return true;
@@ -97,32 +101,40 @@ namespace Oetools.Utilities.Openedge {
                         _fieldStartPosition = _stream.Position;
                         break;
                     case ReadType.DoubleQuote: // double quote
-                        _nbPreviousQuotes++;
-                        _inQuote = true;
-                        break;
-                    default:
-                        _nbPreviousQuotes = 0;
+                        _stream.ReadToNextQuotes();
                         break;
                 }
             } while (_type != ReadType.EndOfStream);
-
             return false;
+        }        
+        
+        private string GetRecordValueInternal(bool stripQuotes) {
+            var recordLength = _stream.Position - _fieldStartPosition - 1;
+            _stream.Position = _fieldStartPosition;
+            if (stripQuotes) {
+                if (_stream.Peek(0) == '"') {
+                    _stream.Position++;
+                    recordLength--;
+                }
+                if (_stream.Peek(recordLength - 1) == '"') {
+                    recordLength--;
+                }
+            }
+            var fieldValue = recordLength > 0 ? _stream.Read(recordLength) : string.Empty;
+            _stream.Position++;
+            var quotePos = fieldValue.IndexOf('"', stripQuotes ? 0 : 1);
+            return quotePos >= 0 && quotePos < fieldValue.Length - (stripQuotes ? 1 : 2) ? fieldValue.Replace("\"\"", "\"") : fieldValue;
         }
+
 
         private enum ReadType {
             NewLine,
             WhiteSpace,
             DoubleQuote,
-            Default,
             EndOfStream
         }
 
         private interface IOeExportStream : IDisposable {
-            /// <summary>
-            /// Advanced the read position of 1, returns the type of read
-            /// </summary>
-            /// <returns></returns>
-            ReadType Read();
 
             /// <summary>
             /// Get or set the read position
@@ -130,75 +142,29 @@ namespace Oetools.Utilities.Openedge {
             int Position { get; set; }
 
             /// <summary>
-            /// Read from current position for given length, advances the read position
+            /// Read from current position for given length, advances the read position to the end of the read portion
             /// </summary>
             /// <param name="length"></param>
             /// <returns></returns>
             string Read(int length);
-        }
 
-        private class OeFileStream : FileStream, IOeExportStream {
-            private Encoding _encoding;
+            ReadType ReadToNextFieldEnd();
+            
+            void ReadToNextQuotes();
 
-            public OeFileStream(string path, Encoding encoding) : base(path, FileMode.Open, FileAccess.Read, FileShare.Read) {
-                _encoding = encoding;
-            }
-
-            public ReadType Read() {
-                switch (ReadByte()) {
-                    case -1:
-                        return ReadType.EndOfStream;
-                    case 34: // "
-                        return ReadType.DoubleQuote;
-                    case 10: // \n
-                    case 13: // \r
-                        return ReadType.NewLine;
-                    case 9: // tab
-                    case 32: // space
-                        return ReadType.WhiteSpace;
-                    default:
-                        return ReadType.Default;
-                }
-            }
-
-            public new int Position {
-                get => (int) base.Position;
-                set => base.Position = value;
-            }
-
-            public string Read(int length) {
-                var buffer = new byte[length];
-                Read(buffer, 0, length);
-                return _encoding.GetString(buffer);
-            }
+            char Peek(int offset);
         }
 
         private class OeStringStream : IOeExportStream {
-            private readonly string _input;
+            
+            private char[] _endOfFieldChars = { ' ', '\t', '\n', '"' };
+            
+            private string _input;
 
             private int _position;
 
             public OeStringStream(string input) {
-                _input = input;
-            }
-
-            public ReadType Read() {
-                if (_position >= _input.Length) {
-                    return ReadType.EndOfStream;
-                }
-
-                switch (_input[_position++]) {
-                    case '"': // "
-                        return ReadType.DoubleQuote;
-                    case '\n': // \n
-                    case '\r': // \r
-                        return ReadType.NewLine;
-                    case '\t': // tab
-                    case ' ': // space
-                        return ReadType.WhiteSpace;
-                    default:
-                        return ReadType.Default;
-                }
+                _input = input ?? string.Empty;
             }
 
             public int Position {
@@ -212,30 +178,43 @@ namespace Oetools.Utilities.Openedge {
                 return str;
             }
 
-            public void Dispose() { }
-        }
+            public ReadType ReadToNextFieldEnd() {
+                if (_position <= _input.Length - 1) {
+                    _position = _input.IndexOfAny(_endOfFieldChars, _position);
+                    if (_position >= 0) {
+                        switch (_input[_position++]) {
+                            case '\t': // tab
+                            case ' ': // space
+                                return ReadType.WhiteSpace;
+                            case '"': // "
+                                return ReadType.DoubleQuote;
+                            case '\n': // \n
+                                return ReadType.NewLine;
+                        }
+                    }
+                }
+                _position = _input.Length + 1;
+                return ReadType.EndOfStream;
+            }
 
-//                do {
-//                    byteRead = fileStream.Read(buffer, bufferPositon, bufferSize);
-//                    if (byteRead == 0) {
-//                        break;
-//                    }
-//
-//                    bufferPositon += byteRead;
-//                    for (int i = 0; i < byteRead; i++) {
-//                        switch (buffer[i]) {
-//                            case 10: // \n
-//
-//                                break;
-//                            case 32: // space
-//
-//                                break;
-//                            case 34: // double quote
-//
-//                                break;
-//
-//                        }
-//                    }
-//                } while (byteRead > 0);
+            public void ReadToNextQuotes() {
+                if (_position <= _input.Length - 1) {
+                    _position = _input.IndexOf('"', _position);
+                    if (_position++ >= 0) {
+                        return;
+                    }
+                }
+                _position = _input.Length;
+            }
+
+            public char Peek(int offset) {
+                var pos = _position + offset;
+                return pos >= 0 && pos <= _input.Length - 1 ? _input[pos] : (char) 0;
+            }
+
+            public void Dispose() {
+                _input = null;
+            }
+        }
     }
 }

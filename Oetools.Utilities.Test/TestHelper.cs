@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Lib;
@@ -77,6 +78,14 @@ namespace Oetools.Utilities.Test {
                 dbAdministrator.Procopy(targetDatabasePath, DatabaseBlockSize.S4096);
                 dbAdministrator.LoadDf(targetDatabasePath, dfPath);
             }
+        }
+        
+        public static TimeSpan Time(Action action)
+        {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            action();
+            stopwatch.Stop();
+            return stopwatch.Elapsed;
         }
 
         public static List<IFileToArchive> GetPackageTestFilesList(string testFolder, string outPackName) {

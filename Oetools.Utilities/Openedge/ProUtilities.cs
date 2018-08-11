@@ -116,6 +116,7 @@ namespace Oetools.Utilities.Openedge {
                     string line;
                     var record = new List<string>();
                     bool inStringField = false;
+                    
                     while ((line = reader.ReadLine()) != null) {
                         try {
                             i++;

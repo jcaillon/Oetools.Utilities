@@ -35,9 +35,15 @@ namespace Oetools.Utilities.Openedge.Execution {
         public int NumberOfFilesTreated => unchecked((int) (File.Exists(_progressionFilePath) ? new FileInfo(_progressionFilePath).Length : 0));
        
         /// <summary>
-        ///     When true, we activate the log just before compiling with FileId active + we use xref to generate a file that list the referenced
-        ///     table of the .r
+        ///     When true, we activate the log just before compiling with FileId active + we use xref list the referenced
+        ///     tables/sequences of the .r
         /// </summary>
+        /// <remarks>
+        /// we use xref and not xml-xref because :
+        /// - the file is smaller
+        /// - its faster to read
+        /// - xref-xml has a strong tendancy to fail to generate!
+        /// </remarks>
         public bool CompileInAnalysisMode { get; set; }
        
         /// <summary>
