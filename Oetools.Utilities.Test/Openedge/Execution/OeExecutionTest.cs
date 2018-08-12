@@ -90,15 +90,18 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.OnExecutionEnd += execution => _iOeExecutionTestEvents++;
                 exec.OnExecutionOk += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 2;
                 exec.OnExecutionFailed += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 4;
+                _iOeExecutionTestEvents = 0;
                 exec.Start();
                 exec.WaitForProcessExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual(3, _iOeExecutionTestEvents);
             }
+
             using (var exec = new OeExecutionCustomTest(env)) {
                 exec.OnExecutionEnd += execution => _iOeExecutionTestEvents++;
                 exec.OnExecutionOk += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 2;
                 exec.OnExecutionFailed += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 4;
+                _iOeExecutionTestEvents = 0;
                 _iOeExecutionTestEvents = 0;
                 exec.ProgramContent = "to fail";
                 exec.Start();
@@ -140,22 +143,23 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.ProgramContent = "compilation error!!";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsTrue(exec.ExecutionHandledExceptions, "failed");
-                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException), "HandledExceptions 1");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "has exceptions");
+                Assert.IsTrue(exec.ExecutionFailed, "failed to execute");
             }
             using (var exec = new OeExecutionCustomTest(env)) {
                 exec.ProgramContent = "";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionHandledExceptions, "not failed");
+                Assert.IsFalse(exec.ExecutionHandledExceptions, "no exeptions");
             }
             using (var exec = new OeExecutionCustomTest(env)) {
                 // error in log
                 exec.ProgramContent = "return error \"oups\".";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsTrue(exec.ExecutionHandledExceptions, "failed2");
-                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorMessage.Equals("oups")), "HandledExceptions 2");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "has exceptions 1");
+                Assert.IsFalse(exec.ExecutionFailed, "failed to execute 1");
+                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorMessage.Equals("oups")), "HandledExceptions 1");
                 
             }
             using (var exec = new OeExecutionCustomTest(env)) {
@@ -169,8 +173,9 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     END.";
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsFalse(exec.ExecutionHandledExceptions, "not failed2");
-                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorNumber > 0), "HandledExceptions 3");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "has exceptions2");
+                Assert.IsFalse(exec.ExecutionFailed, "not failed to execute 2");
+                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException e1 && e1.ErrorNumber > 0), "HandledExceptions 2");
             }
 
             env.ProExeCommandLineParameters = "random derp";
@@ -178,8 +183,9 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 // error in command line
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsTrue(exec.ExecutionHandledExceptions, "failed3");
-                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException), "HandledExceptions 4");
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "has exceptions 3");
+                Assert.IsTrue(exec.ExecutionFailed, "failed to execute 3");
+                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is ExecutionOpenedgeException), "HandledExceptions 3");
             }
         }
         
@@ -244,11 +250,12 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             
             // try if connected well and can manage aliases
             env.DatabaseConnectionString = DatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, "random.db"));
+            
             using (var exec = new OeExecutionCustomTest(env)) {
                 exec.NeedDatabaseConnection = true;
                 exec.Start();
                 exec.WaitForProcessExit();
-                Assert.IsTrue(exec.ExecutionFailed, "failed");
+                Assert.IsFalse(exec.ExecutionFailed, "failed");
                 Assert.IsTrue(exec.ExecutionHandledExceptions, "ex");
                 Assert.IsTrue(exec.DbConnectionFailed, "no connection");
                 

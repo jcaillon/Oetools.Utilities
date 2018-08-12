@@ -74,9 +74,7 @@ namespace Oetools.Utilities.Test {
             }
 
             using (var dbAdministrator = new DatabaseAdministrator(dlcPath)) {
-                dbAdministrator.ProstrctCreate(targetDatabasePath, dbAdministrator.GenerateStructureFileFromDf(targetDatabasePath, dfPath), DatabaseBlockSize.S4096);
-                dbAdministrator.Procopy(targetDatabasePath, DatabaseBlockSize.S4096);
-                dbAdministrator.LoadDf(targetDatabasePath, dfPath);
+                dbAdministrator.CreateCompilationDatabaseFromDf(targetDatabasePath, dfPath);
             }
         }
         

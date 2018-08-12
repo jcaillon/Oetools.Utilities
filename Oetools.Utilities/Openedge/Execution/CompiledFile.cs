@@ -19,7 +19,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
@@ -51,9 +50,17 @@ namespace Oetools.Utilities.Openedge.Execution {
         public string CompilationPreprocessedFilePath { get; set; }
 
         /// <summary>
-        ///     This temporary file is actually a log with only FileId activated just before the compilation
-        ///     and deactivated just after; this allows us to know which file were used to compile the source
+        /// This temporary file is actually a log with only FileId activated just before the compilation
+        /// and deactivated just after; this allows us to know which file were used to compile the source
         /// </summary>
+        /// <remarks>
+        /// Why don't we use the INCLUDE lines in the .xref file?
+        /// because it is not directly a file path,
+        /// it the content of what is between {an include}, which means it is a relative path (from PROPATH)
+        /// and it can contains all the parameters... It easier to use this method
+        /// also because we would need to analyse CLASS lines to know if the .cls depends on others...
+        /// Lot of work, FILEID is the easy road
+        /// </remarks>
         public string CompilationFileIdLogFilePath { get; set; }
         
         /// <summary>
@@ -82,7 +89,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     represents the source file (i.e. includes) used to generate a given .r code file
         /// </summary>
-        public List<string> RequiredFiles { get; private set; }
+        public HashSet<string> RequiredFiles { get; private set; }
 
         /// <summary>
         /// represent the tables or sequences that were referenced in a given .r code file and thus needed to compile
@@ -90,8 +97,8 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// it is list of DATABASENAME.TABLENAME or DATABASENAME.SEQUENCENAME, you should probably verify
         /// that those references do exist afterward and also get the TABLE CRC value
         /// </summary>
-        public List<string> RequiredDatabaseReferences { get; private set; }
-       
+        public List<DatabaseReference> RequiredDatabaseReferences { get; private set; }
+        
         /// <summary>
         ///     Returns the base file name (set in constructor)
         /// </summary>
@@ -130,12 +137,58 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             if (IsAnalysisMode) {
                 AddWarningIfFileDefinedButDoesNotExist(CompilationFileIdLogFilePath);
-                AddWarningIfFileDefinedButDoesNotExist(CompilationRcodeTableListFilePath);
-                ComputeDatabaseReferences();
                 ComputeReferencedFiles();
             }
 
             CompiledCorrectly = File.Exists(CompilationRcodeFilePath) && (CompilationErrors == null || CompilationErrors.Count == 0);
+        }
+        
+        /// <summary>
+        /// Read the table referenced in the source file using either the xref file or the RCODE-INFO:TABLE-LIST,
+        /// make sure to also get the CRC value for each table
+        /// </summary>
+        /// <param name="ienv"></param>
+        public void ComputeRequiredDatabaseReferences(IEnvExecution ienv) {
+            if (!IsAnalysisMode || string.IsNullOrEmpty(CompilationXrefFilePath) && string.IsNullOrEmpty(CompilationRcodeTableListFilePath)) {
+                return;
+            }
+            AddWarningIfFileDefinedButDoesNotExist(CompilationRcodeTableListFilePath);
+            
+            RequiredDatabaseReferences = new List<DatabaseReference>();
+            
+            // read from xref (we need the table CRC from the environment)
+            if (ienv is EnvExecution env) {
+                if (File.Exists(CompilationXrefFilePath)) {
+                    foreach (var dbRef in ProUtilities.GetDatabaseReferencesFromXrefFile(CompilationXrefFilePath)) {
+                        if (env.TablesCrc.ContainsKey(dbRef)) {
+                            RequiredDatabaseReferences.Add(new DatabaseReferenceTable {
+                                QualifiedName = dbRef,
+                                Crc = env.TablesCrc[dbRef]
+                            });
+                        } else if (env.Sequences.Contains(dbRef)) {
+                            RequiredDatabaseReferences.Add(new DatabaseReferenceSequence {
+                                QualifiedName = dbRef
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // read from rcode-info:table-list
+            if (File.Exists(CompilationRcodeTableListFilePath)) {
+                Utils.ForEachLine(CompilationRcodeTableListFilePath, null, (i, line) => {
+                    var split = line.Split('\t');
+                    if (split.Length >= 1) {
+                        var qualifiedName = split[0].Trim();
+                        if (!RequiredDatabaseReferences.Exists(r => r.QualifiedName.EqualsCi(qualifiedName))) {
+                            RequiredDatabaseReferences.Add(new DatabaseReferenceTable {
+                                QualifiedName = qualifiedName,
+                                Crc = split[1].Trim()
+                            });
+                        }
+                    }
+                }, Encoding.Default);
+            }
         }
 
         private void AddWarningIfFileDefinedButDoesNotExist(string path) {
@@ -197,7 +250,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <summary>
-        ///     File the references used to compile this file (include and tables)
+        /// Gets the files that were necessary to compile this file
         /// </summary>
         private void ComputeReferencedFiles() {
 
@@ -206,213 +259,17 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
             
             if (File.Exists(CompilationFileIdLogFilePath)) {
-                var compiledSourcePathBaseFileName = Path.GetFileName(SourceFilePath);
-                var references = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
-                Utils.ForEachLine(CompilationFileIdLogFilePath, null, (i, line) => {
-                    try {
-                        // we want to read this kind of line :
-                        // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID         Open E:\Common\CommonObj.cls ID=33
-                        // skip until the 5th space
-                        var idx = 0;
-                        var nbFoundSpace = 0;
-                        do {
-                            if (line[idx] == ' ') {
-                                nbFoundSpace++;
-                                if (nbFoundSpace == 5)
-                                    break;
-                            }
-                            idx++;
-                        } while (idx < line.Length);
-
-                        idx++;
-                        
-                        // the next thing we read should be FILEID
-                        if (!line.Substring(idx, 6).Equals("FILEID"))
-                            return;
-                        idx += 6;
-                        
-                        // skip all whitespace
-                        while (idx < line.Length) {
-                            if (line[idx] != ' ')
-                                break;
-                            idx++;
-                        }
-
-                        // now we should read Open
-                        if (idx > line.Length - 1 || !line.Substring(idx, 5).Equals("Open "))
-                            return;
-                        idx += 5;
-                        
-                        // find the last index of a white space
-                        var lastIdx = line.Length - 1;
-                        do {
-                            if (line[lastIdx] == ' ')
-                                break;
-                            lastIdx--;
-                        } while (lastIdx >= 0);
-
-                        var newFile = line.Substring(idx, lastIdx - idx);
-
-                        if (!references.Contains(newFile) && 
-                            !newFile.EndsWith(".r", StringComparison.CurrentCultureIgnoreCase) && 
-                            !newFile.EndsWith(".pl", StringComparison.CurrentCultureIgnoreCase) && 
-                            !newFile.StartsWith(CompilationOutputDirectory, StringComparison.CurrentCultureIgnoreCase) && 
-                            !Path.GetFileName(newFile).Equals(compiledSourcePathBaseFileName)) {
-                            references.Add(newFile);
-                        }
-                    } catch (Exception e) {
-                        // wrong line format
-                        (CompilationErrors ?? (CompilationErrors = new List<CompilationError>())).Add(new CompilationError {
-                            SourcePath = SourceFilePath,
-                            Column = 1,
-                            Line = 1,
-                            Level = CompilationErrorLevel.Warning,
-                            ErrorNumber = 0,
-                            Message = $"Error catched when analyzing the FILEID log : {e.ToString()}"
-                        });
-                    }
-                }, Encoding.Default);
+                RequiredFiles = ProUtilities.GetReferencedFilesFromFileIdLog(CompilationFileIdLogFilePath, Encoding.Default);
                 
-                RequiredFiles = references.ToList();
+                RequiredFiles.RemoveWhere(f => 
+                    f.EqualsCi(CompiledFilePath) ||
+                    f.EndsWith(".r", StringComparison.CurrentCultureIgnoreCase) ||
+                    f.EndsWith(".pl", StringComparison.CurrentCultureIgnoreCase) ||
+                    !String.IsNullOrEmpty(CompilationXrefFilePath) && f.EqualsCi(CompilationXrefFilePath));
+                
             }
         }
 
-        private void ComputeDatabaseReferences() {
-            
-            // for reference, below are 
-            
-            // DEFINE VARIABLE li_i AS INTEGER NO-UNDO.
-            // /* ACCESS */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 4 ACCESS random.sequence1 SEQUENCE*/
-            // ASSIGN li_i = CURRENT-VALUE(sequence1).
-            // /* UPDATE */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 7 UPDATE random.sequence1 SEQUENCE*/
-            // ASSIGN CURRENT-VALUE(sequence1) = 1.
-            // /* SEARCH */
-            // /* "C:\folder space\file.p" "C:\folder space\file.p" 10 SEARCH random.table1 idx_1 WHOLE-INDEX */
-            // FIND FIRST table1.
-            // /* ACCESS */
-            // /* SEARCH */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 16 ACCESS random.table1 field1 */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 16 SEARCH random.table1 idx_1 WHOLE-INDEX*/
-            // FOR EACH table1 BY table1.field1:
-            // END.
-            // /* CREATE */
-            // /* "C:\folder space\file.p" "C:\folder space\file.p" 20 CREATE random.table1  */
-            // CREATE table1.
-            // /* UPDATE */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 24 ACCESS random.table1 field1 */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 24 UPDATE random.table1 field1*/
-            // ASSIGN table1.field1 = "".
-            // /* DELETE */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 27 DELETE random.table1 */
-            // DELETE table1.
-            // /* NEW-SHR-WORKFILE */
-            // /* NEW-SHR-WORKTABLE */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 32 REFERENCE random.table1 */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 32 NEW-SHR-WORKFILE WORKtable1 LIKE random.table1*/
-            // DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.
-            // DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1. /* same thing as WORKFILE */
-            // /* SHR-WORKFILE */
-            // /* SHR-WORKTABLE */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 38 REFERENCE random.table1 */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 38 SHR-WORKFILE WORKtable2 LIKE random.table1*/
-            // DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.
-            // DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1. /* same thing as WORKFILE */
-            // /* REFERENCE */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 42 REFERENCE random.table1 field1 */
-            // DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.
-            // /* REFERENCE */
-            // /*"C:\folder space\file.p" "C:\folder space\file.p" 45 REFERENCE random.table1 */
-            // DEFINE TEMP-TABLE tt1 LIKE table1.
-            
-            if (string.IsNullOrEmpty(CompilationXrefFilePath) && string.IsNullOrEmpty(CompilationRcodeTableListFilePath)) {
-                return;
-            }
-            
-            var references = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
-            
-            // read RCodeTableReferenced
-            if (File.Exists(CompilationRcodeTableListFilePath)) {
-                Utils.ForEachLine(CompilationRcodeTableListFilePath, null, (i, line) => {
-                    var split = line.Split(' ');
-                    if (split.Length >= 1) {
-                        var qualifiedName = split[0].Trim();
-                        if (!references.Contains(qualifiedName)) {
-                            references.Add(qualifiedName);
-                        }
-                    }
-                }, Encoding.Default);
-            }
-
-            if (File.Exists(CompilationXrefFilePath)) {
-                ProUtilities.ReadOpenedgeUnformattedExportFile(CompilationXrefFilePath, record => {
-                    if (record.Count < 5) {
-                        return true;
-                    }
-
-                    string foundRef = null;
-                    switch (record[3]) {
-                        // dynamic access
-                        case "ACCESS":
-                            // "file.p" "file.p" line ACCESS [DATA-MEMBER] random.table1 idx_1 WHOLE-INDEX
-                            foundRef = record[4];
-                            if (foundRef.Equals("DATA-MEMBER") && record.Count >= 5) {
-                                foundRef = record[5];
-                            }
-
-                            break;
-                        // dynamic access
-                        case "CREATE":
-                        case "DELETE":
-                        case "UPDATE":
-                        case "SEARCH":
-                            // "file.p" "file.p" line SEARCH random.table1 idx_1 WHOLE-INDEX
-                            foundRef = record[4];
-                            break;
-                        // static reference
-                        case "REFERENCE":
-                            // "file.p" "file.p" line REFERENCE random.table1 
-                            foundRef = record[4];
-                            break;
-                        // static reference
-                        case "NEW-SHR-WORKFILE":
-                        case "NEW-SHR-WORKTABLE":
-                        case "SHR-WORKFILE":
-                        case "SHR-WORKTABLE":
-                            // "file.p" "file.p" line SHR-WORKFILE WORKtable2 LIKE random.table1
-                            if (record.Count >= 6) {
-                                foundRef = record[6];
-                            }
-
-                            break;
-                        default:
-                            return true;
-                    }
-
-                    if (!string.IsNullOrEmpty(foundRef) && foundRef.IndexOf('.') > 0 && !references.Contains(foundRef)) {
-                        // make sure it's actually a table or sequence
-                        references.Add(foundRef);
-                    }
-
-                    return true;
-                }, out List<Exception> le);
-                if (le != null) {
-                    foreach (var exception in le) {
-                        (CompilationErrors ?? (CompilationErrors = new List<CompilationError>())).Add(new CompilationError {
-                            SourcePath = SourceFilePath,
-                            Column = 1,
-                            Line = 1,
-                            Level = CompilationErrorLevel.Warning,
-                            ErrorNumber = 0,
-                            Message = $"Error catched when analyzing the XREF file : {exception}"
-                        });
-                    }
-                }
-            }
-
-            RequiredDatabaseReferences = references.ToList();
-        }
     }
 
 }

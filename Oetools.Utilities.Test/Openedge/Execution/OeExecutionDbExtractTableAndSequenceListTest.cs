@@ -18,6 +18,7 @@
 // ========================================================================
 #endregion
 
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge.Database;
@@ -50,13 +51,25 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             if (!GetEnvExecution(out EnvExecution env)) {
                 return;
             }
-            env.UseProgressCharacterMode = true;
             using (var exec = new OeExecutionDbExtractTableAndSequenceList(env)) {
-                exec.NeedDatabaseConnection = true;
                 exec.Start();
                 exec.WaitForProcessExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DbConnectionFailed, "DbConnectionFailed");
+            }
+        }
+        
+        [TestMethod]
+        public void OeExecutionDbExtractTableAndSequenceListTest_Wrong_db_connection() {
+            if (!GetEnvExecution(out EnvExecution env)) {
+                return;
+            }
+            env.DatabaseConnectionString = "-db random -db cool";
+            using (var exec = new OeExecutionDbExtractTableAndSequenceList(env)) {
+                exec.Start();
+                exec.WaitForProcessExit();
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
+                Assert.IsTrue(exec.DbConnectionFailed, "DbConnectionFailed");
             }
         }
         
@@ -74,15 +87,22 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 TestHelper.CreateDatabaseFromDf(Path.Combine(TestFolder, "base.db"), Path.Combine(TestFolder, "dummy.df"));
             }
 
-            env.UseProgressCharacterMode = true;
             env.DatabaseConnectionString = $"{DatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, "dummy.db"))} {DatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, "base.db"))}";
+            env.DatabaseAliases = new List<IEnvExecutionDatabaseAlias> {
+                new EnvExecutionDatabaseAlias {
+                    DatabaseLogicalName = "dummy",
+                    AliasLogicalName = "alias1"
+                }
+            };
             
             using (var exec = new OeExecutionDbExtractTableAndSequenceList(env)) {
-                exec.NeedDatabaseConnection = true;
                 exec.Start();
                 exec.WaitForProcessExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DbConnectionFailed, "DbConnectionFailed");
+
+                Assert.AreEqual("dummy.sequence1,alias1.sequence1,base.sequence1", string.Join(",", exec.Sequences), "sequences");
+                Assert.AreEqual("dummy.table1,alias1.table1,dummy._Sequence,alias1._Sequence,base.table1,base._Sequence", string.Join(",", exec.TablesCrc.Keys), "tables");
             }
         }
 

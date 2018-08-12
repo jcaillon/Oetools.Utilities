@@ -57,6 +57,18 @@ namespace Oetools.Utilities.Openedge.Database {
                 return _progres;
             }
         }
+
+        /// <summary>
+        /// Generates a database from a .df (database definition) file
+        /// that database should not be used in production since it has all default configuration, its purpose is to exist for file compilation
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="dfFilePath"></param>
+        public void CreateCompilationDatabaseFromDf(string targetDbPath, string dfFilePath) {
+            ProstrctCreate(targetDbPath, GenerateStructureFileFromDf(targetDbPath, dfFilePath));
+            Procopy(targetDbPath);
+            LoadDf(targetDbPath, dfFilePath);
+        }
         
         /// <summary>
         /// Load a .df in a database

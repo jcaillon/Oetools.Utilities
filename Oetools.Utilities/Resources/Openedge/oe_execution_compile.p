@@ -276,7 +276,7 @@ END PROCEDURE.
         OUTPUT STREAM str_rw TO VALUE(ipc_outTableRefPath) APPEND BINARY.
         PUT STREAM str_rw UNFORMATTED "".
         REPEAT li_i = 1 TO NUM-ENTRIES(lc_tableList):
-            PUT STREAM str_rw UNFORMATTED ENTRY(li_i, lc_tableList) + " " + ENTRY(li_i, lc_crcList) SKIP.
+            PUT STREAM str_rw UNFORMATTED ENTRY(li_i, lc_tableList) + "~t" + ENTRY(li_i, lc_crcList) SKIP.
         END.
         OUTPUT STREAM str_rw CLOSE.
 

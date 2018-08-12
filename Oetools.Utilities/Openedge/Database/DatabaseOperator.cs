@@ -117,8 +117,12 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="blockSize">Block size for the database prostrct create</param>
         /// <returns></returns>
         /// <exception cref="DatabaseOperationException"></exception>
-        public void ProstrctCreate(string targetDbPath, string structureFilePath, DatabaseBlockSize blockSize) {
+        public void ProstrctCreate(string targetDbPath, string structureFilePath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+
+            if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
+                blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
+            }
 
             if (string.IsNullOrEmpty(structureFilePath)) {
                 throw new DatabaseOperationException("The structure file path can't be null");
@@ -173,8 +177,12 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="newInstance">Use -newinstance in procopy command</param>
         /// <param name="relativePath">Use -relativepath in procopy command</param>
         /// <exception cref="DatabaseOperationException"></exception>
-        public void Procopy(string targetDbPath, DatabaseBlockSize blockSize, string codePage = null, bool newInstance = true, bool relativePath = true) {
+        public void Procopy(string targetDbPath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            
+            if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
+                blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
+            }
 
             string emptyDbFolder;
             if (!string.IsNullOrEmpty(codePage)) {
@@ -649,7 +657,8 @@ namespace Oetools.Utilities.Openedge.Database {
     /// <summary>
     /// Describes the block size of a database
     /// </summary>
-    public enum DatabaseBlockSize {
+    public enum DatabaseBlockSize : byte {
+        DefaultForCurrentPlatform = 0,
         S1024 = 1,
         S2048 = 2,
         S4096 = 4,

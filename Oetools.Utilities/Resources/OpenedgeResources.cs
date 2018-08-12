@@ -22,7 +22,7 @@ using System.Text;
 
 namespace Oetools.Utilities.Resources {
     
-    public static class OpenedgeResources {
+    internal static class OpenedgeResources {
         
         private static byte[] GetOpenedgeFromResources(string fileName) {
             return Resources.GetBytesFromResource($"{nameof(Oetools)}.{nameof(Utilities)}.{nameof(Resources)}.Openedge.{fileName}");

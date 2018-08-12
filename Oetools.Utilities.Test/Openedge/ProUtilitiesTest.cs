@@ -80,55 +80,6 @@ namespace Oetools.Utilities.Test.Lib {
         }
         
         [TestMethod]
-        [DataRow("1\"", "1\"|+", false)]
-        [DataRow(@"
-""f k"" 10 ""f k"" 20 ""long
-very
-l""""o""""ng
-line
-""
-10 ""long
-very
-long
-line
-ending"" 30 ""last""
-
-", @"""f k""|10|""f k""|20|""long
-very
-l""o""ng
-line
-""|+10|""long
-very
-long
-line
-ending""|30|""last""|+", false)]
-        [DataRow(@"3 ""field""", @"3|""field""|+", false)]
-        [DataRow("1", "1|+", false)]
-        [DataRow(@"1 """" 2", @"1|""""|2|+", false)]
-        [DataRow(@"""field"" 2", @"""field""|2|+", false)]
-        [DataRow(@"3 ""field"" 2", @"3|""field""|2|+", false)]
-        [DataRow(@"3 ""field""", @"3|""field""|+", false)]
-        [DataRow(@"3    ""field""", "+", true)]
-        [DataRow(@" ", "+", true)]
-        public void ReadOpenedgeUnformattedExportFile_Test(string content, string expected, bool hasExceptions) {
-           var path = Path.Combine(TestFolder, "data.d");
-            File.WriteAllText(path, content);
-
-            var sb = new StringBuilder();
-            ProUtilities.ReadOpenedgeUnformattedExportFile(path, record => {
-                foreach (var field in record) {
-                    sb.Append(field);
-                    sb.Append("|");
-                }
-                sb.Append("+");
-                return true;
-            }, out List<Exception> el);
-
-            Assert.AreEqual(expected, sb.ToString(), content);
-            Assert.AreEqual(hasExceptions, el != null && el.Count > 0, "exceptions");
-        }
-        
-        [TestMethod]
         public void GetProPathFromIniFile_TestEnvVarReplacement() {
            
             var iniPath = Path.Combine(TestFolder, "test.ini");
@@ -161,7 +112,7 @@ ending""|30|""last""|+", false)]
             Assert.IsTrue(ProUtilities.GetProExecutableFromDlc(ProUtilities.GetDlcPathFromEnv()).StartsWith(Path.Combine(dlcPath, "bin", "prowin")));
             Assert.AreEqual(Path.Combine(ProUtilities.GetDlcPathFromEnv(), "bin", "_progres.exe"), ProUtilities.GetProExecutableFromDlc(dlcPath, true));
             Assert.ThrowsException<ExecutionParametersException>(() => ProUtilities.GetProExecutableFromDlc(TestFolder, true));
-            Assert.ThrowsException<ExecutionParametersException>(() => ProUtilities.GetProExecutableFromDlc(TestFolder, false));
+            Assert.ThrowsException<ExecutionParametersException>(() => ProUtilities.GetProExecutableFromDlc(TestFolder));
         }
         
         [TestMethod]
@@ -178,8 +129,8 @@ ending""|30|""last""|+", false)]
             var plList = ProUtilities.ListProlibFilesInDirectory(prolib);
             
             Assert.AreEqual(2, plList.Count);
-            Assert.IsTrue(plList.Exists(s => Path.GetFileName(s).Equals("2.pl")));
-            Assert.IsTrue(plList.Exists(s => Path.GetFileName(s).Equals("4.pl")));
+            Assert.IsTrue(plList.Exists(s => Path.GetFileName(s ?? "").Equals("2.pl")));
+            Assert.IsTrue(plList.Exists(s => Path.GetFileName(s ?? "").Equals("4.pl")));
         }
         
         [TestMethod]
@@ -199,6 +150,70 @@ ending""|30|""last""|+", false)]
             }
 
             Assert.AreEqual(expected, connectionString);
+        }
+        
+        [TestMethod]
+        [DataRow(@"
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 4 ACCESS random.sequence1 SEQUENCE
+/*MESSAGE STRING(CURRENT-VALUE(sequence1)).*/
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 7 UPDATE random.sequence2 SEQUENCE
+/*ASSIGN CURRENT-VALUE(sequence1) = 1.*/
+ ""C:\folder space\file.p"" ""C:\folder space\file.p"" 10 SEARCH random.table1 idx_1 WHOLE-INDEX 
+/*FIND FIRST table1.*/
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 16 ACCESS random.table2 field1 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 16 SEARCH random.table3 idx_1 WHOLE-INDEX
+/*FOR EACH table1 BY table1.field1:*/
+/*END.*/
+ ""C:\folder space\file.p"" ""C:\folder space\file.p"" 20 CREATE random.table4  
+/*CREATE table1.*/
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 24 ACCESS DATA-MEMBER random.table5 field1 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 24 UPDATE random.table6 field1
+/*ASSIGN table1.field1 = """".*/
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 27 DELETE random.table7 
+/*DELETE table1.*/
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 32 REFERENCE random.table8 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 32 NEW-SHR-WORKFILE WORKtable1 LIKE random.table9
+/*DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.*/
+/*DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.  same thing as WORKFILE */
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 38 REFERENCE random.table10 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 38 SHR-WORKFILE WORKtable LIKE random.table11
+/*DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.*/
+/*DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.  same thing as WORKFILE */
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 42 REFERENCE random.table12 field1 
+/*DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.*/
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 45 REFERENCE random.table13 
+/*DEFINE TEMP-TABLE tt1 LIKE table1.*/
+", @"random.sequence1,random.sequence2,random.table1,random.table2,random.table3,random.table4,random.table5,random.table6,random.table7,random.table8,random.table9,random.table10,random.table11,random.table12,random.table13")]
+        public void GetDatabaseReferencesFromXrefFile_Test(string fileContent, string expected) {
+            File.WriteAllText(Path.Combine(TestFolder, "test.xrf"), fileContent, Encoding.Default);
+            var l = ProUtilities.GetDatabaseReferencesFromXrefFile(Path.Combine(TestFolder, "test.xrf"), Encoding.Default);
+            Assert.AreEqual(expected, string.Join(",", l));
+        }
+        
+        [TestMethod]
+        [DataRow(@"
+[18/08/12@13:28:48.082+0200] P-005932 T-006876 1 4GL -- Logging level set to = 2
+[18/08/12@13:28:48.082+0200] P-005932 T-006876 1 4GL -- No entry types are activated
+[18/08/12@13:28:48.082+0200] P-005932 T-006876 1 4GL -- Logging level set to = 3
+[18/08/12@13:28:48.082+0200] P-005932 T-006876 1 4GL -- Log entry types activated: FileID
+[18/08/12@13:28:48.082+0200] P-005932 T-006876 2 4GL FILEID         Open
+[18/08/12@13:28:48.082+0200] P-005932 T-006876 2 4GL FILEID         Open ID=9
+[18/08/12@13:28:48.082+0200] P-005932 T-006876 2 4GL FILEID         Open C:\Users\Julien\analysefiles.xrf ID=9
+[18/08/12@13:28:48.083+0200] P-005932 T-006876 2 4GL FILEID         Close C:\Users\Julien\analysefiles.xrf ID=9
+[18/08/12@13:28:48.083+0200] P-005932 T-006876 2 4GL FILEID         Open C:\Work\Tests\OeExecutionCompileTest\analysefiles.p ID=10
+[18/08/12@13:28:48.085+0200] P-005932 T-006876 2 4GL FILEID         Open C:\Work\Tests\OeExecutionCompileTest\includes with spaces\analysefilesfirst.i ID=11
+[18/08/12@13:28:48.085+0200] P-005932 T-006876 2 4GL FILEID         Open C:\Work\Tests\OeExecutionCompileTest\analysefilessecond.i ID=12
+[18/08/12@13:28:48.085+0200] P-005932 T-006876 2 4GL FILEID         Close C:\Work\Tests\OeExecutionCompileTest\analysefilessecond.i ID=12
+[18/08/12@13:28:48.085+0200] P-005932 T-006876 2 4GL FILEID         Close C:\Work\Tests\OeExecutionCompileTest\includes with spaces\analysefilesfirst.i ID=11
+[18/08/12@13:28:48.086+0200] P-005932 T-006876 2 4GL FILEID         Close C:\Work\Tests\OeExecutionCompileTest\analysefiles.p ID=10
+[18/08/12@13:28:48.087+0200] P-005932 T-006876 2 4GL FILEID         Open C:\Users\Julien\analysefiles.r ID=9
+[18/08/12@13:28:48.088+0200] P-005932 T-006876 2 4GL FILEID         Close C:\Users\Julien\analysefiles.r ID=9
+[18/08/12@13:28:48.088+0200] P-005932 T-006876 1 4GL ----------     Log file closed at user's request
+", @"C:\Users\Julien\analysefiles.xrf,C:\Work\Tests\OeExecutionCompileTest\analysefiles.p,C:\Work\Tests\OeExecutionCompileTest\includes with spaces\analysefilesfirst.i,C:\Work\Tests\OeExecutionCompileTest\analysefilessecond.i,C:\Users\Julien\analysefiles.r")]
+        public void GetReferencedFilesFromFileIdLog_Test(string fileContent, string expected) {
+            File.WriteAllText(Path.Combine(TestFolder, "test.fileidlog"), fileContent, Encoding.Default);
+            var l = ProUtilities.GetReferencedFilesFromFileIdLog(Path.Combine(TestFolder, "test.fileidlog"), Encoding.Default);
+            Assert.AreEqual(expected, string.Join(",", l));
         }
 
     }

@@ -20,7 +20,7 @@ using System.IO;
 using System.Reflection;
 
 namespace Oetools.Utilities.Resources {
-    public static class Resources {
+    internal static class Resources {
         public static byte[] GetBytesFromResource(string resourcePath) {
             using (Stream resFilestream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourcePath)) {
                 if (resFilestream == null) {

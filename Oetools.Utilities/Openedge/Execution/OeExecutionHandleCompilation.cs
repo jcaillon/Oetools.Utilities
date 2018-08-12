@@ -262,6 +262,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 try {
                     Parallel.ForEach(CompiledFiles, file => {
                         file.ReadCompilationResults();
+                        file.ComputeRequiredDatabaseReferences(AnalysisModeSimplifiedDatabaseReferences ? null : Env);
                     });
                 } catch (Exception e) {
                     HandledExceptions.Add(new ExecutionException("Error while reading the compilation results", e));

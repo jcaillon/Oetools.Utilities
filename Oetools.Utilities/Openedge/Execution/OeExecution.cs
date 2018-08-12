@@ -49,9 +49,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         public event Action<OeExecution> OnExecutionFailed;
 
         /// <summary>
-        ///     set to true if a valid database connection is mandatory (if so, failing to connect will be considered as an error)
+        /// Set to true if a valid database connection is mandatory (if so, the execution will stop if the db fails to connnect)
         /// </summary>
-        public bool NeedDatabaseConnection { get; set; }
+        public virtual bool NeedDatabaseConnection { get; set; }
 
         /// <summary>
         /// Set the openedge working directory (would default to <see cref="ExecutionTemporaryDirectory"/>)
@@ -69,12 +69,16 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool HasBeenKilled { get; private set; }
 
         /// <summary>
-        ///     Set to true after the process is over if there was errors during the execution
+        /// Set to true after the process is over if there was errors during the execution.
+        /// The process executed till the end but there were errors or warning that should be displayed
+        /// to the end user
         /// </summary>
         public bool ExecutionHandledExceptions => HandledExceptions != null && HandledExceptions.Count > 0;
         
         /// <summary>
-        ///     Set to true if the process failed to go to the end or didn't event start
+        /// Set to true if the process failed to go to the end or didn't event start,
+        /// if this is true, you should be really worried because something is wrong with the internal
+        /// procedures in this very library
         /// </summary>
         public bool ExecutionFailed { get; private set; }
 
@@ -331,7 +335,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 } else if (new FileInfo(_errorLogPath).Length > 0) {
                     // else if the log isn't empty, something went wrong
                     HandledExceptions.AddRange(GetOpenedgeExceptions<ExecutionOpenedgeException>(_errorLogPath));
-                    ExecutionFailed = true;
+                    ExecutionFailed = false;
                     
                 } else if (_process.StandardOutputArray.Count > 0 || _process.ErrorOutputArray.Count > 0) {
                     // we do not put anything in the standard output, if there is something then it is a runtime error!

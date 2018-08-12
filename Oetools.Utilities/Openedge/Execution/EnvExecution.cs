@@ -122,9 +122,40 @@ namespace Oetools.Utilities.Openedge.Execution {
                 return _proVersion;
             }
         }
-
+        
         public virtual bool IsProVersionHigherOrEqualTo(Version version) {
             return ProVersion != null && version != null && ProVersion.CompareTo(version) >= 0;
+        }
+        
+        public Dictionary<string, string> TablesCrc {
+            get {
+                if (_tablesCrc == null) {
+                    InitDatabasesInfo();
+                }
+                return _tablesCrc;
+            }
+        }
+
+        public HashSet<string> Sequences {
+            get {
+                if (_sequences == null) {
+                    InitDatabasesInfo();
+                }
+                return _sequences;
+            }
+        }
+        
+        private Dictionary<string, string> _tablesCrc;
+        
+        private HashSet<string> _sequences;
+        
+        private void InitDatabasesInfo() {
+            using (var exec = new OeExecutionDbExtractTableAndSequenceList(this)) {
+                exec.Start();
+                exec.WaitForProcessExit();
+                _tablesCrc = exec.TablesCrc;
+                _sequences = exec.Sequences;
+            }
         }
     }
 }

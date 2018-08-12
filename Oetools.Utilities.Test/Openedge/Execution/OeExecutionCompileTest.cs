@@ -450,7 +450,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         /// Cls files must be named like the class they define or they fail to compile
         /// </summary>
         [TestMethod]
-        public void OeExecutionCompile_Test_Compile_class_Faile() {
+        public void OeExecutionCompile_Test_Compile_class_Fails() {
             if (!GetEnvExecution(out EnvExecution env)) {
                 return;
             }
@@ -526,11 +526,19 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 return;
             }
             
-            // write procedures and includes
-            File.WriteAllText(Path.Combine(TestFolder, "analysefiles.p"), @"
-            {includes/analysefilesfirst.i}            
-            ");     
+            Utils.CreateDirectoryIfNeeded(Path.Combine(TestFolder, "namespace", "cool"));
+            File.WriteAllText(Path.Combine(TestFolder, "namespace", "cool", "Class1.cls"), @"
+            USING namespace.cool.*.
+            CLASS namespace.cool.Class1 INHERITS Class2:
+            END CLASS.");
 
+            File.WriteAllText(Path.Combine(TestFolder, "namespace", "cool", "Class2.cls"), @"
+            CLASS namespace.cool.Class2 ABSTRACT:
+                METHOD PUBLIC VOID InitializeDate ():
+                    {includes/analysefilesfirst.i}
+                END METHOD.
+            END CLASS.");
+            
             Utils.CreateDirectoryIfNeeded(Path.Combine(TestFolder, "includes"));
             File.WriteAllText(Path.Combine(TestFolder, "includes", "analysefilesfirst.i"), @"
             DEF VAR lc_ AS CHAR NO-UNDO.
@@ -545,7 +553,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             
             using (var exec = new OeExecutionCompile(env)) {
                 exec.FilesToCompile = new List<FileToCompile> {
-                    new FileToCompile(Path.Combine(TestFolder, "analysefiles.p"))
+                    new FileToCompile(Path.Combine(TestFolder, "namespace", "cool", "Class1.cls"))
                 };
                 exec.CompileInAnalysisMode = true;
                 exec.Start();
@@ -554,40 +562,52 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), "all compile ok");
                 
-                Assert.AreEqual(2, exec.CompiledFiles[0].RequiredFiles.Count, "required files");
-                Assert.AreEqual(true, exec.CompiledFiles[0].RequiredFiles.Exists(f => f.Equals(Path.Combine(TestFolder, "includes", "analysefilesfirst.i"))), "1");
-                Assert.AreEqual(true, exec.CompiledFiles[0].RequiredFiles.Exists(f => f.Equals(Path.Combine(TestFolder, "analysefilessecond.i"))), "1");
+                Assert.AreEqual(3, exec.CompiledFiles[0].RequiredFiles.Count, "required files");
+                Assert.AreEqual(true, exec.CompiledFiles[0].RequiredFiles.ToList().Exists(f => f.Equals(Path.Combine(TestFolder, "includes", "analysefilesfirst.i"))), "1");
+                Assert.AreEqual(true, exec.CompiledFiles[0].RequiredFiles.ToList().Exists(f => f.Equals(Path.Combine(TestFolder, "analysefilessecond.i"))), "1");
+                Assert.AreEqual(true, exec.CompiledFiles[0].RequiredFiles.ToList().Exists(f => f.Equals(Path.Combine(TestFolder, "namespace", "cool", "Class2.cls"))), "1");
             }
         }
         
         [TestMethod]
-        [DataRow("MESSAGE STRING(CURRENT-VALUE(sequence1)).", "dummy.sequence1", false)]
-        [DataRow("ASSIGN CURRENT-VALUE(sequence1) = 1. FIND FIRST table1.", "dummy.sequence1,dummy.table1", false)]
-        [DataRow("FOR EACH table1 BY table1.field1:\nEND.", "dummy.table1", false)]
-        [DataRow("CREATE table1.", "dummy.table1", false)]
-        [DataRow("FIND table1. ASSIGN table1.field1 = \"\".", "dummy.table1", false)]
-        [DataRow("DELETE table1.", "dummy.table1", false)]
-        [DataRow("DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.", "dummy.table1", false)]
-        [DataRow("DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.", "dummy.table1", false)]
-        [DataRow("DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.", "dummy.table1", false)]
-        [DataRow("DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.", "dummy.table1", false)]
-        [DataRow("DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "dummy.table1", false)]
-        [DataRow("DEFINE TEMP-TABLE tt1 LIKE table1.", "dummy.table1", false)]
+        [DataRow(false, "MESSAGE STRING(CURRENT-VALUE(sequence1)).", "dummy.sequence1")]
+        [DataRow(false, "MESSAGE STRING(CURRENT-VALUE(sequence1, dummy)).", "dummy.sequence1")]
+        // Even if we use an alias of the database in the code, the reference is the logical name of the database behind the alias
+        [DataRow(false, "MESSAGE STRING(CURRENT-VALUE(sequence1, alias1)).", "dummy.sequence1")]
+        [DataRow(false, "ASSIGN CURRENT-VALUE(sequence1) = 1. FIND FIRST table1.", "dummy.sequence1,dummy.table1")]
+        [DataRow(false, "FOR EACH table1 BY table1.field1:\nEND.", "dummy.table1")]
+        [DataRow(false, "FOR EACH dummy.table1 BY dummy.table1.field1:\nEND.", "dummy.table1")]
+        // However, when we qualify table with an alias name, we get the alias name is the reference... zzz
+        [DataRow(false, "FOR EACH alias1.table1 BY alias1.table1.field1:\nEND.", "alias1.table1")]
+        [DataRow(false, "CREATE table1.", "dummy.table1")]
+        [DataRow(false, "FIND table1. ASSIGN table1.field1 = \"\".", "dummy.table1")]
+        [DataRow(false, "DELETE table1.", "dummy.table1")]
+        [DataRow(false, "DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.", "dummy.table1")]
+        [DataRow(false, "DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.", "dummy.table1")]
+        [DataRow(false, "DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.", "dummy.table1")]
+        [DataRow(false, "DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.", "dummy.table1")]
+        [DataRow(false, "DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "dummy.table1")]
+        [DataRow(false, "DEFINE TEMP-TABLE tt1 LIKE table1.", "dummy.table1")]
+        [DataRow(false, "DEFINE TEMP-TABLE tt1 LIKE alias1.table1.", "alias1.table1")]
         // in simplified mode, the tables referenced in "LIKE" statement do not appear
         // also, referenced sequences all appear as "dummy._Sequence"
-        [DataRow("MESSAGE STRING(CURRENT-VALUE(sequence1)).", "dummy._Sequence", true)]
-        [DataRow("ASSIGN CURRENT-VALUE(sequence1) = 1. FIND FIRST table1.", "dummy._Sequence,dummy.table1", true)]
-        [DataRow("FOR EACH table1 BY table1.field1:\nEND.", "dummy.table1", true)]
-        [DataRow("CREATE table1.", "dummy.table1", true)]
-        [DataRow("FIND table1. ASSIGN table1.field1 = \"\".", "dummy.table1", true)]
-        [DataRow("DELETE table1.", "dummy.table1", true)]
-        [DataRow("DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.", "", true)]
-        [DataRow("DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.", "", true)]
-        [DataRow("DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.", "", true)]
-        [DataRow("DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.", "", true)]
-        [DataRow("DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "", true)]
-        [DataRow("DEFINE TEMP-TABLE tt1 LIKE table1.", "", true)]
-        public void OeExecutionCompile_Test_Analysis_mode_referenced_tables_or_sequences(string codeThatReferencesDatabase, string references, bool analysisModeSimplifiedDatabaseReferences) {
+        [DataRow(true, "MESSAGE STRING(CURRENT-VALUE(sequence1)).", "dummy._Sequence")]
+        [DataRow(true, "MESSAGE STRING(CURRENT-VALUE(sequence1, dummy)).", "dummy._Sequence")]
+        [DataRow(true, "MESSAGE STRING(CURRENT-VALUE(sequence1, alias1)).", "dummy._Sequence")]
+        [DataRow(true, "ASSIGN CURRENT-VALUE(sequence1) = 1. FIND FIRST table1.", "dummy._Sequence,dummy.table1")]
+        [DataRow(true, "FOR EACH table1 BY table1.field1:\nEND.", "dummy.table1")]
+        [DataRow(true, "FOR EACH alias1.table1 BY alias1.table1.field1:\nEND.", "alias1.table1")]
+        [DataRow(true, "FOR EACH dummy.table1 BY dummy.table1.field1:\nEND.", "dummy.table1")]
+        [DataRow(true, "CREATE table1.", "dummy.table1")]
+        [DataRow(true, "FIND table1. ASSIGN table1.field1 = \"\".", "dummy.table1")]
+        [DataRow(true, "DELETE table1.", "dummy.table1")]
+        [DataRow(true, "DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.", "")]
+        [DataRow(true, "DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.", "")]
+        [DataRow(true, "DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.", "")]
+        [DataRow(true, "DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.", "")]
+        [DataRow(true, "DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "")]
+        [DataRow(true, "DEFINE TEMP-TABLE tt1 LIKE table1.", "")]
+        public void OeExecutionCompile_Test_Analysis_mode_referenced_tables_or_sequences(bool analysisModeSimplifiedDatabaseReferences, string codeThatReferencesDatabase, string references) {
             if (!GetEnvExecution(out EnvExecution env)) {
                 return;
             }
@@ -606,6 +626,12 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
             env.DatabaseConnectionString = DatabaseOperator.GetMultiConnectionString(Path.Combine(TestFolder, "dummy.db"));
+            env.DatabaseAliases = new List<IEnvExecutionDatabaseAlias> {
+                new EnvExecutionDatabaseAlias {
+                    DatabaseLogicalName = "dummy",
+                    AliasLogicalName = "alias1"
+                }
+            };
             
             using (var exec = new OeExecutionCompile(env)) {
                 exec.FilesToCompile = new List<FileToCompile> {
@@ -617,29 +643,36 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForProcessExit();
                 
-                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
-                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all compile ok : {string.Join(",", exec.CompiledFiles[0].CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed procedure : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all procedures compile ok : {string.Join(",", exec.CompiledFiles[0].CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
                 
-                Assert.AreEqual(references, exec.CompiledFiles[0].RequiredDatabaseReferences != null ? string.Join(",", exec.CompiledFiles[0].RequiredDatabaseReferences) : "", "ref");
+                Assert.AreEqual(references, string.Join(",", exec.CompiledFiles[0].RequiredDatabaseReferences.Select(r => r.QualifiedName)), "procedure ref");
+                Assert.IsTrue(exec.CompiledFiles[0].RequiredDatabaseReferences.Where(r => r is DatabaseReferenceTable).Cast<DatabaseReferenceTable>().All(r => !string.IsNullOrEmpty(r.Crc)));
             }
         }
         
         [TestMethod]
-        // in simplified mode and when compiling class file, we need to find the generated .r in the progress
-        // execution to get the RCODE-INFO
-        [DataRow("MESSAGE STRING(CURRENT-VALUE(sequence1)).", "dummy._Sequence", true, true)]
-        [DataRow("ASSIGN CURRENT-VALUE(sequence1) = 1. FIND FIRST table1.", "dummy._Sequence,dummy.table1", true, true)]
-        [DataRow("FOR EACH table1 BY table1.field1:\nEND.", "dummy.table1", true, true)]
-        [DataRow("CREATE table1.", "dummy.table1", true, true)]
-        [DataRow("FIND table1. ASSIGN table1.field1 = \"\".", "dummy.table1", true, true)]
-        [DataRow("DELETE table1.", "dummy.table1", true, true)]
-        [DataRow("DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "", true, true)]
-        [DataRow("DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.", "", false, true)]
-        [DataRow("DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.", "", false, true)]
-        [DataRow("DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.", "", false, true)]
-        [DataRow("DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.", "", false, true)]
-        [DataRow("DEFINE TEMP-TABLE tt1 LIKE table1.", "", false, true)]
-        public void OeExecutionCompile_Test_Analysis_mode_referenced_tables_or_sequences_for_classes(string codeThatReferencesDatabase, string references, bool inMethod, bool useClassFile) {
+        // Inherited class are not like include :
+        // class1 inherits from class2
+        // a reference to table is made in class2
+        // if the only table changes (no change of code in class2), then only class 2 needs to be recompiled! 
+        [DataRow(false, true, "MESSAGE STRING(CURRENT-VALUE(sequence1)).", "")]
+        [DataRow(false, true, "FOR EACH alias1.table1 BY alias1.table1.field1:\nEND.", "")]
+        [DataRow(false, true, "CREATE dummy.table1.", "")]
+        [DataRow(false, true, "DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "")]
+        [DataRow(false, false, "DEFINE WORKFILE wftable1 NO-UNDO LIKE dummy.table1.", "dummy.table1")]
+        [DataRow(false, false, "DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "dummy.table1")]
+        [DataRow(false, false, "DEFINE TEMP-TABLE tt1 LIKE alias1.table1.", "alias1.table1")]
+        // in simplified mode, the tables referenced in "LIKE" statement do not appear
+        // also, referenced sequences all appear as "dummy._Sequence"
+        [DataRow(true, true, "MESSAGE STRING(CURRENT-VALUE(sequence1)).", "")]
+        [DataRow(true, true, "FOR EACH alias1.table1 BY alias1.table1.field1:\nEND.", "")]
+        [DataRow(true, true, "CREATE dummy.table1.", "")]
+        [DataRow(true, true, "DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "")]
+        [DataRow(true, false, "DEFINE WORKFILE wftable1 NO-UNDO LIKE dummy.table1.", "")]
+        [DataRow(true, false, "DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.", "")]
+        [DataRow(true, false, "DEFINE TEMP-TABLE tt1 LIKE alias1.table1.", "")]
+        public void OeExecutionCompile_Test_Analysis_mode_referenced_tables_or_sequences_for_classes(bool analysisModeSimplifiedDatabaseReferences, bool inBaseClass, string codeThatReferencesDatabase, string references) {
             if (!GetEnvExecution(out EnvExecution env)) {
                 return;
             }
@@ -650,34 +683,41 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             File.WriteAllText(Path.Combine(TestFolder, "namespace", "cool", "Class1.cls"), @"
             USING namespace.cool.*.
             CLASS namespace.cool.Class1 INHERITS Class2:
+                " + (!inBaseClass ? codeThatReferencesDatabase : "") + @"
             END CLASS.");
 
             File.WriteAllText(Path.Combine(TestFolder, "namespace", "cool", "Class2.cls"), @"
             CLASS namespace.cool.Class2 ABSTRACT:
-                " + (inMethod ? "" : codeThatReferencesDatabase) + @"
                 METHOD PUBLIC VOID InitializeDate ():
-                " + (inMethod ? codeThatReferencesDatabase : "") + @"
+                " + (inBaseClass ? codeThatReferencesDatabase : "") + @"
                 END METHOD.
             END CLASS.");
 
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
             env.DatabaseConnectionString = DatabaseOperator.GetMultiConnectionString(Path.Combine(TestFolder, "dummy.db"));
+            env.DatabaseAliases = new List<IEnvExecutionDatabaseAlias> {
+                new EnvExecutionDatabaseAlias {
+                    DatabaseLogicalName = "dummy",
+                    AliasLogicalName = "alias1"
+                }
+            };
             
             using (var exec = new OeExecutionCompile(env)) {
                 exec.FilesToCompile = new List<FileToCompile> {
-                    new FileToCompile(useClassFile ? Path.Combine(TestFolder, "namespace", "cool", "Class1.cls") : Path.Combine(TestFolder, "analyserefdb.p"))
+                    new FileToCompile(Path.Combine(TestFolder, "namespace", "cool", "Class1.cls"))
                 };
                 exec.CompileUseXmlXref = true;
                 exec.CompileInAnalysisMode = true;
-                exec.AnalysisModeSimplifiedDatabaseReferences = true;
+                exec.AnalysisModeSimplifiedDatabaseReferences = analysisModeSimplifiedDatabaseReferences;
                 exec.Start();
                 exec.WaitForProcessExit();
                 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all compile ok : {string.Join(",", exec.CompiledFiles[0].CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
                 
-                Assert.AreEqual(references, exec.CompiledFiles[0].RequiredDatabaseReferences != null ? string.Join(",", exec.CompiledFiles[0].RequiredDatabaseReferences) : "", "ref");
+                Assert.AreEqual(references, string.Join(",", exec.CompiledFiles[0].RequiredDatabaseReferences.Select(r => r.QualifiedName)), "ref");
+                Assert.IsTrue(exec.CompiledFiles[0].RequiredDatabaseReferences.Where(r => r is DatabaseReferenceTable).Cast<DatabaseReferenceTable>().All(r => !string.IsNullOrEmpty(r.Crc)));
             }
         }
         

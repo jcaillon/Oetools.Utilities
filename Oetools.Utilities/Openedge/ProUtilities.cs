@@ -28,14 +28,123 @@ using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Openedge {
-    
     public static class ProUtilities {
-
-        public static List<DatabaseReference> GetReferences(CompiledFile compiledFile, List<TableCrc> tables) {
-            // TODO : this
-            throw new NotImplementedException();
-        }
         
+        /// <summary>
+        /// Reads an openedge log file (that should contain the FILEID trace type) and output all the files
+        /// that were opened during the log session
+        /// When activating logs before a compilation, this can be a safe way to get ALL the includes
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="encoding"></param>
+        /// <returns></returns>
+        public static HashSet<string> GetReferencedFilesFromFileIdLog(string filePath, Encoding encoding = null) {
+            
+            // we want to read this kind of line :
+            // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID   Open E:\Common\CommonObj.i ID=33
+            // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID   Open E:\Common space\CommonObji.cls ID=33
+            var references = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            using (var reader = new OeExportReader(filePath, encoding ?? Encoding.Default)) {
+                while (reader.MoveToNextRecordField()) {
+                    if (reader.RecordFieldNumber != 5 || reader.RecordValue != "FILEID") {
+                        continue;
+                    }
+                    var currentRecordNumber = reader.RecordNumber;
+                    if (!reader.MoveToNextRecordField() || currentRecordNumber != reader.RecordNumber || reader.RecordValue != "Open") {
+                        continue;
+                    }
+                    if (!reader.MoveToNextRecordField() || currentRecordNumber != reader.RecordNumber) {
+                        continue;
+                    }
+                    string foundRef = reader.RecordValue; // E:\Common (or directly E:\Common\CommonObj.i)
+                    if (!reader.MoveToNextRecordField() || currentRecordNumber != reader.RecordNumber) {
+                        continue;
+                    }
+                    string lastString = reader.RecordValue; // space\CommonObji.cls (or directly ID=33)
+                    do {
+                        if (!reader.MoveToNextRecordField() || currentRecordNumber != reader.RecordNumber) {
+                            break;
+                        }
+                        foundRef = $"{foundRef} {lastString}";
+                        lastString = reader.RecordValue;
+                    } while (true);
+                    if (!references.Contains(foundRef)) {
+                        references.Add(foundRef);
+                    }
+                }
+            }
+            return references;
+        }
+
+        /// <summary>
+        /// Reads an xref file (generated during compilation) and outputs a list of referenced tables and sequences
+        /// This list can then be used to know the dependencies of a given file which in turns help you
+        /// know which file needs to be recompiled when a table is modified (or sequence deleted)
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="encoding"></param>
+        /// <returns></returns>
+        public static HashSet<string> GetDatabaseReferencesFromXrefFile(string filePath, Encoding encoding = null) {
+            var references = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            using (var reader = new OeExportReader(filePath, encoding ?? Encoding.Default)) {
+                while (reader.MoveToNextRecordField()) {
+                    if (reader.RecordFieldNumber != 3) {
+                        continue;
+                    }
+                    string foundRef = null;
+                    switch (reader.RecordValue) {
+                        // dynamic access
+                        case "ACCESS":
+                            // "file.p" "file.p" line ACCESS [DATA-MEMBER] random.table1 idx_1 WHOLE-INDEX
+                            if (reader.MoveToNextRecordField() && reader.RecordFieldNumber == 4) {
+                                foundRef = reader.RecordValue;
+                                if (foundRef.Equals("DATA-MEMBER") && reader.MoveToNextRecordField() && reader.RecordFieldNumber == 5) {
+                                    foundRef = reader.RecordValue;
+                                }
+                            }
+                            break;
+                        // dynamic access
+                        case "CREATE":
+                        case "DELETE":
+                        case "UPDATE":
+                        case "SEARCH":
+                            // "file.p" "file.p" line SEARCH random.table1 idx_1 WHOLE-INDEX
+                            if (reader.MoveToNextRecordField() && reader.RecordFieldNumber == 4) {
+                                foundRef = reader.RecordValue;
+                            }
+                            break;
+                        // static reference
+                        case "REFERENCE":
+                            // "file.p" "file.p" line REFERENCE random.table1 
+                            if (reader.MoveToNextRecordField() && reader.RecordFieldNumber == 4) {
+                                foundRef = reader.RecordValue;
+                            }
+                            break;
+                        // static reference
+                        case "NEW-SHR-WORKFILE":
+                        case "NEW-SHR-WORKTABLE":
+                        case "SHR-WORKFILE":
+                        case "SHR-WORKTABLE":
+                            // "file.p" "file.p" line SHR-WORKFILE WORKtable2 LIKE random.table1
+                            if (reader.MoveToNextRecordField() && reader.RecordFieldNumber == 4 && 
+                                reader.MoveToNextRecordField() && reader.RecordFieldNumber == 5 && 
+                                reader.MoveToNextRecordField() && reader.RecordFieldNumber == 6) {
+                                foundRef = reader.RecordValue;
+                            }
+                            break;
+                        default:
+                            continue;
+                    }
+
+                    if (!references.Contains(foundRef)) {
+                        references.Add(foundRef);
+                    }
+                }
+            }
+
+            return references;
+        }
+
         /// <summary>
         /// Returns the environment variable DLC value
         /// </summary>
@@ -55,28 +164,36 @@ namespace Oetools.Utilities.Openedge {
             if (!Directory.Exists(messageDir)) {
                 return null;
             }
+
             var messageFile = Path.Combine(messageDir, $"msg{(errorNumber - 1) / 50 + 1}");
             if (!File.Exists(messageFile)) {
                 return null;
             }
 
             ProMsg outputMessage = null;
-            ReadOpenedgeUnformattedExportFile(messageFile, record => {
-                if (record.Count >= 5) {
-                    outputMessage = new ProMsg {
-                        Number = errorNumber,
-                        Text = record[1].StripQuotes(),
-                        Description = record[2].StripQuotes(),
-                        Category = record[3].StripQuotes(),
-                        KnowledgeBase = record[4].StripQuotes()
-                    };
-                }
-                return false;
-            }, out _, (lineNumber, line) => line.StartsWith($"{errorNumber} "));
 
+            var err = errorNumber.ToString();
+            using (var reader = new OeExportReader(messageFile, Encoding.Default)) {
+                while (reader.MoveToNextRecordField()) {
+                    if (reader.RecordFieldNumber == 0 && reader.RecordValue == err) {
+                        outputMessage = new ProMsg {
+                            Number = errorNumber,
+                            Text = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
+                            Description = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
+                            Category = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
+                            KnowledgeBase = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
+                        };
+                        break;
+                    }
+                }
+            }
+            
             return outputMessage;
         }
 
+        /// <summary>
+        /// Represents an openedge prosmg
+        /// </summary>
         public class ProMsg {
             public int Number { get; set; }
             public string Text { get; set; }
@@ -86,99 +203,16 @@ namespace Oetools.Utilities.Openedge {
 
             public override string ToString() {
                 var categories = new List<string> {
-                    "Compiler", "Database", "Index", "Miscellaneous", "Operating System", "Program/Execution", "Syntax"
+                    "Compiler",
+                    "Database",
+                    "Index",
+                    "Miscellaneous",
+                    "Operating System",
+                    "Program/Execution",
+                    "Syntax"
                 };
                 var cat = categories.FirstOrDefault(c => c.StartsWith(Category, StringComparison.CurrentCultureIgnoreCase));
                 return string.Format("{0}{1}{2}", cat != null ? $"({cat}) " : "", Description, KnowledgeBase.Length > 2 ? $" ({KnowledgeBase.StripQuotes()})" : "");
-            }
-        }
-
-        /// <summary>
-        /// Read records in an openedge .d file
-        /// Each line is a record with multiple fields separated by a single space, you can use spaces in a field by double quoting the field
-        /// and you can use double quotes by doubling them. A quoted field can extend on multiple lines.
-        /// This method doesn't expect all the records to have the same number of fields, even less the same type
-        /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="recordHandler"></param>
-        /// <param name="catchedExceptions"></param>
-        /// <param name="filterLinePredicate"></param>
-        /// <param name="encoding"></param>
-        /// <exception cref="Exception"></exception>
-        public static void ReadOpenedgeUnformattedExportFile(string filePath, Func<List<string>, bool> recordHandler, out List<Exception> catchedExceptions, Func<int, string, bool> filterLinePredicate = null, Encoding encoding = null) {
-            if (encoding == null) {
-                encoding = Encoding.Default;
-            }
-            catchedExceptions = null;
-            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)) {
-                using (var reader = new StreamReader(fileStream, encoding)) {
-                    var i = -1;
-                    string line;
-                    var record = new List<string>();
-                    bool inStringField = false;
-                    
-                    while ((line = reader.ReadLine()) != null) {
-                        try {
-                            i++;
-                            if (!inStringField && filterLinePredicate != null && !filterLinePredicate(i, line)) {
-                                continue;
-                            }
-                            if (line.Length > 0) {
-                                int fieldBegin = 0;
-                                do {
-                                    int fieldEnd;
-                                    if (line[fieldBegin] == '"' || inStringField) {
-                                        fieldEnd = fieldBegin + (inStringField ? 0 : 1) - 1;
-                                        bool firstLoop = true;
-                                        do {
-                                            if (!firstLoop && line[fieldEnd + 1] == '"') {
-                                                fieldEnd++;
-                                            }
-                                            firstLoop = false;
-                                            fieldEnd = line.IndexOf('"', fieldEnd + 1);
-                                            if (fieldEnd < 0) {
-                                                fieldEnd = line.Length - 1;
-                                            }
-                                        } while (fieldEnd < line.Length - 1 && line[fieldEnd + 1] == '"');
-                                        var currentRecordValue = line.Substring(fieldBegin, fieldEnd - fieldBegin + 1);
-                                        if (currentRecordValue.Length > 2) {
-                                            currentRecordValue = currentRecordValue.Replace("\"\"", "\"");
-                                        }
-                                        if (inStringField) {
-                                            record[record.Count - 1] = $"{record.Last()}{Environment.NewLine}{currentRecordValue}";
-                                        } else {
-                                            record.Add(currentRecordValue);
-                                        }
-                                        inStringField = line[fieldEnd] != '"';
-        
-                                    } else {
-                                        fieldEnd = line.IndexOf(' ', fieldBegin + 1) - 1;
-                                        if (fieldEnd < 0) {
-                                            fieldEnd = line.Length - 1;
-                                        }
-                                        var fieldLength = fieldEnd - fieldBegin + 1;
-                                        if (fieldLength == 0) {
-                                            (catchedExceptions ?? (catchedExceptions = new List<Exception>())).Add(new Exception($"Bad line format (line {i}), consecutive spaces or line beggining by space"));
-                                            
-                                        }
-                                        record.Add(line.Substring(fieldBegin, fieldLength));
-                                    }
-                                    fieldBegin = fieldEnd + 2; // next char + skip the space = 2
-                                } while (fieldBegin <= line.Length - 1);
-
-                                if (!inStringField) {
-                                    if (!recordHandler(record)) {
-                                        // stop reading
-                                        break;
-                                    }
-                                    record.Clear();
-                                }
-                            }
-                        } catch (Exception e) {
-                            (catchedExceptions ?? (catchedExceptions = new List<Exception>())).Add(new Exception($"Unexpected error reading line {i} : {e}"));
-                        }
-                    }
-                }
             }
         }
         
@@ -194,6 +228,7 @@ namespace Oetools.Utilities.Openedge {
                     return new Version(int.Parse(matches[0].Groups[1].Value), int.Parse(matches[0].Groups[2].Value), int.Parse(matches[0].Groups[3].Success ? matches[0].Groups[3].Value : matches[0].Groups[5].Success ? matches[0].Groups[5].Value : "0"));
                 }
             }
+
             return null;
         }
 
@@ -219,6 +254,7 @@ namespace Oetools.Utilities.Openedge {
                     if (useCharacterModeOfProgress) {
                         throw new ExecutionParametersException($"Could not find the progress executable for character mode in {dlcPath}, check your DLC path or switch to graphical mode; the file searched was {outputPath}");
                     }
+
                     outputPath = Path.Combine(dlcPath, "bin", "prowin.exe");
                 }
             } else {
@@ -315,8 +351,11 @@ namespace Oetools.Utilities.Openedge {
             var path = Path.Combine(dlcPath, useCharacterMode ? "tty" : "gui");
             if (!Directory.Exists(path)) {
                 return null;
-            }        
-            var output = new List<string> { path };
+            }
+
+            var output = new List<string> {
+                path
+            };
             output.AddRange(ListProlibFilesInDirectory(path));
             output.Add(dlcPath);
             output.Add(Path.Combine(dlcPath, "bin"));

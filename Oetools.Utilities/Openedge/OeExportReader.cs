@@ -27,6 +27,15 @@ using System.Text;
 
 namespace Oetools.Utilities.Openedge {
 
+    /// <summary>
+    /// This class is made to a file or string formatted to contain records (and each record contains fields)
+    /// This is the typical case of a .d file in openedge, which contains EXPORT data
+    /// fields are separated by spaces (space, tab and \r)
+    /// recards are separated by new lines (\n)
+    /// A field can contain spaces but is has to be double quoted (e.g. "field with spaces")
+    /// A double quoted field can contain double quotes but they must be doubled (e.g. "field ""with quotes""")
+    /// (note : "" appear as " once read with this class)
+    /// </summary>
     public class OeExportReader : IDisposable {
 
         private IOeExportStream _stream;
@@ -47,48 +56,82 @@ namespace Oetools.Utilities.Openedge {
             _stream?.Dispose();
         }
         
+        /// <summary>
+        /// Get the current record number, only when moving between fields with <see cref="MoveToNextRecordField"/>
+        /// </summary>
         public int RecordNumber => _recordNb;
 
+        /// <summary>
+        /// Get the current field number within the current record, only when moving between fields with <see cref="MoveToNextRecordField"/>
+        /// </summary>
         public int RecordFieldNumber => _fieldNb;
 
+        /// <summary>
+        /// Get the current record value (if the string was double quoted, they will be kept at the beggining and the end of the string)
+        /// only when moving with <see cref="MoveToNextRecordField"/>
+        /// </summary>
+        /// <remarks>
+        /// for instance, a record read :
+        ///    "my ""cool"" record"
+        /// will output :
+        ///    "my "cool" record"
+        /// </remarks>
         public string RecordValue => GetRecordValueInternal(false);
 
+        /// <summary>
+        /// Get the current record value (if the string was double quoted, the begin/end quotes will NOT be kept)
+        /// only when moving with <see cref="MoveToNextRecordField"/>
+        /// </summary>
+        /// <remarks>
+        /// for instance, a record read :
+        ///    "my ""cool"" record"
+        /// will output :
+        ///    my "cool" record
+        /// </remarks>
         public string RecordValueNoQuotes => GetRecordValueInternal(true);
 
-        public bool ReadNextRecordField() {
-            return ReadNextRecordFieldInternal();
+        /// <summary>
+        /// Tries to move to the next record field, false if it can't (= end of stream)
+        /// Use public properties like <see cref="RecordNumber"/>, <see cref="RecordValue"/> to get the record you moved to
+        /// </summary>
+        /// <returns></returns>
+        public bool MoveToNextRecordField() {
+            return MoveToNextRecordFieldInternal();
         }
         
-        public List<string> GetNextRecord(bool noQuotesValues = false) {
-            var output = new List<string>();
-            var initialRecordNb = _recordNb;
-            bool canRead;
-            do {
-                canRead = ReadNextRecordFieldInternal();
-                if (canRead) {
-                    output.Add(noQuotesValues ? RecordValueNoQuotes : RecordValue);
-                }
-            } while (canRead && _recordNb == initialRecordNb);
-            return output.Count > 0 ? output : null;
-        }
-
-        public bool ReadNextRecord() {
-            var initialRecordNb = _recordNb;
-            bool canRead;
-            do {
-                canRead = ReadNextRecordFieldInternal();
-            } while (canRead && _recordNb == initialRecordNb);
-            return canRead;
-        }
-
-        private bool ReadNextRecordFieldInternal() {
-            _fieldNb++;
-            if (_type == ReadType.NewLine) {
-                _recordNb++;
-                _fieldNb = 0;
+        /// <summary>
+        /// Reads a entire record and output it, returns false when reaching the end of the stream
+        /// (you should not use public properties of this class when using this method as they will not output what you expect)
+        /// </summary>
+        /// <param name="record"></param>
+        /// <param name="recordNumber"></param>
+        /// <param name="noQuotesValues"></param>
+        /// <returns></returns>
+        public bool ReadRecord(out List<string> record, out int recordNumber, bool noQuotesValues = false) {
+            record = new List<string>();
+            if (_recordNb > 0 && _type != ReadType.EndOfStream) {
+                record.Add(noQuotesValues ? RecordValueNoQuotes : RecordValue);
             }
+            recordNumber = _recordNb;
+            do {
+                var canRead = MoveToNextRecordFieldInternal();
+                if (canRead && _recordNb == recordNumber) {
+                    record.Add(noQuotesValues ? RecordValueNoQuotes : RecordValue);
+                } else {
+                    break;
+                }
+            } while (true);
+            return record.Count > 0;
+        }
+
+        private bool MoveToNextRecordFieldInternal() {
+            _fieldNb++;
             _fieldStartPosition = _stream.Position;
             do {
+                if (_type == ReadType.NewLine) {
+                    _recordNb++;
+                    _fieldNb = 0;
+                }
                 _type = _stream.ReadToNextFieldEnd();
                 switch (_type) {
                     case ReadType.EndOfStream:
@@ -111,6 +154,7 @@ namespace Oetools.Utilities.Openedge {
         private string GetRecordValueInternal(bool stripQuotes) {
             var recordLength = _stream.Position - _fieldStartPosition - 1;
             _stream.Position = _fieldStartPosition;
+            bool endsWithQuote = false;
             if (stripQuotes) {
                 if (_stream.Peek(0) == '"') {
                     _stream.Position++;
@@ -118,10 +162,15 @@ namespace Oetools.Utilities.Openedge {
                 }
                 if (_stream.Peek(recordLength - 1) == '"') {
                     recordLength--;
+                    endsWithQuote = true;
                 }
             }
             var fieldValue = recordLength > 0 ? _stream.Read(recordLength) : string.Empty;
             _stream.Position++;
+            if (stripQuotes && endsWithQuote) {
+                _stream.Position++;
+            }
+            // replace "" by " if needed
             var quotePos = fieldValue.IndexOf('"', stripQuotes ? 0 : 1);
             return quotePos >= 0 && quotePos < fieldValue.Length - (stripQuotes ? 1 : 2) ? fieldValue.Replace("\"\"", "\"") : fieldValue;
         }
@@ -157,7 +206,7 @@ namespace Oetools.Utilities.Openedge {
 
         private class OeStringStream : IOeExportStream {
             
-            private char[] _endOfFieldChars = { ' ', '\t', '\n', '"' };
+            private char[] _endOfFieldChars = { ' ', '\t', '\r', '\n', '"' };
             
             private string _input;
 
@@ -183,12 +232,13 @@ namespace Oetools.Utilities.Openedge {
                     _position = _input.IndexOfAny(_endOfFieldChars, _position);
                     if (_position >= 0) {
                         switch (_input[_position++]) {
-                            case '\t': // tab
-                            case ' ': // space
+                            case '\r':
+                            case '\t':
+                            case ' ':
                                 return ReadType.WhiteSpace;
-                            case '"': // "
+                            case '"':
                                 return ReadType.DoubleQuote;
-                            case '\n': // \n
+                            case '\n':
                                 return ReadType.NewLine;
                         }
                     }

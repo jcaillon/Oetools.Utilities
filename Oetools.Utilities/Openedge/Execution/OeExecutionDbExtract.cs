@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using Oetools.Utilities.Lib;
-using Oetools.Utilities.Lib.Extension;
-using Oetools.Utilities.Resources;
+﻿using System.IO;
 
 namespace Oetools.Utilities.Openedge.Execution {
 
@@ -12,6 +6,11 @@ namespace Oetools.Utilities.Openedge.Execution {
     ///     Allows to output a file containing the structure of the database
     /// </summary>
     public abstract class OeExecutionDbExtract : OeExecution {
+
+        /// <summary>
+        ///     set to true if a valid database connection is mandatory (if so, failing to connect will be considered as an error)
+        /// </summary>
+        public override bool NeedDatabaseConnection => true;
         
         protected override bool ForceCharacterModeUse => true;
 
