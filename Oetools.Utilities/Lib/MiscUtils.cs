@@ -18,6 +18,8 @@
 // ========================================================================
 #endregion
 
+using System.Runtime.InteropServices;
+
 namespace Oetools.Utilities.Lib {
     /// <summary>
     ///     Class that exposes utility methods
