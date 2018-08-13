@@ -20,7 +20,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
@@ -83,56 +85,69 @@ namespace Oetools.Utilities.Lib {
             return true;
         }
         
-                
         /// <summary>
-        /// Returns the list of all the folders in a given folder
+        /// List all the folders in a folder
         /// </summary>
-        /// <param name="baseDirectory"></param>
+        /// <param name="folderPath"></param>
+        /// <param name="options"></param>
+        /// <param name="excludePatterns">should be regex expressions</param>
+        /// <param name="excludeHidden"></param>
+        /// <returns></returns>
+        public static IEnumerable<string> EnumerateAllFolders(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHidden = false) {
+            List<Regex> excludeRegexes = null;
+            if (excludePatterns != null) {
+                excludeRegexes = excludePatterns.Select(s => new Regex(s)).ToList();
+            }
+            var hiddenDirList = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            var folderStack = new Stack<string>();
+            folderStack.Push(folderPath);
+            while (folderStack.Count > 0) {
+                foreach (var dir in Directory.EnumerateDirectories(folderStack.Pop(), "*", SearchOption.TopDirectoryOnly)) {
+                    if (hiddenDirList.Contains(dir)) {
+                        continue;
+                    }
+                    if (excludeHidden && new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.Hidden)) {
+                        hiddenDirList.Add(dir);
+                        continue;
+                    }
+                    if (excludeRegexes != null && excludeRegexes.Any(r => r.IsMatch(dir))) {
+                        continue;
+                    }
+                    if (options == SearchOption.AllDirectories) {
+                        folderStack.Push(dir);
+                    }
+                    yield return dir;
+                }                
+            }
+        }
+        
+        /// <summary>
+        /// List all the files in a folder
+        /// </summary>
+        /// <param name="folderPath"></param>
+        /// <param name="options"></param>
+        /// <param name="excludePatterns">should be regex expressions</param>
         /// <param name="excludeHiddenFolders"></param>
         /// <returns></returns>
-        public static HashSet<string> ListAllFoldersFromBaseDirectory(string baseDirectory, bool excludeHiddenFolders = true) {
-            
-            var uniqueDirList = new HashSet<string>();
-
-            foreach (var folder in EnumerateFolders(baseDirectory, "*", SearchOption.AllDirectories, excludeHiddenFolders)) {
-                if (!uniqueDirList.Contains(folder))
-                    uniqueDirList.Add(folder);
+        public static IEnumerable<string> EnumerateAllFiles(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHiddenFolders = false) {
+            List<Regex> excludeRegexes = null;
+            if (excludePatterns != null) {
+                excludeRegexes = excludePatterns.Select(s => new Regex(s)).ToList();
             }
-
-            return uniqueDirList;
-        }
-
-        /// <summary>
-        ///     Same as Directory.EnumerateDirectories but doesn't list hidden folders
-        /// </summary>
-        public static IEnumerable<string> EnumerateFolders(string folderPath, string pattern, SearchOption options, bool excludeHidden = false) {
-            
-            var hiddenDirList = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
-            
-            foreach (var dir in Directory.EnumerateDirectories(folderPath, pattern, options)) {
-                
-                if (hiddenDirList.Contains(dir)) {
-                    continue;
-                }
-
-                if (excludeHidden && new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.Hidden)) {
-                    hiddenDirList.Add(dir);
-                    continue;
-                }
-
-                yield return dir;
-            }
-        }
-
-        /// <summary>
-        /// Same as Directory.EnumerateFiles but is able to not list files in hidden folders
-        /// </summary>
-        public static IEnumerable<string> EnumerateFiles(string folderPath, string pattern, SearchOption options, bool excludeHidden = false) {
-            foreach (var file in Directory.EnumerateFiles(folderPath, pattern, SearchOption.TopDirectoryOnly))
-                yield return file;
-            if (options == SearchOption.AllDirectories) {
-                foreach (var file in EnumerateFiles(EnumerateFolders(folderPath, "*", SearchOption.AllDirectories, excludeHidden), pattern)) {
+            var folderStack = new Stack<string>();
+            folderStack.Push(folderPath);
+            while (folderStack.Count > 0) {
+                var folder = folderStack.Pop();
+                foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly)) {
+                    if (excludeRegexes != null && excludeRegexes.Any(r => r.IsMatch(file))) {
+                        continue;
+                    }
                     yield return file;
+                }
+                if (options == SearchOption.AllDirectories) {
+                    foreach (var subfolder in EnumerateAllFolders(folder, SearchOption.TopDirectoryOnly, excludePatterns, excludeHiddenFolders)) {
+                        folderStack.Push(subfolder);
+                    }
                 }
             }
         }
@@ -140,9 +155,9 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// List all the files in a given list of folders
         /// </summary>
-        public static IEnumerable<string> EnumerateFiles(IEnumerable<string> folders, string pattern) {
+        public static IEnumerable<string> EnumerateAllFiles(IEnumerable<string> folders, List<string> excludePatterns = null, bool excludeHiddenFolders = false) {
             foreach (var folder in folders) {
-                foreach (var file in Directory.EnumerateFiles(folder, pattern, SearchOption.TopDirectoryOnly)) {
+                foreach (var file in EnumerateAllFiles(folder, SearchOption.TopDirectoryOnly, excludePatterns, excludeHiddenFolders)) {
                     yield return file;
                 }
             }
@@ -212,6 +227,27 @@ namespace Oetools.Utilities.Lib {
             }
             CreateDirectoryIfNeeded(tmpDir);
             return tmpDir;
+        }
+
+        /// <summary>
+        /// Returns the longest valid directory in a string
+        /// </summary>
+        /// <remarks>
+        /// for instance
+        /// - C:\windows\(any|thing)\(.*)
+        /// will return
+        /// - C;\windows
+        /// </remarks>
+        /// <param name="inputRegex"></param>
+        /// <returns></returns>
+        public static string GetLongestValidDirectory(string inputRegex) {
+            var i = inputRegex.Length;
+            string outputdirectory;
+            do {
+                outputdirectory = inputRegex.Substring(0, i);
+                i--;
+            } while (!Directory.Exists(outputdirectory) && i > 0);
+            return outputdirectory;
         }
     }
 }

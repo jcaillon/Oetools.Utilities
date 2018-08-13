@@ -338,7 +338,7 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="baseDirectory"></param>
         /// <returns></returns>
         public static List<string> ListProlibFilesInDirectory(string baseDirectory) {
-            return Utils.EnumerateFiles(baseDirectory, $"*{OeConstants.ExtProlibFile}", SearchOption.TopDirectoryOnly).ToList();
+            return Directory.EnumerateFiles(baseDirectory, $"*{OeConstants.ExtProlibFile}", SearchOption.TopDirectoryOnly).ToList();
         }
 
         /// <summary>
