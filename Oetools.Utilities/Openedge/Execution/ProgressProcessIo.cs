@@ -17,7 +17,6 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-
 using System;
 using System.IO;
 using System.Runtime.InteropServices;

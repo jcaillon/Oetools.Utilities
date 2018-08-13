@@ -17,7 +17,6 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-
 namespace Oetools.Utilities.Openedge.Execution {
     public class EnvExecutionDatabaseAlias : IEnvExecutionDatabaseAlias {
         public string AliasLogicalName { get; set; }
