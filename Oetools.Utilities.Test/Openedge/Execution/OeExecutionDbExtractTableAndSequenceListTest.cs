@@ -53,9 +53,9 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             using (var exec = new OeExecutionDbExtractTableAndSequenceList(env)) {
                 exec.Start();
-                exec.WaitForProcessExit();
+                exec.WaitForExecutionEnd();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
-                Assert.IsFalse(exec.DbConnectionFailed, "DbConnectionFailed");
+                Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
             }
         }
         
@@ -67,9 +67,9 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.DatabaseConnectionString = "-db random -db cool";
             using (var exec = new OeExecutionDbExtractTableAndSequenceList(env)) {
                 exec.Start();
-                exec.WaitForProcessExit();
+                exec.WaitForExecutionEnd();
                 Assert.IsTrue(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
-                Assert.IsTrue(exec.DbConnectionFailed, "DbConnectionFailed");
+                Assert.IsTrue(exec.DatabaseConnectionFailed, "DbConnectionFailed");
             }
         }
         
@@ -97,9 +97,9 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             
             using (var exec = new OeExecutionDbExtractTableAndSequenceList(env)) {
                 exec.Start();
-                exec.WaitForProcessExit();
+                exec.WaitForExecutionEnd();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
-                Assert.IsFalse(exec.DbConnectionFailed, "DbConnectionFailed");
+                Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
 
                 Assert.AreEqual("dummy.sequence1,alias1.sequence1,base.sequence1", string.Join(",", exec.Sequences), "sequences");
                 Assert.AreEqual("dummy.table1,alias1.table1,dummy._Sequence,alias1._Sequence,base.table1,base._Sequence", string.Join(",", exec.TablesCrc.Keys), "tables");

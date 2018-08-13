@@ -28,12 +28,7 @@ using Oetools.Utilities.Resources;
 namespace Oetools.Utilities.Openedge.Execution {
 
     public abstract class OeExecutionHandleCompilation : OeExecution {
-
-        /// <summary>
-        /// Number of files already treated
-        /// </summary>
-        public int NumberOfFilesTreated => unchecked((int) (File.Exists(_progressionFilePath) ? new FileInfo(_progressionFilePath).Length : 0));
-       
+        
         /// <summary>
         ///     When true, we activate the log just before compiling with FileId active + we use xref list the referenced
         ///     tables/sequences of the .r
@@ -106,6 +101,27 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// List of the compiled files
         /// </summary>
         public List<CompiledFile> CompiledFiles { get; } = new List<CompiledFile>();
+        
+        /// <summary>
+        /// Total number of files to compile
+        /// </summary>
+        public int NumberOfFilesToCompile => FilesToCompile?.Count ?? 0;
+
+        /// <summary>
+        /// Number of files already treated
+        /// </summary>
+        public virtual int NumberOfFilesTreated => unchecked((int) (File.Exists(_progressionFilePath) ? new FileInfo(_progressionFilePath).Length : 0));
+
+        /// <summary>
+        /// Returns a percentage representation of the compilation progression (0 -> 100%)
+        /// </summary>
+        public virtual float CompilationProgression {
+            get {
+                if (NumberOfFilesToCompile == 0)
+                    return 0;
+                return (float) NumberOfFilesTreated / NumberOfFilesToCompile * 100;
+            }
+        }
 
         /// <summary>
         /// Path to the file containing the COMPILE output
@@ -254,9 +270,11 @@ namespace Oetools.Utilities.Openedge.Execution {
         private string ProgramProgressCompile => OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution_compile.p");
 
         /// <summary>
-        ///     Also publish the end of compilation events
+        /// Get the results for each compiled files
         /// </summary>
-        protected override void PublishExecutionEndEvents() {
+        protected override void GetProcessResults() {
+            base.GetProcessResults();
+            
             // end of successful execution action
             if (!ExecutionFailed) {
                 try {
@@ -268,8 +286,6 @@ namespace Oetools.Utilities.Openedge.Execution {
                     HandledExceptions.Add(new ExecutionException("Error while reading the compilation results", e));
                 }
             }
-
-            base.PublishExecutionEndEvents();
         }
         
     }

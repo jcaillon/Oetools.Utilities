@@ -26,9 +26,10 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge.Execution;
 
-namespace Oetools.Utilities.Test.Lib {
+namespace Oetools.Utilities.Test.Openedge.Execution {
     
     [TestClass]
     public class ProgressProcessIoTest {
@@ -39,6 +40,18 @@ namespace Oetools.Utilities.Test.Lib {
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ProgressProcessIoTest)));
 
+        [ClassInitialize]
+        public static void Init(TestContext context) {
+            Cleanup();
+            Utils.CreateDirectoryIfNeeded(TestFolder);
+        }
+
+
+        [ClassCleanup]
+        public static void Cleanup() {
+            Utils.DeleteDirectoryIfExists(TestFolder, true);
+        }
+        
         /// <summary>
         /// char mode silent = Bread and butter as it works silently on both platform (win + linux)
         /// </summary>

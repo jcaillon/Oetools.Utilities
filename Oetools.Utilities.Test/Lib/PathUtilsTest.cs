@@ -32,6 +32,18 @@ namespace Oetools.Utilities.Test.Lib {
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(PathUtilsTest)));
                      
+        [ClassInitialize]
+        public static void Init(TestContext context) {
+            Cleanup();
+            Utils.CreateDirectoryIfNeeded(TestFolder);
+        }
+
+
+        [ClassCleanup]
+        public static void Cleanup() {
+            Utils.DeleteDirectoryIfExists(TestFolder, true);
+        }
+        
         [TestMethod]
         public void ListAllFoldersFromBaseDirectory_Test() {
             Directory.CreateDirectory(Path.Combine(TestFolder, "test1"));

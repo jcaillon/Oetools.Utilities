@@ -18,10 +18,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Resources;
@@ -46,7 +46,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     The action to execute at the end of the process if something went wrong
         /// </summary>
-        public event Action<OeExecution> OnExecutionFailed;
+        public event Action<OeExecution> OnExecutionException;
 
         /// <summary>
         /// Set to true if a valid database connection is mandatory (if so, the execution will stop if the db fails to connnect)
@@ -66,7 +66,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     set to true if a the execution process has been killed
         /// </summary>
-        public bool HasBeenKilled { get; private set; }
+        public bool HasBeenKilled { get; protected set; }
 
         /// <summary>
         /// Set to true after the process is over if there was errors during the execution.
@@ -80,12 +80,22 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// if this is true, you should be really worried because something is wrong with the internal
         /// procedures in this very library
         /// </summary>
-        public bool ExecutionFailed { get; private set; }
+        public bool ExecutionFailed { get; protected set; }
 
         /// <summary>
-        ///     Set to true after the process is over if the database connection has failed
+        /// Set to true after the process is over if the database connection has failed
         /// </summary>
-        public bool DbConnectionFailed { get; private set; }
+        public bool DatabaseConnectionFailed { get; protected set; }
+
+        /// <summary>
+        /// Total amount of time needed for this execution
+        /// </summary>
+        public TimeSpan? ExecutionTimeSpan { get; protected set; }
+
+        /// <summary>
+        /// Start time for this execution
+        /// </summary>
+        public DateTime StartDateTime { get; protected set; }
 
         /// <summary>
         /// List of handled exceptions :
@@ -149,12 +159,14 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected string _runnerPath;
 
-        private bool _executed;
+        protected bool _executed;
+
+        protected bool _eventPublished;
 
         /// <summary>
         ///     Deletes temp directory and everything in it
         /// </summary>
-        public void Dispose() {
+        public virtual void Dispose() {
             try {
                 _process?.Dispose();
 
@@ -187,15 +199,8 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// </summary>
         /// <returns></returns>
         /// <exception cref="ExecutionException"></exception>
-        public void Start() {
-            if (_executed) {
-                throw new ExecutionException($"This process has already been executed, you can't start it again");
-            }
-            _executed = true;
-            
-            if (!Directory.Exists(Env.DlcDirectoryPath)) {
-                throw new ExecutionParametersException($"Couldn\'t start an execution, the DLC directory does not exist : {Env.DlcDirectoryPath.PrettyQuote()}");
-            }
+        public virtual void Start() {
+            StartDateTime = DateTime.Now;
             
             // check parameters
             CheckParameters();
@@ -253,10 +258,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <summary>
-        ///     Allows to kill the process of this execution (be careful, the OnExecutionEnd, Ok, Fail events are not executed in
-        ///     that case!)
+        /// Allows to kill the process of this execution
         /// </summary>
-        public void KillProcess() {
+        public virtual void KillProcess() {
             try {
                 _process.Kill();
             } catch (Exception e) {
@@ -265,19 +269,35 @@ namespace Oetools.Utilities.Openedge.Execution {
             HasBeenKilled = true;
         }
 
-        public void WaitForProcessExit(int maxWait = 0) {
+        /// <summary>
+        /// Synchronously wait for the execution to end
+        /// </summary>
+        /// <param name="maxWait"></param>
+        public virtual void WaitForExecutionEnd(int maxWait = 0) {
             if (maxWait > 0) {
                 _process?.WaitForExit(maxWait);
             } else {
                 _process?.WaitForExit();
             }
+            // wait for the execution to really end
+            var d = DateTime.Now;
+            while (!_eventPublished && DateTime.Now.Subtract(d).TotalMilliseconds <= 5000) { }
         }
 
         /// <summary>
         ///     Should throw an error if some parameters are incorrect
         /// </summary>
         /// <exception cref="ExecutionException"></exception>
-        protected virtual void CheckParameters() { }
+        protected virtual void CheckParameters() {
+            if (_executed) {
+                throw new ExecutionException("This process has already been executed, you can't start it again");
+            }
+            _executed = true;
+            
+            if (!Directory.Exists(Env.DlcDirectoryPath)) {
+                throw new ExecutionParametersException($"Couldn\'t start an execution, the DLC directory does not exist : {Env.DlcDirectoryPath.PrettyQuote()}");
+            }
+        }
         
         /// <summary>
         /// Method that appends the program_to_run procedure to the runned .p file
@@ -305,56 +325,62 @@ namespace Oetools.Utilities.Openedge.Execution {
             else
                 PreprocessedVars[key] = value;
         }
-
+        
         /// <summary>
         ///     Called by the process's thread when it is over, execute the ProcessOnExited event
         /// </summary>
         private void ProcessOnExited(object sender, EventArgs eventArgs) {
             try {
-                // if the db log file exists, then the connect statement failed
-                if (File.Exists(_dbErrorLogPath)) {
-                    HandledExceptions.AddRange(GetOpenedgeExceptions<ExecutionOpenedgeDbConnectionException>(_dbErrorLogPath));
-                    DbConnectionFailed = true;
-                    ExecutionFailed = NeedDatabaseConnection;
-                }
-                
-                if (_process.ExitCode > 0 || !File.Exists(_errorLogPath)) {
-                    // exit code not 0 or the log file wasn't created, indicating that the procedure didn't run until the end correctly
-                    foreach (var output in _process.StandardOutputArray.Union(_process.ErrorOutputArray)) {
-                        var ex = ExecutionOpenedgeException.GetFromString(output);
-                        if (ex != null) {
-                            HandledExceptions.Add(ex);
-                        }
-                    }
-
-                    if (HandledExceptions.Count == 0) {
-                        HandledExceptions.Add(new ExecutionProcessException(_process.ExecutablePath, _process.StartParametersUsed, _process.WorkingDirectory, _process.BatchOutput.ToString(), _process.ExitCode));
-                    }
-                    ExecutionFailed = true;              
-                    
-                } else if (new FileInfo(_errorLogPath).Length > 0) {
-                    // else if the log isn't empty, something went wrong
-                    HandledExceptions.AddRange(GetOpenedgeExceptions<ExecutionOpenedgeException>(_errorLogPath));
-                    ExecutionFailed = false;
-                    
-                } else if (_process.StandardOutputArray.Count > 0 || _process.ErrorOutputArray.Count > 0) {
-                    // we do not put anything in the standard output, if there is something then it is a runtime error!
-                    // but we do not consider that the execution failed since it actually went till the end
-                    foreach (var output in _process.StandardOutputArray.Union(_process.ErrorOutputArray)) {
-                        var ex = ExecutionOpenedgeException.GetFromString(output);
-                        if (ex != null) {
-                            HandledExceptions.Add(ex);
-                        }
-                    }
-                }
-
+                GetProcessResults();
             } catch (Exception e) {
                 HandledExceptions.Add(new ExecutionException("Error when checking the process results", e));
             } finally {
-                PublishExecutionEndEvents();
+                PublishEndEvents();
             }
         }
-        
+
+        protected virtual void GetProcessResults() {
+            ExecutionTimeSpan = TimeSpan.FromMilliseconds(DateTime.Now.Subtract(StartDateTime).TotalMilliseconds);
+
+            // if the db log file exists, then the connect statement failed
+            if (File.Exists(_dbErrorLogPath)) {
+                HandledExceptions.AddRange(GetOpenedgeExceptions<ExecutionOpenedgeDbConnectionException>(_dbErrorLogPath));
+                DatabaseConnectionFailed = true;
+                ExecutionFailed = NeedDatabaseConnection;
+            }
+
+            if (HasBeenKilled) {
+                HandledExceptions.Add(new ExecutionKilledException("Execution failed, the process was killed"));
+                ExecutionFailed = true;
+            } else if (_process.ExitCode > 0 || !File.Exists(_errorLogPath)) {
+                // exit code not 0 or the log file wasn't created, indicating that the procedure didn't run until the end correctly
+                foreach (var output in _process.StandardOutputArray.Union(_process.ErrorOutputArray)) {
+                    var ex = ExecutionOpenedgeException.GetFromString(output);
+                    if (ex != null) {
+                        HandledExceptions.Add(ex);
+                    }
+                }
+
+                if (HandledExceptions.Count == 0) {
+                    HandledExceptions.Add(new ExecutionProcessException(_process.ExecutablePath, _process.StartParametersUsed, _process.WorkingDirectory, _process.BatchOutput.ToString(), _process.ExitCode));
+                }
+                ExecutionFailed = true;
+            } else if (new FileInfo(_errorLogPath).Length > 0) {
+                // else if the log isn't empty, something went wrong
+                HandledExceptions.AddRange(GetOpenedgeExceptions<ExecutionOpenedgeException>(_errorLogPath));
+                ExecutionFailed = false;
+            } else if (_process.StandardOutputArray.Count > 0 || _process.ErrorOutputArray.Count > 0) {
+                // we do not put anything in the standard output, if there is something then it is a runtime error!
+                // however, the execution went until the end
+                foreach (var output in _process.StandardOutputArray.Union(_process.ErrorOutputArray)) {
+                    var ex = ExecutionOpenedgeException.GetFromString(output);
+                    if (ex != null) {
+                        HandledExceptions.Add(ex);
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// Read the exceptions from a log file
         /// </summary>
@@ -380,11 +406,11 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     publish the end of execution events
         /// </summary>
-        protected virtual void PublishExecutionEndEvents() {
+        protected void PublishEndEvents() {
             // end of successful/unsuccessful execution action
             try {
                 if (ExecutionHandledExceptions) {
-                    OnExecutionFailed?.Invoke(this);
+                    OnExecutionException?.Invoke(this);
                 } else {
                     OnExecutionOk?.Invoke(this);
                 }
@@ -396,8 +422,9 @@ namespace Oetools.Utilities.Openedge.Execution {
             try {
                 OnExecutionEnd?.Invoke(this);
             } catch (Exception e) {
-                HandledExceptions.Add(new ExecutionException("Error in published events 2", e));
+                HandledExceptions.Add(new ExecutionException("Error in published events end", e));
             }
+            _eventPublished = true;
         }
         
         private string ProgramProgressRun => OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution.p");

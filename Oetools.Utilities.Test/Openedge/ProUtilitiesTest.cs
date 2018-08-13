@@ -19,7 +19,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -28,7 +27,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge;
 using Oetools.Utilities.Openedge.Execution;
 
-namespace Oetools.Utilities.Test.Lib {
+namespace Oetools.Utilities.Test.Openedge {
     
     [TestClass]
     public class ProUtilitiesTest {

@@ -82,6 +82,12 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool CompiledCorrectly { get; private set; }
         
         /// <summary>
+        /// If the compiled file is a class file, it will represent the class namespace as a path
+        /// For instance, compiling random.cool.Class1 will return random\cool (or random/cool depending on the platform)
+        /// </summary>
+        public string ClassNamespacePath { get; private set; }
+        
+        /// <summary>
         ///     List of errors
         /// </summary>
         public List<CompilationError> CompilationErrors { get; set; }
@@ -243,6 +249,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     if (BaseFileName.Equals(Path.GetFileNameWithoutExtension(rCodeFilePath))) {
                         // correct .r path
                         CompilationRcodeFilePath = rCodeFilePath;
+                        ClassNamespacePath = Path.GetDirectoryName(rCodeFilePath)?.Replace(CompilationOutputDirectory, "").Trim('\\', '/');
                         break;
                     }
                 }

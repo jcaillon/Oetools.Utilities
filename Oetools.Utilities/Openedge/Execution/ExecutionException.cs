@@ -7,6 +7,10 @@ namespace Oetools.Utilities.Openedge.Execution {
         public ExecutionException(string message) : base(message) { }
         public ExecutionException(string message, Exception innerException) : base(message, innerException) { }
     }
+
+    public class ExecutionKilledException : ExecutionException {
+        public ExecutionKilledException(string message) : base(message) { }
+    }
     
     /// <summary>
     /// Happens if there were an openedge runtime exception but we still managed to execute the process

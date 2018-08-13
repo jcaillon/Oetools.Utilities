@@ -7,9 +7,6 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// </summary>
     public abstract class OeExecutionDbExtract : OeExecution {
 
-        /// <summary>
-        ///     set to true if a valid database connection is mandatory (if so, failing to connect will be considered as an error)
-        /// </summary>
         public override bool NeedDatabaseConnection => true;
         
         protected override bool ForceCharacterModeUse => true;

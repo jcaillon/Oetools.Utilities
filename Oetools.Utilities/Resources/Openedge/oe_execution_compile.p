@@ -33,6 +33,7 @@ This file was created with the 3P :  https://jcaillon.github.io/3P/
 &IF DEFINED(RunProgramMode) = 0 &THEN
     &SCOPED-DEFINE RunProgramMode false
     &SCOPED-DEFINE RunFullClientLogPath ""
+    &SCOPED-DEFINE LogEntryTypes ""
 &ENDIF
 
 /* ***************************  Definitions  ************************** */
@@ -93,7 +94,12 @@ PROCEDURE program_to_run PRIVATE:
                     ASSIGN
                         LOG-MANAGER:LOGFILE-NAME = {&RunFullClientLogPath}
                         LOG-MANAGER:LOGGING-LEVEL = 3
-                        LOG-MANAGER:LOG-ENTRY-TYPES = LOG-MANAGER:ENTRY-TYPES-LIST.
+                        &IF {&LogEntryTypes} &THEN
+                            LOG-MANAGER:LOG-ENTRY-TYPES = {&LogEntryTypes}
+                        &ELSE
+                            LOG-MANAGER:LOG-ENTRY-TYPES = "4GLTrace"
+                        &ENDIF
+                        .
                 &ELSE
                     IF LOG-MANAGER:LOGFILE-NAME > "" THEN DO:
                         LOG-MANAGER:CLEAR-LOG().

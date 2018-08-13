@@ -20,14 +20,13 @@
 
 #endregion
 
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge;
 
-namespace Oetools.Utilities.Test.Lib {
+namespace Oetools.Utilities.Test.Openedge {
     
     [TestClass]
     public class OeExportReaderTest {

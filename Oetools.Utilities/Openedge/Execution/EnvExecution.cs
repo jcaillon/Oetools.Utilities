@@ -152,7 +152,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         private void InitDatabasesInfo() {
             using (var exec = new OeExecutionDbExtractTableAndSequenceList(this)) {
                 exec.Start();
-                exec.WaitForProcessExit();
+                exec.WaitForExecutionEnd();
                 _tablesCrc = exec.TablesCrc;
                 _sequences = exec.Sequences;
             }

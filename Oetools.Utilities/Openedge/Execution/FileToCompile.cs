@@ -43,6 +43,12 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Directory in which to compile this file, if null a temporary directory will be used
         /// </summary>
         public string PreferedTargetDirectory { get; set; }
+        
+        /// <summary>
+        /// Size of the file to compile, can be left to 0, used in parallel compilation to try to
+        /// get a better repartition of files accross processes
+        /// </summary>
+        public long FileSize { get; set; }
 
         public FileToCompile(string sourcePath) {
             SourcePath = sourcePath;

@@ -150,6 +150,8 @@ namespace Oetools.Utilities.Lib {
 
         private StringBuilder _standardOutput;
 
+        private bool _exitedEventPublished;
+
         /// <summary>
         ///     Constructor
         /// </summary>
@@ -223,6 +225,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         protected virtual void PrepareStart(string arguments, bool silent) {
+            _exitedEventPublished = false;
             StandardOutputArray.Clear();
             _standardOutput = null;
             ErrorOutputArray.Clear();
@@ -286,7 +289,12 @@ namespace Oetools.Utilities.Lib {
         }
 
         protected virtual void ProcessOnExited(object sender, EventArgs e) {
-            OnProcessExit?.Invoke(sender, e);
+            if (!_exitedEventPublished) {
+                // this boolean does not seem useful but i have seen weird behaviors where the
+                // exited event is called twice when we WaitForExit(), better safe than sorry
+                _exitedEventPublished = true;
+                OnProcessExit?.Invoke(sender, e);
+            }
         }
     }
 }
