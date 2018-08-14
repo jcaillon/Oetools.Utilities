@@ -249,5 +249,29 @@ namespace Oetools.Utilities.Lib {
             } while (!Directory.Exists(outputdirectory) && i > 0);
             return outputdirectory;
         }
+        
+        /// <summary>
+        /// - Test if the path wild card has correct matches &lt; &gt; place holders
+        /// - Test if the path contains any invalid characters
+        /// </summary>
+        /// <remarks>We need this to know if the new Regex() will fail with this PathWildCard or not</remarks>
+        /// <param name="pattern"></param>
+        /// <exception cref="Exception"></exception>
+        /// <returns></returns>
+        public static void ValidatePathWildCard(string pattern) {
+            if (string.IsNullOrEmpty(pattern)) {
+                throw new Exception("The path is null or empty");
+            }
+            foreach (char c in Path.GetInvalidPathChars()) {
+                if (c == '<' || c == '>' || c == '*' || c == '?') {
+                    continue;
+                }
+                if (pattern.IndexOf(c) >= 0) {
+                    throw new Exception($"Illegal character path {c} at column {pattern.IndexOf(c)}");
+                }
+            }
+            pattern.ValidatePlaceHolders("<<", ">>");
+        }
+
     }
 }

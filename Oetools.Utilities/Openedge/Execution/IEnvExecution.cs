@@ -79,6 +79,11 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// </summary>
         string TempDirectory { get; }
 
+        /// <summary>
+        /// Returns true if the given version is higher or equal to the pro version found in the dlc/version file
+        /// </summary>
+        /// <param name="version"></param>
+        /// <returns></returns>
         bool IsProVersionHigherOrEqualTo(Version version);
     }
 }

@@ -54,10 +54,10 @@ namespace Oetools.Utilities.Test.Openedge {
                 return;
             }
 
-            var output = ProUtilities.ReturnProgressSessionDefaultPropath(dlcPath, true);
+            var output = ProUtilities.GetProgressSessionDefaultPropath(dlcPath, true);
             Assert.IsTrue(output.Exists(p => p.Contains("tty")));
             
-            output = ProUtilities.ReturnProgressSessionDefaultPropath(dlcPath, false);
+            output = ProUtilities.GetProgressSessionDefaultPropath(dlcPath, false);
             Assert.IsTrue(output.Exists(p => p.Contains("gui")));
 
         }

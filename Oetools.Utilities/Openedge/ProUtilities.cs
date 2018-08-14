@@ -273,7 +273,8 @@ namespace Oetools.Utilities.Openedge {
         }
 
         /// <summary>
-        /// Reads the propath from an ini file
+        /// Reads the propath from an ini file, only returns existing folders or files (.pl)
+        /// takes care of relative path and environment variables (%DLC%, $DLC)
         /// </summary>
         /// <param name="iniFile"></param>
         /// <param name="currentDirectory"></param>
@@ -347,7 +348,7 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="dlcPath"></param>
         /// <param name="useCharacterMode"></param>
         /// <returns></returns>
-        public static List<string> ReturnProgressSessionDefaultPropath(string dlcPath, bool useCharacterMode) {
+        public static List<string> GetProgressSessionDefaultPropath(string dlcPath, bool useCharacterMode) {
             var path = Path.Combine(dlcPath, useCharacterMode ? "tty" : "gui");
             if (!Directory.Exists(path)) {
                 return null;

@@ -80,47 +80,47 @@ namespace Oetools.Utilities.Lib.Extension {
 
         /// <summary>
         ///     Allows to test if a string matches one of the listOfPattern (wildcards) in the list of patterns,
-        ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls,*.com,*.xml") return true
-        ///     Ex : "path/file.xml".TestAgainstListOfPatterns("*.xls,*.com,*.xml") return false!
+        ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls;*.com;*.xml") return true
+        ///     Ex : "path/file.xml".TestAgainstListOfPatterns("*.xls;*.com;*.xml") return false!
         /// </summary>
         public static bool TestAgainstListOfPatterns(this string source, string listOfPattern) {
             if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(listOfPattern)) {
                 return false;
             }
-            return listOfPattern.Split(',').Where(s => !string.IsNullOrEmpty(s)).ToList().Exists(s => new Regex(s.PathWildCardToRegex()).IsMatch(source));
+            return listOfPattern.Split(';').Where(s => !string.IsNullOrEmpty(s)).ToList().Exists(s => new Regex(s.PathWildCardToRegex()).IsMatch(source));
         }
 
         /// <summary>
         ///     Allows to test if a string matches one of the listOfPattern (wildcards) in the list of patterns,
-        ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls,*.com,*.xml") return true
+        ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls;*.com;*.xml") return true
         /// </summary>
         public static bool TestFileNameAgainstListOfPatterns(this string filePath, string listOfPattern) {
             if (string.IsNullOrEmpty(filePath) || string.IsNullOrEmpty(listOfPattern)) {
                 return false;
             }
-            return listOfPattern.Split(',').Where(s => !string.IsNullOrEmpty(s)).ToList().Exists(s => new Regex(s.PathWildCardToRegex()).IsMatch(Path.GetFileName(filePath)));
+            return listOfPattern.Split(';').Where(s => !string.IsNullOrEmpty(s)).ToList().Exists(s => new Regex(s.PathWildCardToRegex()).IsMatch(Path.GetFileName(filePath)));
         }
 
         /// <summary>
         ///     Allows to tranform a matching string using **, * and ? (wildcards) into a valid regex expression
         ///     it escapes regex special char so it will work as you expect!
         ///     Ex: foo*.xls? will become ^foo.*\.xls.$
-        ///     - ** matches any char any nb of time (greedy match!)
+        ///     - ** matches any char any nb of time (greedy match! allows to do stuff like C:\((**))((*)).txt)
         ///     - * matches only non path separators any time
         ///     - ? matches non path separators 1 time
-        ///     - &lt; will be transformed into open capturing parenthesis
-        ///     - &gt; will be transformed into close capturing parenthesis
+        ///     - (( will be transformed into open capturing parenthesis
+        ///     - )) will be transformed into close capturing parenthesis
         /// </summary>
         /// <param name="pattern"></param>
-        /// <remarks>validate the pattern first with <see cref="IsPlaceHolderPathValid"/></remarks>
+        /// <remarks>validate the pattern first with <see cref="Utils.ValidatePathWildCard"/></remarks>
         /// <returns></returns>
         public static string PathWildCardToRegex(this string pattern) {
             if (string.IsNullOrEmpty(pattern)) {
                 return null;
             }
             pattern = Regex.Escape(pattern.Replace("\\", "/"))
-                .Replace(@"<", @"(")
-                .Replace(@">", @")")
+                .Replace(@"\(\(", @"(")
+                .Replace(@"\)\)", @")")
                 .Replace(@"/", @"[\\/]")
                 .Replace(@"\*\*", ".*?")
                 .Replace(@"\*", @"[^\\/]*")
@@ -138,90 +138,62 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="closePo"></param>
         /// <param name="maxDepth"></param>
         /// <param name="comparison"></param>
-        /// <returns></returns>
-        public static bool HasValidPlaceHolders(this string source, string openPo, string closePo, int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
-            int stack = 0;
-            int idx = 0;
-            do {
-                var idxStart = source.IndexOf(openPo, idx, comparison);
-                var idxEnd = source.IndexOf(closePo, idx, comparison);
-                if (idxStart >= 0 && (idxEnd < 0 || idxStart < idxEnd)) {
-                    idx = idxStart;
-                    stack++;
-                } else {
-                    if (idxEnd >= 0) {
-                        stack--;
-                    }
-                    idx = idxEnd;
-                }
-                if (stack < 0) {
-                    return false;
-                }
-                if (maxDepth > 0 && stack > maxDepth) {
-                    return false;
-                }
-                idx++;
-            } while (idx > 0 && idx <= source.Length - 1);
-
-            return stack == 0;
-        }
-
-        /// <summary>
-        /// - Test if the path wild card has correct matches &lt; &gt; place holders
-        /// - Test if the path contains any invalid characters
-        /// </summary>
-        /// <remarks>We need this to know if the new Regex() will fail with this PathWildCard or not</remarks>
-        /// <param name="pattern"></param>
-        /// <returns></returns>
-        public static bool IsPlaceHolderPathValid(this string pattern) {
-            if (string.IsNullOrEmpty(pattern)) {
-                return false;
-            }
-            foreach (char c in Path.GetInvalidPathChars()) {
-                if (c == '<' || c == '>') {
-                    continue;
-                }
-                if (pattern.IndexOf(c) >= 0) {
-                    return false;
-                }
-            }
-            return pattern.HasValidPlaceHolders("<", ">");
+        public static void ValidatePlaceHolders(this string source, string openPo = "<", string closePo = ">", int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
+            source.ReplacePlaceHolders(null, openPo, closePo, maxDepth, comparison);
         }
         
         /// <summary>
         /// Replace the place holders in a string by a value
         /// </summary>
-        /// <remarks>doesn't do any checks, you have to validate that the source is correct first using <see cref="HasValidPlaceHolders"/></remarks>
+        /// <remarks>doesn't do any checks, you have to validate that the source is correct first using <see cref="ValidatePlaceHolders"/></remarks>
         /// <remarks>Also make sure that replacementFunction will not return a string containing the opening or closing!</remarks>
-        /// <param name="replacementString"></param>
+        /// <param name="source"></param>
         /// <param name="replacementFunction"></param>
         /// <param name="openPo"></param>
         /// <param name="closePo"></param>
+        /// <param name="maxDepth"></param>
         /// <param name="comparison"></param>
+        /// <exception cref="Exception"></exception>
         /// <returns></returns>
-        public static string ReplacePlaceHolders(this string replacementString, Func<string, string> replacementFunction, string openPo = "<", string closePo = ">", StringComparison comparison = StringComparison.Ordinal) {
-            int idxStart;
+        public static string ReplacePlaceHolders(this string source, Func<string, string> replacementFunction, string openPo = "<", string closePo = ">", int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
+            var startPosStack = new Stack<int>();
+            var osb = replacementFunction == null ? source : $"{source}";
             int idx = 0;
-            int loop = 0;
             do {
-                loop++;
-                if (loop > 100) {
-                    throw new Exception("Trapped in infinite loop make sure the replacement function doesn't return a placeholder token");
-                }
-                idxStart = replacementString.IndexOf(openPo, idx, comparison);
-                if (idxStart >= 0) {
-                    var idxEnd = replacementString.IndexOf(closePo, idxStart + openPo.Length, comparison);
-                    var nextIdxStart = replacementString.IndexOf(openPo, idxStart + openPo.Length, comparison);
-                    if (nextIdxStart < 0 || idxEnd < nextIdxStart) {
-                        var variableName = replacementString.Substring(idxStart + openPo.Length, idxEnd - (idxStart + openPo.Length));
-                    replacementString = replacementString.Remove(idxStart, idxEnd + closePo.Length - idxStart).Insert(idxStart, replacementFunction(variableName));
-                        idx = 0;
-                    } else {
-                        idx = idxStart + openPo.Length;
+                var idxStart = osb.IndexOf(openPo, idx, comparison);
+                var idxEnd = osb.IndexOf(closePo, idx, comparison);
+                if (idxStart >= 0 && (idxEnd < 0 || idxStart < idxEnd)) {
+                    idx = idxStart;
+                    startPosStack.Push(idxStart);
+                } else {
+                    idx = idxEnd;
+                    if (idxEnd >= 0) {
+                        if (startPosStack.Count == 0) {
+                            throw new Exception($"Invalid symbol {closePo} found at column {idx} (no corresponding {openPo})");
+                        }
+                        var lastStartPos = startPosStack.Pop();
+                        if (replacementFunction != null) {
+                            // we need to replace this closed place holder
+                            var variableName = osb.Substring(lastStartPos + openPo.Length, idxEnd - (lastStartPos + openPo.Length));
+                            var variableValue = replacementFunction(variableName);
+                            if (variableValue != null) {
+                                osb = osb.Remove(lastStartPos, idxEnd + closePo.Length - lastStartPos).Insert(lastStartPos, variableValue);
+                                idx = lastStartPos;
+                            }
+                        }
                     }
                 }
-            } while (idxStart >= 0);
-            return replacementString;
+                if (maxDepth > 0 && startPosStack.Count > maxDepth) {
+                    throw new Exception($"Max depth inclusion of {maxDepth} reached at column {idx}");
+                }
+                idx++;
+            } while (idx > 0 && idx <= osb.Length - 1);
+
+            if (startPosStack.Count != 0) {
+                throw new Exception($"Unbalanced number or {openPo} and {closePo})");
+            }
+            
+            return osb;
         }
         
         /// <summary>

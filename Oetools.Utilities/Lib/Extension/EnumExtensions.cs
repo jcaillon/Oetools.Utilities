@@ -45,8 +45,14 @@ namespace Oetools.Utilities.Lib.Extension {
                 actionForEachNameValue(tuple.Item1, tuple.Item2);
             }
         }
-
-        
+      
+        /// <summary>
+        /// MyEnum tester = MyEnum.FlagA | MyEnum.FlagB;
+        /// if(tester.IsSet(MyEnum.FlagA))
+        /// </summary>
+        public static bool IsFlagSet(this Enum input, Enum matchTo) {
+            return (Convert.ToUInt32(input) & Convert.ToUInt32(matchTo)) != 0;
+        }
 
     }
 }

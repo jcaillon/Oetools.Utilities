@@ -18,6 +18,7 @@
 // ========================================================================
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -43,6 +44,22 @@ namespace Oetools.Utilities.Test.Lib {
         [ClassCleanup]
         public static void Cleanup() {
             Utils.DeleteDirectoryIfExists(TestFolder, true);
+        }
+        
+        [TestMethod]
+        [DataRow(null, false, DisplayName = "null")]
+        [DataRow(@"", false, DisplayName = "empty")]
+        [DataRow(@"zf|ezefdze", false, DisplayName = "Invalid char")]
+        [DataRow(@"<<000", false, DisplayName = "unbalanced <<")]
+        [DataRow(@">>00000", false, DisplayName = "too many >>")]
+        [DataRow(@"C:\windows\**\?*", true)]
+        [DataRow(@"/linux/**/?*", true)]
+        public void ValidatePathWildCard_Test(string pattern, bool expectOk) {
+            if (!expectOk) {
+                Assert.ThrowsException<Exception>(() => Utils.ValidatePathWildCard(pattern));
+            } else {
+                Utils.ValidatePathWildCard(pattern);
+            }
         }
         
         [TestMethod]
