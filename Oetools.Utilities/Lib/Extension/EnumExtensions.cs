@@ -27,6 +27,7 @@ namespace Oetools.Utilities.Lib.Extension {
     /// </summary>
     public static class EnumExtensions {
         
+        // TODO : replace type by string?
         private static Dictionary<Type, List<Tuple<string, long>>> _enumTypeNameValueKeyPairs = new Dictionary<Type, List<Tuple<string, long>>>();
 
         public static void ForEach<T>(this Type curType, Action<string, long> actionForEachNameValue) {

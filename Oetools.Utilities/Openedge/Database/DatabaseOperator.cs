@@ -203,7 +203,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}") || !dbUtil.BatchOutput.ToString().ContainsFast("(1365)")) {
+            if (!dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}") || !dbUtil.BatchOutput.ToString().ContainsCi("(1365)")) {
                 throw new DatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
 
@@ -238,7 +238,7 @@ namespace Oetools.Utilities.Openedge.Database {
            
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"prostrct repair {dbPhysicalName}") || !dbUtil.BatchOutput.ToString().ContainsFast("(13485)")) {
+            if (!dbUtil.TryExecute($"prostrct repair {dbPhysicalName}") || !dbUtil.BatchOutput.ToString().ContainsCi("(13485)")) {
                 throw new DatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
 
@@ -364,9 +364,9 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var output = proUtil.BatchOutput.ToString();
             switch (output) {
-                case string _ when output.ContainsFast("(276)"):
+                case string _ when output.ContainsCi("(276)"):
                     return DatabaseBusyMode.MultiUser;
-                case string _ when output.ContainsFast("(263)"):
+                case string _ when output.ContainsCi("(263)"):
                     return DatabaseBusyMode.SingleUser;
                 default:
                     return DatabaseBusyMode.NotBusy;
@@ -514,7 +514,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         public static void KillAllMproSrv() {
             Process.GetProcesses()
-                .Where(p => p.ProcessName.ContainsFast("_mprosrv"))
+                .Where(p => p.ProcessName.ContainsCi("_mprosrv"))
                 .ToList()
                 .ForEach(p => p.Kill());
         }

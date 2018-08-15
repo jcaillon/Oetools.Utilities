@@ -22,23 +22,62 @@ using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
+using System.Xml.Serialization;
 
 namespace Oetools.Utilities.Lib.Extension {
     
     public static class AttributesExtensions {
+        
+        public static T GetAttributeFrom<T>(this Type type, string memberName) where T : Attribute {
+            var memberInfos = type.GetMember(memberName);
+            if (memberInfos.Length > 0) {
+                return (T) Attribute.GetCustomAttribute(memberInfos[0], typeof(T), true);
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// Returns the xml element or attribute name of a property
+        /// </summary>
+        /// <param name="objectType"></param>
+        /// <param name="objectPropertyNameOf"></param>
+        /// <returns></returns>
+        public static string GetXmlName(this Type objectType, string objectPropertyNameOf) {
+            // TODO : cache in dictionnary?
+            var element = objectType.GetAttributeFrom<XmlElementAttribute>(objectPropertyNameOf);
+            if (element == null) {
+                var attribute = objectType.GetAttributeFrom<XmlAttributeAttribute>(objectPropertyNameOf);
+                if (attribute == null) {
+                    return null;
+                }
+                return attribute.AttributeName;
+            }
+            return element.ElementName;
+        }
+        
+        /// <summary>
+        /// Returns the xml root name of a type
+        /// </summary>
+        /// <param name="objectType"></param>
+        /// <returns></returns>
+        public static string GetXmlName(this Type objectType) {
+            // TODO : cache in dictionnary?
+            var root = Attribute.GetCustomAttribute(objectType, typeof(XmlRootAttribute), true) as XmlRootAttribute;
+            return root?.ElementName;
+        }
         
         /// <summary>
         /// Use : var name = player.GetAttributeFrom DisplayAttribute>("PlayerDescription").Name;
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="instance"></param>
-        /// <param name="propertyName"></param>
+        /// <param name="memberName"></param>
         /// <returns></returns>
-        public static T GetAttributeFrom<T>(this object instance, string propertyName) where T : Attribute {
+        public static T GetAttributeFrom<T>(this object instance, string memberName) where T : Attribute {
             var attrType = typeof(T);
-            var fieldInfo = instance.GetType().GetField(propertyName);
+            var fieldInfo = instance.GetType().GetField(memberName);
             if (fieldInfo == null) {
-                var propertyInfo = instance.GetType().GetProperty(propertyName);
+                var propertyInfo = instance.GetType().GetProperty(memberName);
                 if (propertyInfo == null) {
                     return (T) Convert.ChangeType(null, typeof(T));
                 }

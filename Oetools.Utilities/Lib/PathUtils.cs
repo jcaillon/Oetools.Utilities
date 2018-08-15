@@ -273,5 +273,18 @@ namespace Oetools.Utilities.Lib {
             pattern.ValidatePlaceHolders("<<", ">>");
         }
 
+        /// <summary>
+        /// Equivalent to <see cref="Path.IsPathRooted"/> but throws no exceptions
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static bool IsPathRooted(string path) {
+            try {
+                return Path.IsPathRooted(path);
+            } catch (Exception) {
+                return false;
+            }
+        }
+
     }
 }

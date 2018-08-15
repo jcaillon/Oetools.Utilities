@@ -44,13 +44,13 @@ namespace Oetools.Utilities.Archive.Prolib {
                     }
 
                     // for files containing a space, we don't have a choice, call delete for each...
-                    foreach (var file in plGroupedFiles.Where(deploy => deploy.RelativePathInArchive.ContainsFast(" "))) {
+                    foreach (var file in plGroupedFiles.Where(deploy => deploy.RelativePathInArchive.ContainsCi(" "))) {
                         if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -delete {file.RelativePathInArchive.CliQuoter()}")) {
                             progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePathInArchive, new Exception(prolibExe.BatchOutput.ToString())));
                         }
                     }
 
-                    var remainingFiles = plGroupedFiles.Where(deploy => !deploy.RelativePathInArchive.ContainsFast(" ")).ToList();
+                    var remainingFiles = plGroupedFiles.Where(deploy => !deploy.RelativePathInArchive.ContainsCi(" ")).ToList();
                     if (remainingFiles.Count > 0) {
                         // for the other files, we can use the -pf parameter
                         var pfContent = new StringBuilder();

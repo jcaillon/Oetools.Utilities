@@ -98,13 +98,13 @@ namespace Oetools.Utilities.Archive.Prolib {
                         });
                         
                         // for files containing a space, we don't have a choice, call extract for each...
-                        foreach (var file in subFolder.Value.Where(f => f.RelativePath.ContainsFast(" "))) {
+                        foreach (var file in subFolder.Value.Where(f => f.RelativePath.ContainsCi(" "))) {
                             if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -create -nowarn -add {file.RelativePath.CliQuoter()}")) {
                                 progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.BatchOutput.ToString())));
                             }
                         }
 
-                        var remainingFiles = subFolder.Value.Where(f => !f.RelativePath.ContainsFast(" ")).ToList();
+                        var remainingFiles = subFolder.Value.Where(f => !f.RelativePath.ContainsCi(" ")).ToList();
                         if (remainingFiles.Count > 0) {
                             // for the other files, we can use the -pf parameter
                             var pfContent = new StringBuilder();
@@ -201,13 +201,13 @@ namespace Oetools.Utilities.Archive.Prolib {
                 }
 
                 // for files containing a space, we don't have a choice, call extract for each...
-                foreach (var file in files.Where(deploy => deploy.RelativePathInArchive.ContainsFast(" "))) {
+                foreach (var file in files.Where(deploy => deploy.RelativePathInArchive.ContainsCi(" "))) {
                     if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -extract {file.RelativePathInArchive.CliQuoter()}")) {
                         throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.BatchOutput.ToString()));
                     }
                 }
 
-                var remainingFiles = files.Where(deploy => !deploy.RelativePathInArchive.ContainsFast(" ")).ToList();
+                var remainingFiles = files.Where(deploy => !deploy.RelativePathInArchive.ContainsCi(" ")).ToList();
                 if (remainingFiles.Count > 0) {
                     // for the other files, we can use the -pf parameter
                     var pfContent = new StringBuilder();

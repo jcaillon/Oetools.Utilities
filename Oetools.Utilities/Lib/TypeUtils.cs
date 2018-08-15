@@ -75,36 +75,89 @@ namespace Oetools.Utilities.Lib {
             }
         }
 
-        // TODO : need to work on this, this is a copy/paste draft
-        private static object DeepCopy(object obj, Type targetType) {
-            if (obj != null) {
-                object objCopy = Activator.CreateInstance(targetType);
-                var props = obj.GetType().GetProperties();
-                foreach (var propertyInfo in props) {
-                    var targetProperty = targetType.GetProperties().Where(x => x.Name == propertyInfo.Name).First();
-                    if (targetProperty.GetCustomAttributes(typeof(XmlIgnoreAttribute), false).Length > 0) {
-                        continue;
-                    }
-                    if (propertyInfo.PropertyType.IsClass) {
-                        if (propertyInfo.PropertyType.GetInterface("IList", true) != null) {
-                            var list = (IList) Activator.CreateInstance(targetProperty.PropertyType);
-                            targetProperty.SetValue(objCopy, list);
-                            var sourceList = propertyInfo.GetValue(obj) as IList;
-                            foreach (var o in sourceList) {
-                                    list.Add(DeepCopy(o, targetProperty.PropertyType.UnderlyingSystemType.GenericTypeArguments[0]));
-                            }
-                        } else if (propertyInfo.PropertyType == typeof(string)) {
-                            targetProperty.SetValue(objCopy, propertyInfo.GetValue(obj));
-                        } else {
-                            targetProperty.SetValue(objCopy, DeepCopy(propertyInfo.GetValue(obj), targetProperty.PropertyType));
-                        }
-                    } else {
-                        targetProperty.SetValue(objCopy, propertyInfo.GetValue(obj));
-                    }
-                }
-                return objCopy;
+        /// <summary>
+        /// Copies all the public properties of one object to another
+        /// </summary>
+        /// <remarks>
+        /// If a property is null in the source object, it won't affect the target object (i.e. either null if we created the
+        /// target object or the old target value if it had any)
+        /// </remarks>
+        /// <param name="sourceObj"></param>
+        /// <param name="targetType"></param>
+        /// <param name="targetObj"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public static object DeepCopyPublicProperties(object sourceObj, Type targetType, object targetObj = null) {
+            if (sourceObj == null) {
+                return null;
             }
-            return null;
+            if (!targetType.IsClass) {
+                return sourceObj;
+            }
+            if (targetType == typeof(string)) {
+                return sourceObj;
+            }
+
+            if (targetObj == null) {
+                targetObj = Activator.CreateInstance(targetType);
+            }
+
+            var sourceProperties = sourceObj.GetType().GetProperties();
+            var targetProperties = targetType.GetProperties();
+            foreach (var sourceProperty in sourceProperties) {
+                if (!sourceProperty.CanRead || sourceProperty.PropertyType.IsNotPublic) {
+                    continue;
+                }
+                var targetProperty = targetProperties.FirstOrDefault(x => x.Name == sourceProperty.Name);
+                if (targetProperty == null || !targetProperty.CanWrite || targetProperty.PropertyType.IsNotPublic) {
+                    continue;
+                }
+                if (Attribute.GetCustomAttribute(targetProperty, typeof(DeepCopy), true) is DeepCopy attribute && attribute.Ignore) {
+                    continue;
+                }
+
+                if (sourceProperty.PropertyType != targetProperty.PropertyType) {
+                    continue;
+                }
+                
+                var obj = sourceProperty.GetValue(sourceObj);
+                if (obj == null) {
+                    continue;
+                }
+
+                switch (obj) {
+                    case string _:
+                        targetProperty.SetValue(targetObj, obj);
+                        break;
+                    case IList listItem:
+                        if (sourceProperty.PropertyType.IsArray) {
+                            var subtype = sourceProperty.PropertyType.GetElementType();
+                            if (subtype == null) {
+                                throw new Exception($"Unknown elemeny type of array {sourceProperty.Name}");
+                            }
+                            var array = Array.CreateInstance(subtype, listItem.Count);
+                            targetProperty.SetValue(targetObj, array);
+                            for (int i = 0; i < listItem.Count; i++) {
+                                array.SetValue(listItem[i] != null ? DeepCopyPublicProperties(listItem[i], listItem[i].GetType()) : null, i);
+                            }
+                        } else if (sourceProperty.PropertyType.UnderlyingSystemType.GenericTypeArguments.Length > 0) {
+                            var list = (IList) Activator.CreateInstance(targetProperty.PropertyType);
+                            targetProperty.SetValue(targetObj, list);
+                            foreach (var item in listItem) {
+                                list.Add(item != null ? DeepCopyPublicProperties(item, item.GetType()) : null);
+                            }
+                        }
+                        break;
+                    default:
+                        if (sourceProperty.PropertyType.IsClass) {
+                            targetProperty.SetValue(targetObj, DeepCopyPublicProperties(obj, targetProperty.PropertyType));
+                        } else {
+                            targetProperty.SetValue(targetObj, obj);
+                        }
+                        break;
+                }
+            }
+            return targetObj;
         }
     }
 }

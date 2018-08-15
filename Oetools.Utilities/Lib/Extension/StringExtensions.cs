@@ -33,6 +33,20 @@ namespace Oetools.Utilities.Lib.Extension {
     public static class StringExtensions {
 
         /// <summary>
+        /// Transforms an absolute path into a relative one
+        /// </summary>
+        /// <param name="absolute"></param>
+        /// <param name="pathToDelete"></param>
+        /// <returns></returns>
+        public static string FromAbsolutePathToRelativePath(this string absolute, string pathToDelete) {
+            if (string.IsNullOrEmpty(absolute) || string.IsNullOrEmpty(pathToDelete)) {
+                return absolute;
+            }
+            var relative = absolute.Replace(pathToDelete, "");
+            return relative.Length == absolute.Length ? absolute : relative.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+
+        /// <summary>
         /// Remove quotes from a string
         /// </summary>
         /// <param name="source"></param>
@@ -58,13 +72,15 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Equivalent to Equals but case insensitive
+        ///     Equivalent to Equals but case insensitive, also handles null case
         /// </summary>
         /// <param name="s"></param>
         /// <param name="comp"></param>
         /// <returns></returns>
         public static bool EqualsCi(this string s, string comp) {
-            //string.Equals(a, b, StringComparison.CurrentCultureIgnoreCase);
+            if (s == null || comp == null) {
+                return s == null && comp == null;
+            }
             return s.Equals(comp, StringComparison.CurrentCultureIgnoreCase);
         }
 
@@ -74,7 +90,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="source"></param>
         /// <param name="toCheck"></param>
         /// <returns></returns>
-        public static bool ContainsFast(this string source, string toCheck) {
+        public static bool ContainsCi(this string source, string toCheck) {
             return source.IndexOf(toCheck, StringComparison.CurrentCultureIgnoreCase) >= 0;
         }
 
@@ -270,10 +286,18 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Make sure the directory finished with "\"
+        ///     Make sure the directory finished with "\" or "/"
         /// </summary>
         public static string CorrectDirPath(this string path) {
-            return $@"{path.TrimEnd('\\')}\";
+            return $@"{path.TrimDirectorySeparator()}{Path.DirectorySeparatorChar}";
+        }
+
+
+        /// <summary>
+        /// Make sure to trim the ending "\" or "/"
+        /// </summary>
+        public static string TrimDirectorySeparator(this string path) {
+            return path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }
 
         /// <summary>
