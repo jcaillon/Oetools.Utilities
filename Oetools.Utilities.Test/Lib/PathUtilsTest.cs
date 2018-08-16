@@ -47,6 +47,50 @@ namespace Oetools.Utilities.Test.Lib {
         }
         
         [TestMethod]
+        [DataRow(null, null, null, DisplayName = "null")]
+        [DataRow(@"", null, @"", DisplayName = "empty")]
+        [DataRow(@"\\server\folder\file", null, @"\\server\folder\file")]
+        [DataRow(@"\\server\folder\file", @"\\server", @"folder\file")]
+        [DataRow(@"\\server\folder\file", @"\\server\", @"folder\file")]
+        [DataRow(@"\\server\folder\file", @"\\server\folder", @"file")]
+        [DataRow(@"c:\server\folder\file", @"c:\server\folder", @"file")]
+        [DataRow(@"c:\server\folder\file", @"c:\derp", @"c:\server\folder\file")]
+        public void FromAbsolutePathToRelativePath_Test(string pattern, string pathToDelete, string expect) {
+            if (!Utils.IsRuntimeWindowsPlatform) {
+                return;
+            }
+            Assert.AreEqual(expect, pattern.FromAbsolutePathToRelativePath(pathToDelete));
+        }
+        
+        [TestMethod]
+        [DataRow(null, null, DisplayName = "null")]
+        [DataRow(@"", @"", DisplayName = "empty")]
+        [DataRow(@"\\server/", @"\\server")]
+        [DataRow(@"C:\windows", @"C:\windows")]
+        [DataRow(@"C:\windows/", @"C:\windows")]
+        [DataRow(@"C:\windows/\", @"C:\windows")]
+        public void TrimEndDirectorySeparator_Test(string pattern, string expect) {
+            if (!Utils.IsRuntimeWindowsPlatform) {
+                return;
+            }
+            Assert.AreEqual(expect, pattern.TrimEndDirectorySeparator());
+        }
+        
+        [TestMethod]
+        [DataRow(null, null, DisplayName = "null")]
+        [DataRow(@"", @"", DisplayName = "empty")]
+        [DataRow(@"\//\\/server/", @"\\server")]
+        [DataRow(@"/windows", @"C:\windows")]
+        [DataRow(@"d:/folder/file", @"d:\folder\file")]
+        [DataRow(@"d:/folder/\\\\\\\file", @"d:\folder\file")]
+        public void ToCleanPath_Test(string pattern, string expect) {
+            if (!Utils.IsRuntimeWindowsPlatform) {
+                return;
+            }
+            Assert.AreEqual(expect, pattern.ToCleanPath());
+        }
+        
+        [TestMethod]
         [DataRow(null, false, DisplayName = "null")]
         [DataRow(@"", false, DisplayName = "empty")]
         [DataRow(@"zf|ezefdze", false, DisplayName = "Invalid char")]

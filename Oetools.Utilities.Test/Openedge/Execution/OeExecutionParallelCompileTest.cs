@@ -77,7 +77,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = true;
             using (var exec = GetOeExecutionCompile(env) as OeExecutionParallelCompile) {
                 Assert.IsNotNull(exec);
-                exec.NumberOfProcessesPerCore = 2;
+                exec.MaxNumberOfProcesses = 2;
                 exec.FilesToCompile = new List<FileToCompile> {
                     new FileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
                     new FileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),

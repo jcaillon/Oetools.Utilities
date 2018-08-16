@@ -286,7 +286,7 @@ namespace Oetools.Utilities.Openedge {
 
             foreach (var path in propath.Split(',', '\n', ';').Select(path => path.Trim()).Where(path => !string.IsNullOrEmpty(path))) {
                 try {
-                    var thisPath = path;
+                    var thisPath = path.ToCleanPath();
 
                     // replace environment variables
                     if (thisPath.Contains("%") || thisPath.Contains("$")) {
@@ -358,7 +358,7 @@ namespace Oetools.Utilities.Openedge {
                 path
             };
             output.AddRange(ListProlibFilesInDirectory(path));
-            output.Add(dlcPath);
+            output.Add(dlcPath.ToCleanPath());
             output.Add(Path.Combine(dlcPath, "bin"));
             return output;
         }

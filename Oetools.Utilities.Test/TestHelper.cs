@@ -38,9 +38,11 @@ namespace Oetools.Utilities.Test {
         public static bool GetDlcPath(out string dlcPath) {
             dlcPath = ProUtilities.GetDlcPathFromEnv();
             if (string.IsNullOrEmpty(dlcPath)) {
+                Console.WriteLine("Cancelling test, DLC environment variable not found!");
                 return false;
             }
             if (!Directory.Exists(dlcPath)) {
+                Console.WriteLine("Cancelling test, DLC environment variable not found!");
                 return false;
             }
             return true;
@@ -53,7 +55,11 @@ namespace Oetools.Utilities.Test {
                 return false;
             }
             prolibPath = Path.Combine(dlcPath, "bin", Utils.IsRuntimeWindowsPlatform ? "prolib.exe" : "prolib");
-            return File.Exists(prolibPath);
+            var exists = File.Exists(prolibPath);
+            if (!exists) {
+                Console.WriteLine("Cancelling test, prolib not found!");
+            }
+            return exists;
         }
         
         public static string GetTestFolder(string testName) {

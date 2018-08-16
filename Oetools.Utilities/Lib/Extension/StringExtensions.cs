@@ -33,20 +33,6 @@ namespace Oetools.Utilities.Lib.Extension {
     public static class StringExtensions {
 
         /// <summary>
-        /// Transforms an absolute path into a relative one
-        /// </summary>
-        /// <param name="absolute"></param>
-        /// <param name="pathToDelete"></param>
-        /// <returns></returns>
-        public static string FromAbsolutePathToRelativePath(this string absolute, string pathToDelete) {
-            if (string.IsNullOrEmpty(absolute) || string.IsNullOrEmpty(pathToDelete)) {
-                return absolute;
-            }
-            var relative = absolute.Replace(pathToDelete, "");
-            return relative.Length == absolute.Length ? absolute : relative.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        }
-
-        /// <summary>
         /// Remove quotes from a string
         /// </summary>
         /// <param name="source"></param>
@@ -286,34 +272,6 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Make sure the directory finished with "\" or "/"
-        /// </summary>
-        public static string CorrectDirPath(this string path) {
-            return $@"{path.TrimDirectorySeparator()}{Path.DirectorySeparatorChar}";
-        }
-
-
-        /// <summary>
-        /// Make sure to trim the ending "\" or "/"
-        /// </summary>
-        public static string TrimDirectorySeparator(this string path) {
-            return path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        }
-
-        /// <summary>
-        /// Transform a relative to an absolute path
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="currentDirectory"></param>
-        /// <returns></returns>
-        public static string MakePathAbsolute(this string path, string currentDirectory = null) {
-            if (Path.IsPathRooted(path)) {
-                return path;
-            }
-            return Path.Combine(currentDirectory ?? Directory.GetCurrentDirectory(), path);
-        }
-
-        /// <summary>
         ///     Same as ToList but returns an empty list on Null instead of an exception
         /// </summary>
         public static List<T> ToNonNullList<T>(this IEnumerable<T> obj) {
@@ -376,23 +334,6 @@ namespace Oetools.Utilities.Lib.Extension {
                 port = 0;
             }
             return match.Success;
-        }
-
-        /// <summary>
-        ///     Replaces all invalid characters found in the provided name
-        /// </summary>
-        /// <param name="fileName">A file name without directory information</param>
-        /// <param name="replacementChar"></param>
-        /// <returns></returns>
-        public static string ToValidLocalFileName(this string fileName, char replacementChar = '_') {
-            return ReplaceAllChars(fileName, Path.GetInvalidFileNameChars(), replacementChar);
-        }
-
-        private static string ReplaceAllChars(string str, char[] oldChars, char newChar) {
-            var sb = new StringBuilder(str);
-            foreach (var c in oldChars)
-                sb.Replace(c, newChar);
-            return sb.ToString();
         }
         
         /// <summary>

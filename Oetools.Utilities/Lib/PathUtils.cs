@@ -32,6 +32,110 @@ namespace Oetools.Utilities.Lib {
     public static partial class Utils {
         
         /// <summary>
+        /// Make sure to trim the ending "\" or "/"
+        /// </summary>
+        public static string TrimEndDirectorySeparator(this string path) {
+            if (string.IsNullOrEmpty(path)) {
+                return path;
+            }
+            return path[path.Length - 1] == Path.DirectorySeparatorChar || path[path.Length - 1] == Path.AltDirectorySeparatorChar ? path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) : path;
+        }
+        
+        /// <summary>
+        /// Make sure to trim the starting "\" or "/"
+        /// </summary>
+        public static string TrimStartDirectorySeparator(this string path) {
+            if (string.IsNullOrEmpty(path)) {
+                return path;
+            }
+            return path[0] == Path.DirectorySeparatorChar || path[0] == Path.AltDirectorySeparatorChar ? path.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) : path;
+        }
+
+        /// <summary>
+        /// Transform a relative to an absolute path
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="currentDirectory"></param>
+        /// <returns></returns>
+        public static string MakePathAbsolute(this string path, string currentDirectory = null) {
+            if (Path.IsPathRooted(path)) {
+                return path;
+            }
+            return Path.Combine(currentDirectory ?? Directory.GetCurrentDirectory(), path);
+        }
+        
+        /// <summary>
+        ///     Replaces all invalid characters found in the provided name
+        /// </summary>
+        /// <param name="fileName">A file name without directory information</param>
+        /// <param name="replacementChar"></param>
+        /// <returns></returns>
+        public static string ToValidLocalFileName(this string fileName, char replacementChar = '_') {
+            return ReplaceAllChars(fileName, Path.GetInvalidFileNameChars(), replacementChar);
+        }
+        
+        private static string ReplaceAllChars(string str, char[] oldChars, char newChar) {
+            var sb = new StringBuilder(str);
+            foreach (var c in oldChars)
+                sb.Replace(c, newChar);
+            return sb.ToString();
+        }
+        
+        /// <summary>
+        /// Transforms an absolute path into a relative one
+        /// </summary>
+        /// <param name="absolute"></param>
+        /// <param name="pathToDelete"></param>
+        /// <returns></returns>
+        public static string FromAbsolutePathToRelativePath(this string absolute, string pathToDelete) {
+            if (string.IsNullOrEmpty(absolute) || string.IsNullOrEmpty(pathToDelete)) {
+                return absolute;
+            }
+            var relative = absolute.Replace(pathToDelete, "");
+            return relative.Length == absolute.Length ? absolute : relative.TrimStartDirectorySeparator();
+        }
+        
+        /// <summary>
+        /// Gets a messy path (can be valid or not) and returns a cleaned path, trimming ending dir sep char
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static string ToCleanPath(this string path) {
+            if (string.IsNullOrEmpty(path)) {
+                return path;
+            }
+            string newPath = null;
+            bool isWindows = IsRuntimeWindowsPlatform;
+            bool startDoubleSlash = false;
+            if (isWindows) {
+                if (path.IndexOf('/') >= 0) {
+                    newPath = path.Replace('/', '\\');
+                }
+                startDoubleSlash = path.Length >= 2 && (newPath ?? path)[0] == '\\' && (newPath ?? path)[1] == '\\';
+                if ((newPath ?? path).Length > 0 && (newPath ?? path)[0] == '\\' && !startDoubleSlash) {
+                    // replace / by C:\
+                    newPath = $"{Path.GetFullPath(@"/")}{(newPath ?? path).Substring(1)}";
+                }
+            } else {
+                if (path.IndexOf('\\') >= 0) {
+                    newPath = path.Replace('\\', '/');
+                }
+            }
+            // clean consecutive /
+            int idx;
+            do {
+                idx = (newPath ?? path).IndexOf($"{Path.DirectorySeparatorChar}{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+                if (idx >= 0) {
+                    newPath = (newPath ?? path).Replace($"{Path.DirectorySeparatorChar}{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}");
+                }
+            } while (idx >= 0);
+            if (!string.IsNullOrEmpty(newPath) && startDoubleSlash) {
+                newPath = $"{Path.DirectorySeparatorChar}{newPath}";
+            }
+            return (newPath ?? path).TrimEndDirectorySeparator();
+        }
+        
+        /// <summary>
         /// Read all the text of a file in one go, same as File.ReadAllText expect it's truly a read only function
         /// </summary>
         public static string ReadAllText(string path, Encoding encoding = null) {

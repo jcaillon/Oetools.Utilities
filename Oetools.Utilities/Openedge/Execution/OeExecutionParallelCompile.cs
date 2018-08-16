@@ -26,7 +26,7 @@ namespace Oetools.Utilities.Openedge.Execution {
     
     public class OeExecutionParallelCompile : OeExecutionCompile {
 
-        public int NumberOfProcessesPerCore { get; set; } = 1;
+        public int MaxNumberOfProcesses { get; set; } = 1;
 
         public virtual int MinimumNumberOfFilesPerProcess { get; set; } = 10;
 
@@ -76,10 +76,10 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected override void CheckParameters() {
             base.CheckParameters();
             if (MinimumNumberOfFilesPerProcess <= 0) {
-                throw new ExecutionParametersException($"Invalid parameter for MinimumNumberOfFilesPerProcess = {MinimumNumberOfFilesPerProcess}, should be at least 1");
+                throw new ExecutionParametersException($"Invalid parameter for {nameof(MinimumNumberOfFilesPerProcess)} = {MinimumNumberOfFilesPerProcess}, should be at least 1");
             }
-            if (NumberOfProcessesPerCore <= 0) {
-                throw new ExecutionParametersException($"Invalid parameter for NumberOfProcessesPerCore = {NumberOfProcessesPerCore}, should be at least 1");
+            if (MaxNumberOfProcesses <= 0) {
+                throw new ExecutionParametersException($"Invalid parameter for {nameof(MaxNumberOfProcesses)} = {MaxNumberOfProcesses}, should be at least 1");
             }
         }
 
@@ -89,12 +89,9 @@ namespace Oetools.Utilities.Openedge.Execution {
             
             // now we do a list of those files, sorted from the biggest (in size) to the smallest file
             FilesToCompile.Sort((file1, file2) => file2.FileSize.CompareTo(file1.FileSize));
-
-            // we want to dispatch all those files in a fair way among the Prowin processes we will create...
-            var numberOfProcesses = Math.Max(NumberOfProcessesPerCore, 1) * Environment.ProcessorCount;
             
             // ensure that each process will at least take in 10 files, starting a new process for 1 file to compile isn't efficient!
-            numberOfProcesses = Math.Min(numberOfProcesses, NumberOfFilesToCompile / MinimumNumberOfFilesPerProcess);
+            var numberOfProcesses = Math.Min(MaxNumberOfProcesses, NumberOfFilesToCompile / MinimumNumberOfFilesPerProcess);
             numberOfProcesses = Math.Max(numberOfProcesses, 1);
 
             var fileLists = new List<List<FileToCompile>>();
