@@ -184,7 +184,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             PreprocessedVars = new Dictionary<string, string>();
             
             // unique temporary folder
-            _tempDir = Path.Combine(Env.TempDirectory, $"exec_{DateTime.Now:HHmmssfff}_{Path.GetRandomFileName()}");
+            _tempDir = Path.Combine(Env.TempDirectory, $"exec_{Utils.GetRandomName()}");
             _errorLogPath = Path.Combine(_tempDir, "run.errors");
             _dbErrorLogPath = Path.Combine(_tempDir, "db.errors");
             _propathFilePath = Path.Combine(_tempDir, "oe.propath");

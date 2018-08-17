@@ -125,7 +125,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             return ProVersion != null && version != null && ProVersion.CompareTo(version) >= 0;
         }
         
-        public Dictionary<string, string> TablesCrc {
+        public virtual Dictionary<string, string> TablesCrc {
             get {
                 if (_tablesCrc == null) {
                     InitDatabasesInfo();
@@ -134,7 +134,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        public HashSet<string> Sequences {
+        public virtual HashSet<string> Sequences {
             get {
                 if (_sequences == null) {
                     InitDatabasesInfo();

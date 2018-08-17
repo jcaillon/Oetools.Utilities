@@ -31,7 +31,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 if (_tablesCrc == null) {
                     ReadExtractFile();
                 }
-                return _tablesCrc;
+                return _tablesCrc ?? new Dictionary<string, string>();
             }
         }
         
@@ -45,7 +45,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 if (_sequences == null) {
                     ReadExtractFile();
                 }
-                return _sequences;
+                return _sequences ?? new HashSet<string>();
             }
         }
         

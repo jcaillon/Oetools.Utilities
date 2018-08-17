@@ -44,7 +44,7 @@ namespace Oetools.Utilities.Lib {
                 if (!property.CanRead || !property.CanWrite || property.PropertyType.IsNotPublic) {
                     continue;
                 }
-                if (Attribute.GetCustomAttribute(property, typeof(ReplacePlaceHolder), true) is ReplacePlaceHolder attribute && attribute.SkipReplace) {
+                if (Attribute.GetCustomAttribute(property, typeof(ReplaceStringProperty), true) is ReplaceStringProperty attribute && attribute.SkipReplace) {
                     continue;
                 }
                 

@@ -147,8 +147,8 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <summary>
         /// Replace the place holders in a string by a value
         /// </summary>
-        /// <remarks>doesn't do any checks, you have to validate that the source is correct first using <see cref="ValidatePlaceHolders"/></remarks>
-        /// <remarks>Also make sure that replacementFunction will not return a string containing the opening or closing!</remarks>
+        /// <remarks>will throw errors, you have to validate that the source is correct first using <see cref="ValidatePlaceHolders"/></remarks>
+        /// <remarks>will throw errors if your replacement string contains an open or clo</remarks>
         /// <param name="source"></param>
         /// <param name="replacementFunction"></param>
         /// <param name="openPo"></param>
@@ -179,6 +179,9 @@ namespace Oetools.Utilities.Lib.Extension {
                             var variableName = osb.Substring(lastStartPos + openPo.Length, idxEnd - (lastStartPos + openPo.Length));
                             var variableValue = replacementFunction(variableName);
                             if (variableValue != null) {
+                                if (variableValue.IndexOf(openPo, 0, comparison) >= 0) {
+                                    throw new Exception($"The place holder value can't contain {openPo}");
+                                }
                                 osb = osb.Remove(lastStartPos, idxEnd + closePo.Length - lastStartPos).Insert(lastStartPos, variableValue);
                                 idx = lastStartPos;
                             }

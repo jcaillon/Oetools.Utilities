@@ -39,6 +39,21 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <summary>
         /// Returns the xml element or attribute name of a property
         /// </summary>
+        /// <param name="memberInfo"></param>
+        /// <returns></returns>
+        public static string GetXmlName(this MemberInfo memberInfo) {
+            // TODO : cache in dictionnary?
+            var element = Attribute.GetCustomAttribute(memberInfo, typeof(XmlElementAttribute), true) as XmlElementAttribute;
+            if (element == null) {
+                var attribute = Attribute.GetCustomAttribute(memberInfo, typeof(XmlAttributeAttribute), true) as XmlAttributeAttribute;
+                return attribute?.AttributeName ?? memberInfo.Name;
+            }
+            return element.ElementName;
+        }
+        
+        /// <summary>
+        /// Returns the xml element or attribute name of a property
+        /// </summary>
         /// <param name="objectType"></param>
         /// <param name="objectPropertyNameOf"></param>
         /// <returns></returns>
@@ -47,10 +62,7 @@ namespace Oetools.Utilities.Lib.Extension {
             var element = objectType.GetAttributeFrom<XmlElementAttribute>(objectPropertyNameOf);
             if (element == null) {
                 var attribute = objectType.GetAttributeFrom<XmlAttributeAttribute>(objectPropertyNameOf);
-                if (attribute == null) {
-                    return null;
-                }
-                return attribute.AttributeName;
+                return attribute?.AttributeName ?? objectType.Name;
             }
             return element.ElementName;
         }
@@ -63,7 +75,7 @@ namespace Oetools.Utilities.Lib.Extension {
         public static string GetXmlName(this Type objectType) {
             // TODO : cache in dictionnary?
             var root = Attribute.GetCustomAttribute(objectType, typeof(XmlRootAttribute), true) as XmlRootAttribute;
-            return root?.ElementName;
+            return root?.ElementName ?? objectType.Name;
         }
         
         /// <summary>

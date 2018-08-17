@@ -333,6 +333,10 @@ namespace Oetools.Utilities.Lib {
             return tmpDir;
         }
 
+        public static string GetRandomName() {
+            return $"{DateTime.Now:fff}{Path.GetRandomFileName()}";
+        }
+
         /// <summary>
         /// Returns the longest valid directory in a string
         /// </summary>

@@ -96,6 +96,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [TestMethod]
         [DataRow(@"a<b<c>>d", "abcd")]
         [DataRow(@"0<1><2><3>", "0123")]
+        [DataRow(@"<0><1><2><3>", "0123")]
         [DataRow(@"0<1>0<2>0<3>", "010203")]
         [DataRow(@"0<1<2<3>>>", "0123")]
         [DataRow(@"<>", "")]
@@ -124,8 +125,17 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [TestMethod]
         [DataRow(@"<>")]
         public void ReplacePlaceHolders_Test_expect_exceptions(string pattern) {
-            // expect bad recursion
+            // expect Invalid symbol > found at column 1 (no corresponding <)
             Assert.ThrowsException<Exception>(() => pattern.ReplacePlaceHolders(s => "<>"));
+        }
+        
+        [TestMethod]
+        [DataRow(@"hello<var1>nice", "a<fe>fef")]
+        [DataRow(@"hello<var1>nice", "<var2>")]
+        [DataRow(@"hello<var1>nice", "fefef>")]
+        public void ReplacePlaceHolders_Test_replace_with_placeholders_expect_exception(string pattern, string replacement) {
+            // expect Invalid symbol > found at column 1 (no corresponding <)
+            Assert.ThrowsException<Exception>(() => pattern.ReplacePlaceHolders(s => replacement));
         }
         
         [TestMethod]

@@ -304,12 +304,12 @@ namespace Oetools.Utilities.Test.Lib {
         }
 
         private class Obj4 {
-            [ReplacePlaceHolder(SkipReplace = true)]
+            [ReplaceStringProperty(SkipReplace = true)]
             public Obj2 Prop1 { get; set; }
 
             public List<Obj3> Prop2 { get; set; }
 
-            [ReplacePlaceHolder(SkipReplace = true)]
+            [ReplaceStringProperty(SkipReplace = true)]
             public string Prop3 { get; set; }
 
             public int Prop4 { get; set; }
