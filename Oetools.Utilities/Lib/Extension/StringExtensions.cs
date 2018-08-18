@@ -112,9 +112,12 @@ namespace Oetools.Utilities.Lib.Extension {
         ///     - ? matches non path separators 1 time
         ///     - (( will be transformed into open capturing parenthesis
         ///     - )) will be transformed into close capturing parenthesis
+        ///     - || will be transformed into |
         /// </summary>
         /// <param name="pattern"></param>
-        /// <remarks>validate the pattern first with <see cref="Utils.ValidatePathWildCard"/></remarks>
+        /// <remarks>
+        /// validate the pattern first with <see cref="Utils.ValidatePathWildCard"/> to make sure the (( and )) are legit
+        /// </remarks>
         /// <returns></returns>
         public static string PathWildCardToRegex(this string pattern) {
             if (string.IsNullOrEmpty(pattern)) {
@@ -123,6 +126,7 @@ namespace Oetools.Utilities.Lib.Extension {
             pattern = Regex.Escape(pattern.Replace("\\", "/"))
                 .Replace(@"\(\(", @"(")
                 .Replace(@"\)\)", @")")
+                .Replace(@"\|\|", @"|")
                 .Replace(@"/", @"[\\/]")
                 .Replace(@"\*\*", ".*?")
                 .Replace(@"\*", @"[^\\/]*")
@@ -140,7 +144,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="closePo"></param>
         /// <param name="maxDepth"></param>
         /// <param name="comparison"></param>
-        public static void ValidatePlaceHolders(this string source, string openPo = "<", string closePo = ">", int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
+        public static void ValidatePlaceHolders(this string source, string openPo = "{{", string closePo = "}}", int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
             source.ReplacePlaceHolders(null, openPo, closePo, maxDepth, comparison);
         }
         
@@ -157,7 +161,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="comparison"></param>
         /// <exception cref="Exception"></exception>
         /// <returns></returns>
-        public static string ReplacePlaceHolders(this string source, Func<string, string> replacementFunction, string openPo = "<", string closePo = ">", int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
+        public static string ReplacePlaceHolders(this string source, Func<string, string> replacementFunction, string openPo = "{{", string closePo = "}}", int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
             var startPosStack = new Stack<int>();
             var osb = replacementFunction == null ? source : $"{source}";
             int idx = 0;

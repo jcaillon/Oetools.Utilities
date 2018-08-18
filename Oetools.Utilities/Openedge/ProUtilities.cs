@@ -150,7 +150,7 @@ namespace Oetools.Utilities.Openedge {
         /// </summary>
         /// <returns></returns>
         public static string GetDlcPathFromEnv() {
-            return Environment.GetEnvironmentVariable("dlc");
+            return Environment.GetEnvironmentVariable(OeConstants.OeDlcEnvVar);
         }
 
         /// <summary>

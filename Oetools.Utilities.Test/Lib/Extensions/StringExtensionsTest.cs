@@ -94,13 +94,13 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         }
         
         [TestMethod]
-        [DataRow(@"a<b<c>>d", "abcd")]
-        [DataRow(@"0<1><2><3>", "0123")]
-        [DataRow(@"<0><1><2><3>", "0123")]
-        [DataRow(@"0<1>0<2>0<3>", "010203")]
-        [DataRow(@"0<1<2<3>>>", "0123")]
-        [DataRow(@"<>", "")]
-        [DataRow(@"<bla>", "bla")]
+        [DataRow(@"a{{b{{c}}}}d", "abcd")]
+        [DataRow(@"0{{1}}{{2}}{{3}}", "0123")]
+        [DataRow(@"{{0}}{{1}}{{2}}{{3}}", "0123")]
+        [DataRow(@"0{{1}}0{{2}}0{{3}}", "010203")]
+        [DataRow(@"0{{1{{2{{3}}}}}}", "0123")]
+        [DataRow(@"{{}}", "")]
+        [DataRow(@"{{bla}}", "bla")]
         public void ReplacePlaceHolders_Test(string pattern, string expected) {
             Assert.AreEqual(expected, pattern.ReplacePlaceHolders(s => s), pattern);
         }
@@ -123,35 +123,37 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         }
         
         [TestMethod]
-        [DataRow(@"<>")]
+        [DataRow(@"{{}}")]
         public void ReplacePlaceHolders_Test_expect_exceptions(string pattern) {
             // expect Invalid symbol > found at column 1 (no corresponding <)
-            Assert.ThrowsException<Exception>(() => pattern.ReplacePlaceHolders(s => "<>"));
+            Assert.ThrowsException<Exception>(() => pattern.ReplacePlaceHolders(s => "{{}}"));
         }
         
         [TestMethod]
-        [DataRow(@"hello<var1>nice", "a<fe>fef")]
-        [DataRow(@"hello<var1>nice", "<var2>")]
-        [DataRow(@"hello<var1>nice", "fefef>")]
+        [DataRow(@"hello{{var1}}nice", "a{{fe}}fef")]
+        [DataRow(@"hello{{var1}}nice", "{{var2}}")]
+        [DataRow(@"hello{{var1}}nice", "fefef}}")]
         public void ReplacePlaceHolders_Test_replace_with_placeholders_expect_exception(string pattern, string replacement) {
-            // expect Invalid symbol > found at column 1 (no corresponding <)
+            // expect Invalid symbol }} found at column 1 (no corresponding {{)
             Assert.ThrowsException<Exception>(() => pattern.ReplacePlaceHolders(s => replacement));
         }
         
         [TestMethod]
-        [DataRow(@"efzee<", DisplayName = "badly formatted input string, it should have been validated first, we expect exception")]
-        [DataRow(@"<bla", DisplayName = "unclosed place holder")]
+        [DataRow(@"efzee{{", DisplayName = "badly formatted input string, it should have been validated first, we expect exception")]
+        [DataRow(@"{{bla", DisplayName = "unclosed place holder")]
         public void ReplacePlaceHolders_Test_expect_exceptions2(string pattern) {
             Assert.ThrowsException<Exception>(() => pattern.ReplacePlaceHolders(s => s));
         }
         
         [TestMethod]
-        [DataRow(@"c\file.ext", @"c/((**))((*)).ext", @"d/<2>.new", @"d/file.new")]
-        [DataRow(@"c\folder/file.ext", @"c/((**))((*)).ext", @"d/<2>.new", @"d/file.new")]
-        [DataRow(@"c\folder/file.ext", @"c/((**))((*)).ext", @"<0>", @"c\folder/file.ext")]
+        [DataRow(@"c\file.ext", @"c/((**))((*)).ext", @"d/{{2}}.new", @"d/file.new")]
+        [DataRow(@"c\folder/file.ext", @"c/((**))((*)).ext", @"d/{{2}}.new", @"d/file.new")]
+        [DataRow(@"c\folder/file.ext", @"c/((**))((movie||file)).ext", @"d/{{2}}.new", @"d/file.new")]
+        [DataRow(@"c\folder/file.ext", @"c/((**))((movie||derp)).ext", @"d/{{2}}.new", @"d/2.new")]
+        [DataRow(@"c\folder/file.ext", @"c/((**))((*)).ext", @"{{0}}", @"c\folder/file.ext")]
         [DataRow(@"c\folder/file.ext", @"c/((**))((*)).ext", @"nop", @"nop")]
-        [DataRow(@"c\folder/file.ext", @"c/f((old))er/((?))ile.**", @"<1> <2>k", @"old fk")]
-        [DataRow(@"c\folder/file.ext", @"c/((*))/**", @"<1> <name>", @"folder name")]
+        [DataRow(@"c\folder/file.ext", @"c/f((old))er/((?))ile.**", @"{{1}} {{2}}k", @"old fk")]
+        [DataRow(@"c\folder/file.ext", @"c/((*))/**", @"{{1}} {{name}}", @"folder name")]
         public void ReplacePlaceHoldersInPathRegex_Test(string path, string pattern, string replacementString, string expected) {
             var match = new Regex(pattern.PathWildCardToRegex()).Match(path);
             Assert.AreEqual(expected, replacementString.ReplacePlaceHolders(s => {

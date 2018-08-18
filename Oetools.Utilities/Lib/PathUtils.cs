@@ -97,6 +97,7 @@ namespace Oetools.Utilities.Lib {
         
         /// <summary>
         /// Gets a messy path (can be valid or not) and returns a cleaned path, trimming ending dir sep char
+        /// TODO : also replace stuff like /./ or /../
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
@@ -333,6 +334,10 @@ namespace Oetools.Utilities.Lib {
             return tmpDir;
         }
 
+        /// <summary>
+        /// Returns a random file name (can be used for folder aswell) 
+        /// </summary>
+        /// <returns></returns>
         public static string GetRandomName() {
             return $"{DateTime.Now:fff}{Path.GetRandomFileName()}";
         }
@@ -371,14 +376,14 @@ namespace Oetools.Utilities.Lib {
                 throw new Exception("The path is null or empty");
             }
             foreach (char c in Path.GetInvalidPathChars()) {
-                if (c == '<' || c == '>' || c == '*' || c == '?') {
+                if (c == '*' || c == '?') {
                     continue;
                 }
                 if (pattern.IndexOf(c) >= 0) {
                     throw new Exception($"Illegal character path {c} at column {pattern.IndexOf(c)}");
                 }
             }
-            pattern.ValidatePlaceHolders("<<", ">>");
+            pattern.ValidatePlaceHolders("((", "))");
         }
 
         /// <summary>
