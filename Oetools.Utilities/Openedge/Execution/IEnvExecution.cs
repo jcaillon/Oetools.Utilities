@@ -42,7 +42,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// List of aliases to use for the connected databases
         /// </summary>
-        List<IEnvExecutionDatabaseAlias> DatabaseAliases { get; }
+        IEnumerable<IEnvExecutionDatabaseAlias> DatabaseAliases { get; }
 
         /// <summary>
         /// Path to the .ini file (to define FONTS/COLORS mostly, the PROPATH value should be emptied as it *weirdly* slows down the execution if it is not)

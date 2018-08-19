@@ -33,6 +33,16 @@ namespace Oetools.Utilities.Lib.Extension {
     public static class StringExtensions {
 
         /// <summary>
+        /// Returns either the original string or a default if the original string is null or empty (whitespaces only)
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        public static string TakeDefaultIfNeeded(this string source, string defaultValue) {
+            return string.IsNullOrWhiteSpace(source) ? defaultValue : source;
+        }
+        
+        /// <summary>
         /// Remove quotes from a string
         /// </summary>
         /// <param name="source"></param>
@@ -276,13 +286,6 @@ namespace Oetools.Utilities.Lib.Extension {
                 return null;
             }
             return text.Replace("~~", "~").Replace("~\"", "\"").Replace("~\\", "\\").Replace("~{", "{").Replace("~n", "\n").Replace("~r", "\r").Replace("~t", "\t");
-        }
-
-        /// <summary>
-        ///     Same as ToList but returns an empty list on Null instead of an exception
-        /// </summary>
-        public static List<T> ToNonNullList<T>(this IEnumerable<T> obj) {
-            return obj == null ? new List<T>() : obj.ToList();
         }
 
         private static Regex _regex;

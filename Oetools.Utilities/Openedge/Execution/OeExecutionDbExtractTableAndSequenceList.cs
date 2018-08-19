@@ -72,7 +72,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                                     continue;
                                 }
                                 var dbNames = new List<string>{currentDatabaseName};
-                                if (Env.DatabaseAliases != null && Env.DatabaseAliases.Count > 0) {
+                                if (Env.DatabaseAliases != null) {
                                     dbNames.AddRange(Env.DatabaseAliases.Where(a => a.DatabaseLogicalName.EqualsCi(currentDatabaseName)).Select(a => a.AliasLogicalName));
                                 }
                                 foreach (var db in dbNames) {
@@ -87,7 +87,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                                     continue;
                                 }
                                 var dbNames2 = new List<string>{currentDatabaseName};
-                                if (Env.DatabaseAliases != null && Env.DatabaseAliases.Count > 0) {
+                                if (Env.DatabaseAliases != null) {
                                     dbNames2.AddRange(Env.DatabaseAliases.Where(a => a.DatabaseLogicalName.EqualsCi(currentDatabaseName)).Select(a => a.AliasLogicalName));
                                 }
                                 foreach (var db in dbNames2) {

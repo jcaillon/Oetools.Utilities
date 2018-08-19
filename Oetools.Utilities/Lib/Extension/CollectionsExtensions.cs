@@ -1,4 +1,5 @@
 ﻿#region header
+
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ListExtensions.cs) is part of Oetools.Utilities.
@@ -16,13 +17,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
+
 #endregion
 
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Oetools.Utilities.Lib.Extension {
-    public static class ListExtensions {
-        
+    public static class CollectionsExtensions {
         /// <summary>
         /// Converts an IEnumerable to a HashSet, optionally add to an existing hashset
         /// </summary>
@@ -34,12 +36,39 @@ namespace Oetools.Utilities.Lib.Extension {
             if (existingHashSet == null) {
                 existingHashSet = new HashSet<T>();
             }
+
             foreach (T item in enumerable) {
                 if (!existingHashSet.Contains(item)) {
                     existingHashSet.Add(item);
                 }
             }
+
             return existingHashSet;
+        }
+
+        /// <summary>
+        /// Same as Union, expect one or both arguments can be null; will always return an empty list in the worse case
+        /// </summary>
+        /// <param name="enumerable"></param>
+        /// <param name="enumerable2"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static List<T> Union2<T>(this IEnumerable<T> enumerable, IEnumerable<T> enumerable2) {
+            var output = new List<T>();
+            if (enumerable != null) {
+                output.AddRange(enumerable);
+            }
+            if (enumerable2 != null) {
+                output.AddRange(enumerable2);
+            }
+            return output;
+        }
+        
+        /// <summary>
+        ///     Same as ToList but returns an empty list on Null instead of an exception
+        /// </summary>
+        public static List<T> ToNonNullList<T>(this IEnumerable<T> obj) {
+            return obj == null ? new List<T>() : obj.ToList();
         }
     }
 }

@@ -61,7 +61,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             set => _databaseConnectionString = value.CliCompactWhitespaces();
         }
 
-        public List<IEnvExecutionDatabaseAlias> DatabaseAliases { get; set; }
+        public IEnumerable<IEnvExecutionDatabaseAlias> DatabaseAliases { get; set; }
         
         public string IniFilePath {
             get {

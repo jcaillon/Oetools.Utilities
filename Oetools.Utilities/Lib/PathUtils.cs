@@ -343,24 +343,25 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Returns the longest valid directory in a string
+        /// Returns the longest valid (and existing) directory in a string, return null if nothing matches
         /// </summary>
         /// <remarks>
         /// for instance
         /// - C:\windows\(any|thing)\(.*)
         /// will return
-        /// - C;\windows
+        /// - C:\windows
         /// </remarks>
-        /// <param name="inputRegex"></param>
+        /// <param name="inputWildCardPath"></param>
         /// <returns></returns>
-        public static string GetLongestValidDirectory(string inputRegex) {
-            var i = inputRegex.Length;
+        public static string GetLongestValidDirectory(string inputWildCardPath) {
+            inputWildCardPath = inputWildCardPath.ToCleanPath();
+            var i = inputWildCardPath.Length;
             string outputdirectory;
             do {
-                outputdirectory = inputRegex.Substring(0, i);
+                outputdirectory = inputWildCardPath.Substring(0, i);
                 i--;
             } while (!Directory.Exists(outputdirectory) && i > 0);
-            return outputdirectory;
+            return i == 0 ? null : outputdirectory;
         }
         
         /// <summary>
