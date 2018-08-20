@@ -1,8 +1,7 @@
 ﻿#region header
-
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ListExtensions.cs) is part of Oetools.Utilities.
+// This file (CollectionsExtensions.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,9 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
 #endregion
-
 using System.Collections.Generic;
 using System.Linq;
 

@@ -1,5 +1,4 @@
 ﻿#region header
-
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (TestHelper.cs) is part of Oetools.Utilities.Test.
@@ -17,9 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
 #endregion
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -36,7 +33,7 @@ namespace Oetools.Utilities.Test {
         private static readonly string TestFolder = Path.Combine(AppContext.BaseDirectory, "Tests");
 
         public static bool GetDlcPath(out string dlcPath) {
-            dlcPath = ProUtilities.GetDlcPathFromEnv();
+            dlcPath = UoeUtilities.GetDlcPathFromEnv();
             if (string.IsNullOrEmpty(dlcPath)) {
                 Console.WriteLine("Cancelling test, DLC environment variable not found!");
                 return false;
@@ -79,7 +76,7 @@ namespace Oetools.Utilities.Test {
                 return;
             }
 
-            using (var dbAdministrator = new DatabaseAdministrator(dlcPath)) {
+            using (var dbAdministrator = new UoeDatabaseAdministrator(dlcPath)) {
                 dbAdministrator.CreateCompilationDatabaseFromDf(targetDatabasePath, dfPath);
             }
         }

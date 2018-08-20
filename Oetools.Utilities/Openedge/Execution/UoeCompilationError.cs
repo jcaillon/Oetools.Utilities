@@ -1,7 +1,7 @@
-#region header
+﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (MiscUtils.cs) is part of Oetools.Utilities.
+// This file (UoeCompilationError.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,30 +17,32 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System.Runtime.InteropServices;
-
-namespace Oetools.Utilities.Lib {
+namespace Oetools.Utilities.Openedge.Execution {
+    
     /// <summary>
-    ///     Class that exposes utility methods
+    /// Error found when compiling a file
     /// </summary>
-    public static partial class Utils {
+    public class UoeCompilationError {
 
-#if !WINDOWSONLYBUILD
-        private static bool? _isRuntimeWindowsPlatform;
-#endif
+        /// <summary>
+        /// Path of the file in which we found the error
+        /// (can be different from the actual compiled file if the error is in an include)
+        /// </summary>
+        public string SourcePath { get; set; }
+
+        public CompilationErrorLevel Level { get; set; }
         
         /// <summary>
-        /// Returns true if the current execution is done on windows platform
+        /// Line starts at 1
         /// </summary>
-        public static bool IsRuntimeWindowsPlatform {
-            get {
-#if WINDOWSONLYBUILD
-                return true;
-#else
-                return (_isRuntimeWindowsPlatform ?? (_isRuntimeWindowsPlatform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows))).Value;
-#endif
-            }
-        }
-        
+        public int Line { get; set; }
+        public int Column { get; set; }
+        public int ErrorNumber { get; set; }
+        public string Message { get; set; }
+    }
+
+    public enum CompilationErrorLevel {
+        Warning,
+        Error
     }
 }

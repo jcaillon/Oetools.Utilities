@@ -1,6 +1,4 @@
-﻿
-#region header
-
+﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (TypeUtilsTest.cs) is part of Oetools.Utilities.Test.
@@ -18,14 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
-
 #endregion
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.Attributes;
 
 namespace Oetools.Utilities.Test.Lib {
     [TestClass]

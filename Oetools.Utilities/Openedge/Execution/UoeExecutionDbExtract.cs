@@ -1,7 +1,7 @@
-#region header
+﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (MiscUtils.cs) is part of Oetools.Utilities.
+// This file (UoeExecutionDbExtract.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,30 +17,28 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System.Runtime.InteropServices;
+using System.IO;
 
-namespace Oetools.Utilities.Lib {
+namespace Oetools.Utilities.Openedge.Execution {
+
     /// <summary>
-    ///     Class that exposes utility methods
+    ///     Allows to output a file containing the structure of the database
     /// </summary>
-    public static partial class Utils {
+    public abstract class UoeExecutionDbExtract : UoeExecution {
 
-#if !WINDOWSONLYBUILD
-        private static bool? _isRuntimeWindowsPlatform;
-#endif
+        public override bool NeedDatabaseConnection => true;
         
-        /// <summary>
-        /// Returns true if the current execution is done on windows platform
-        /// </summary>
-        public static bool IsRuntimeWindowsPlatform {
-            get {
-#if WINDOWSONLYBUILD
-                return true;
-#else
-                return (_isRuntimeWindowsPlatform ?? (_isRuntimeWindowsPlatform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows))).Value;
-#endif
-            }
+        protected override bool ForceCharacterModeUse => true;
+
+        public virtual string DatabaseExtractCandoTblType { get; set; } = "T";
+        
+        public virtual string DatabaseExtractCandoTblName { get; set; } = "*";
+
+        protected string _databaseExtractFilePath;
+
+        public UoeExecutionDbExtract(IUoeExecutionEnv env) : base(env) {
+            _databaseExtractFilePath = Path.Combine(_tempDir, "db.dump");
         }
-        
+
     }
 }

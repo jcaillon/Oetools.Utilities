@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (MiscUtils.cs) is part of Oetools.Utilities.
+// This file (ReplaceStringProperty.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,30 +17,20 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System.Runtime.InteropServices;
+using System;
 
-namespace Oetools.Utilities.Lib {
+namespace Oetools.Utilities.Lib.Attributes {
     /// <summary>
-    ///     Class that exposes utility methods
+    /// Special attribute that allows to decide wether or not variables should be replaced in a property of type string
     /// </summary>
-    public static partial class Utils {
-
-#if !WINDOWSONLYBUILD
-        private static bool? _isRuntimeWindowsPlatform;
-#endif
-        
+    [AttributeUsage(AttributeTargets.Property)]
+    public class ReplaceStringProperty : Attribute {
+            
         /// <summary>
-        /// Returns true if the current execution is done on windows platform
+        /// Do not replace the variables in this string property
         /// </summary>
-        public static bool IsRuntimeWindowsPlatform {
-            get {
-#if WINDOWSONLYBUILD
-                return true;
-#else
-                return (_isRuntimeWindowsPlatform ?? (_isRuntimeWindowsPlatform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows))).Value;
-#endif
-            }
-        }
-        
+        public bool SkipReplace { get; set; }
+            
+        public ReplaceStringProperty() { }
     }
 }

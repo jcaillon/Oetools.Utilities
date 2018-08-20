@@ -1,7 +1,7 @@
-#region header
+﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (MiscUtils.cs) is part of Oetools.Utilities.
+// This file (UoeExecutionCompile.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,30 +17,13 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System.Runtime.InteropServices;
-
-namespace Oetools.Utilities.Lib {
-    /// <summary>
-    ///     Class that exposes utility methods
-    /// </summary>
-    public static partial class Utils {
-
-#if !WINDOWSONLYBUILD
-        private static bool? _isRuntimeWindowsPlatform;
-#endif
+namespace Oetools.Utilities.Openedge.Execution {
+    
+    public class UoeExecutionCompile : UoeExecutionHandleCompilation {
         
-        /// <summary>
-        /// Returns true if the current execution is done on windows platform
-        /// </summary>
-        public static bool IsRuntimeWindowsPlatform {
-            get {
-#if WINDOWSONLYBUILD
-                return true;
-#else
-                return (_isRuntimeWindowsPlatform ?? (_isRuntimeWindowsPlatform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows))).Value;
-#endif
-            }
-        }
+        public override bool NeedDatabaseConnection => true;
         
+        public UoeExecutionCompile(IUoeExecutionEnv env) : base(env) {}
+
     }
 }
