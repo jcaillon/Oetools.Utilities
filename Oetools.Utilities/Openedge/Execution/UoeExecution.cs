@@ -348,6 +348,14 @@ namespace Oetools.Utilities.Openedge.Execution {
                 HandledExceptions.AddRange(GetOpenedgeExceptions<UoeExecutionOpenedgeDbConnectionException>(_dbErrorLogPath));
                 DatabaseConnectionFailed = true;
                 ExecutionFailed = NeedDatabaseConnection;
+                if (HandledExceptions.FirstOrDefault(e => {
+                    if (e is UoeExecutionOpenedgeException oeEx) {
+                        return oeEx.ErrorNumber == 748;
+                    }
+                    return false;
+                }) is UoeExecutionOpenedgeException tooMuchConnectionOnDbException) {
+                    tooMuchConnectionOnDbException.ErrorMessage = $"{tooMuchConnectionOnDbException.ErrorMessage}; this message indicates that too many connections were done on a database, increase the maximum number of connections in the proserve command (or use proserve if the database is used in single user mode)";
+                }
             }
 
             if (HasBeenKilled) {

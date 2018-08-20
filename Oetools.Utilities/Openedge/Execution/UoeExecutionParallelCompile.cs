@@ -44,19 +44,6 @@ namespace Oetools.Utilities.Openedge.Execution {
         public int TotalNumberOfProcesses => _processes.Count;
 
         public int NumberOfProcessesRunning => _processes.Count(p => p.ExecutionTimeSpan == null);
-
-        public bool CompilationFailedOnMaxUser {
-            get { 
-                return _processes.Any(proc => {
-                    return proc.DatabaseConnectionFailed && proc.HandledExceptions.Exists(e => {
-                        if (e is UoeExecutionOpenedgeException oeEx) {
-                            return oeEx.ErrorNumber == 748;
-                        }
-                        return false;
-                    });
-                }); 
-            }
-        }
         
         private static object _lock = new object();
         

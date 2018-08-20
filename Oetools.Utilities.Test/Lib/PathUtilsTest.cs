@@ -46,6 +46,18 @@ namespace Oetools.Utilities.Test.Lib {
         }
         
         [TestMethod]
+        [DataRow(null, null, true, DisplayName = "null")]
+        [DataRow(@"", @"", true, DisplayName = "empty")]
+        [DataRow(@"\\server\folder\file", @"C:\", true)]
+        [DataRow(@"d:\zefef", @"/bouh", true)]
+        [DataRow(@"d:\zefef", @"c:\folder", false)]
+        [DataRow(@"d:", @"c:", false)]
+        [DataRow(@"c:", @"c:", true)]
+        public void ArePathOnSameDrive_Test(string path1, string path2, bool expect) {
+            Assert.AreEqual(!Utils.IsRuntimeWindowsPlatform || expect, Utils.ArePathOnSameDrive(path1, path2));
+        }
+        
+        [TestMethod]
         [DataRow(null, null, null, DisplayName = "null")]
         [DataRow(@"", null, @"", DisplayName = "empty")]
         [DataRow(@"\\server\folder\file", null, @"\\server\folder\file")]

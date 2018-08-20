@@ -17,6 +17,8 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -50,7 +52,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="enumerable2"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static List<T> Union2<T>(this IEnumerable<T> enumerable, IEnumerable<T> enumerable2) {
+        public static List<T> UnionHandleNull<T>(this IEnumerable<T> enumerable, IEnumerable<T> enumerable2) {
             var output = new List<T>();
             if (enumerable != null) {
                 output.AddRange(enumerable);
@@ -66,6 +68,39 @@ namespace Oetools.Utilities.Lib.Extension {
         /// </summary>
         public static List<T> ToNonNullList<T>(this IEnumerable<T> obj) {
             return obj == null ? new List<T>() : obj.ToList();
+        }
+        
+        /// <summary>
+        /// Returns all distinct elements of the given source, where "distinctness"
+        /// is determined via a projection and the specified comparer for the projected type.
+        /// </summary>
+        /// <remarks>
+        /// This operator uses deferred execution and streams the results, although
+        /// a set of already-seen keys is retained. If a key is seen multiple times,
+        /// only the first element with that key is returned.
+        /// </remarks>
+        /// <typeparam name="TSource">Type of the source sequence</typeparam>
+        /// <typeparam name="TKey">Type of the projected element</typeparam>
+        /// <param name="source">Source sequence</param>
+        /// <param name="keySelector">Projection for determining "distinctness"</param>
+        /// <param name="comparer">The equality comparer to use to determine whether or not keys are equal.
+        /// If null, the default equality comparer for <c>TSource</c> is used.</param>
+        /// <returns>A sequence consisting of distinct elements from the source sequence,
+        /// comparing them by the specified key projection.</returns>
+        public static IEnumerable<TSource> DistinctBy<TSource, TKey>(this IEnumerable<TSource> source,
+            Func<TSource, TKey> keySelector, IEqualityComparer<TKey> comparer) {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
+
+            return _(); IEnumerable<TSource> _()
+            {
+                var knownKeys = new HashSet<TKey>(comparer);
+                foreach (var element in source)
+                {
+                    if (knownKeys.Add(keySelector(element)))
+                        yield return element;
+                }
+            }
         }
     }
 }

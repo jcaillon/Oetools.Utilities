@@ -23,6 +23,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
@@ -30,6 +31,29 @@ namespace Oetools.Utilities.Lib {
     ///     Class that exposes utility methods
     /// </summary>
     public static partial class Utils {
+
+        /// <summary>
+        /// Test if two paths are on the same drive (for instance D:\folder and D:\file.ext are on the same drive D:),
+        /// if we have no way of knowing (for instance, if 
+        /// </summary>
+        /// <param name="path1"></param>
+        /// <param name="path2"></param>
+        /// <returns></returns>
+        public static bool ArePathOnSameDrive(string path1, string path2) {
+            if (!IsRuntimeWindowsPlatform) {
+                return true;
+            }
+            if (string.IsNullOrEmpty(path1) || string.IsNullOrEmpty(path2)) {
+                return true;
+            }
+            if (path1.Length < 2 || path1[1] != Path.VolumeSeparatorChar) {
+                return true;
+            }
+            if (path2.Length < 2 || path2[1] != Path.VolumeSeparatorChar) {
+                return true;
+            }
+            return path1[0] == path2[0];
+        }
         
         /// <summary>
         /// Make sure to trim the ending "\" or "/"
@@ -189,7 +213,7 @@ namespace Oetools.Utilities.Lib {
             dirInfo.Attributes |= attributes;
             return true;
         }
-        
+
         /// <summary>
         /// List all the folders in a folder
         /// </summary>
@@ -197,8 +221,10 @@ namespace Oetools.Utilities.Lib {
         /// <param name="options"></param>
         /// <param name="excludePatterns">should be regex expressions</param>
         /// <param name="excludeHidden"></param>
+        /// <param name="cancelSource"></param>
         /// <returns></returns>
-        public static IEnumerable<string> EnumerateAllFolders(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHidden = false) {
+        /// <exception cref="OperationCanceledException"></exception>
+        public static IEnumerable<string> EnumerateAllFolders(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHidden = false, CancellationTokenSource cancelSource = null) {
             List<Regex> excludeRegexes = null;
             if (excludePatterns != null) {
                 excludeRegexes = excludePatterns.Select(s => new Regex(s)).ToList();
@@ -207,6 +233,7 @@ namespace Oetools.Utilities.Lib {
             var folderStack = new Stack<string>();
             folderStack.Push(folderPath);
             while (folderStack.Count > 0) {
+                cancelSource?.Token.ThrowIfCancellationRequested();
                 foreach (var dir in Directory.EnumerateDirectories(folderStack.Pop(), "*", SearchOption.TopDirectoryOnly)) {
                     if (hiddenDirList.Contains(dir)) {
                         continue;
@@ -225,7 +252,7 @@ namespace Oetools.Utilities.Lib {
                 }                
             }
         }
-        
+
         /// <summary>
         /// List all the files in a folder
         /// </summary>
@@ -233,8 +260,10 @@ namespace Oetools.Utilities.Lib {
         /// <param name="options"></param>
         /// <param name="excludePatterns">should be regex expressions</param>
         /// <param name="excludeHiddenFolders"></param>
+        /// <param name="cancelSource"></param>
         /// <returns></returns>
-        public static IEnumerable<string> EnumerateAllFiles(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHiddenFolders = false) {
+        /// <exception cref="OperationCanceledException"></exception>
+        public static IEnumerable<string> EnumerateAllFiles(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHiddenFolders = false, CancellationTokenSource cancelSource = null) {
             List<Regex> excludeRegexes = null;
             if (excludePatterns != null) {
                 excludeRegexes = excludePatterns.Select(s => new Regex(s)).ToList();
@@ -242,6 +271,7 @@ namespace Oetools.Utilities.Lib {
             var folderStack = new Stack<string>();
             folderStack.Push(folderPath);
             while (folderStack.Count > 0) {
+                cancelSource?.Token.ThrowIfCancellationRequested();
                 var folder = folderStack.Pop();
                 foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly)) {
                     if (excludeRegexes != null && excludeRegexes.Any(r => r.IsMatch(file))) {
@@ -253,17 +283,6 @@ namespace Oetools.Utilities.Lib {
                     foreach (var subfolder in EnumerateAllFolders(folder, SearchOption.TopDirectoryOnly, excludePatterns, excludeHiddenFolders)) {
                         folderStack.Push(subfolder);
                     }
-                }
-            }
-        }
-
-        /// <summary>
-        /// List all the files in a given list of folders
-        /// </summary>
-        public static IEnumerable<string> EnumerateAllFiles(IEnumerable<string> folders, List<string> excludePatterns = null, bool excludeHiddenFolders = false) {
-            foreach (var folder in folders) {
-                foreach (var file in EnumerateAllFiles(folder, SearchOption.TopDirectoryOnly, excludePatterns, excludeHiddenFolders)) {
-                    yield return file;
                 }
             }
         }
