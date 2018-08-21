@@ -52,6 +52,44 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                 Directory.Delete(TestFolder, true);
             }
         }
+
+        [DataRow(@"", true)]
+        [DataRow(null, true)]
+        [DataRow("123456789012345678901234567890123", true, DisplayName = "33 chars is too much")]
+        [DataRow(@"azée", true, DisplayName = "contains invalid accent char")]
+        [DataRow(@"zeffez zezffe", true, DisplayName = "spaces")]
+        [DataRow(@"0ezzef", true, DisplayName = "first should be a letter")]
+        [DataRow(@"az_-zefze", false, DisplayName = "ok")]
+        [DataTestMethod]
+        public void ValidateLogicalName_Test(string input, bool exception) {
+            if (exception) {
+                Assert.ThrowsException<UoeDatabaseOperationException>(() => UoeDatabaseOperator.ValidateLogicalName(input));
+            } else {
+                UoeDatabaseOperator.ValidateLogicalName(input);
+            }
+        }
+
+        [DataRow(@"", "unnamed")]
+        [DataRow(null, "unnamed")]
+        [DataRow("bouhé!", "bouh")]
+        [DataRow("truc db", "trucdb")]
+        [DataRow("éééééé@", "unnamed")]
+        [DataRow("123456789012345678901234567890123456789", "12345678901234567890123456789012")]
+        [DataTestMethod]
+        public void GetValidLogicalName_Test(string input, string expect) {
+            Assert.AreEqual(expect, UoeDatabaseOperator.GetValidLogicalName(input));
+        }
+
+        [DataRow(@"", "unnamed")]
+        [DataRow(null, "unnamed")]
+        [DataRow("bouhé!", "bouh")]
+        [DataRow("truc db", "trucdb")]
+        [DataRow("éééééé@", "unnamed")]
+        [DataRow("123456789012345678901234567890123456789", "12345678901")]
+        [DataTestMethod]
+        public void GetValidPhysicalName_Test(string input, string expect) {
+            Assert.AreEqual(expect, UoeDatabaseOperator.GetValidPhysicalName(input));
+        }
         
         [TestMethod]
         public void GetNextAvailablePort_Ok() {

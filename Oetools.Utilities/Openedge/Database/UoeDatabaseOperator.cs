@@ -36,7 +36,8 @@ namespace Oetools.Utilities.Openedge.Database {
     /// </summary>
     public class UoeDatabaseOperator {
         
-        private const int DbNameMaxLength = 11;
+        private const int DbPhysicalNameMaxLength = 11;
+        private const int DbLogicalNameMaxLength = 32;
         private const string NewInstanceFlag = "-newinstance";
         private const string RelativeFlag = "-relative";
 
@@ -133,6 +134,10 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseOperationException($"The structure file does not exist : {structureFilePath.PrettyQuote()}");
             }
 
+            if (!Directory.Exists(dbFolder)) {
+                Directory.CreateDirectory(dbFolder);
+            }
+
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
             if (!dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)}")) {
@@ -160,6 +165,10 @@ namespace Oetools.Utilities.Openedge.Database {
             sourceDbPath = Path.Combine(sourceDbFolder, $"{sourceDbPhysicalName}.db");
             if (!File.Exists(sourceDbPath)) {
                 throw new UoeDatabaseOperationException($"Could not find the procopy source database : {sourceDbPath.PrettyQuote()}");
+            }
+            
+            if (!Directory.Exists(dbFolder)) {
+                Directory.CreateDirectory(dbFolder);
             }
 
             var dbUtil = GetExecutable(DbUtilPath);
@@ -200,6 +209,10 @@ namespace Oetools.Utilities.Openedge.Database {
             if (!File.Exists($"{sourceDbPath}.db")) {
                 throw new UoeDatabaseOperationException($"Could not find the procopy source database : {sourceDbPath.PrettyQuote()}");
             }
+            
+            if (!Directory.Exists(dbFolder)) {
+                Directory.CreateDirectory(dbFolder);
+            }
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
@@ -218,6 +231,10 @@ namespace Oetools.Utilities.Openedge.Database {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
 
             var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
+            
+            if (!Directory.Exists(dbFolder)) {
+                Directory.CreateDirectory(dbFolder);
+            }
 
             try {
                 File.WriteAllText(stPath, "#\nb .\n#\nd \"Schema Area\":6,32;1 .\n#\nd \"Data Area\":7,256;1 .\n#\nd \"Index Area\":8,1;1 .", Encoding.ASCII);
@@ -422,7 +439,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
             
             if (string.IsNullOrEmpty(sourceDfPath) || !File.Exists(sourceDfPath)) {
-                throw new UoeDatabaseOperationException($"Invalid file path for source .df : {sourceDfPath.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The file path for data definition file .df does not exist : {sourceDfPath.PrettyQuote()}");
             }
             
             // https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm/creating-a-structure-description-file.html
@@ -440,6 +457,10 @@ namespace Oetools.Utilities.Openedge.Database {
                     stContent.Append($"d {areaName.Groups[1].Value.CliQuoter()} .\n");
                     areaAdded.Add(areaName.Groups[1].Value);
                 }
+            }
+            
+            if (!Directory.Exists(dbFolder)) {
+                Directory.CreateDirectory(dbFolder);
             }
             
             try {
@@ -472,6 +493,10 @@ namespace Oetools.Utilities.Openedge.Database {
                     return $"{match.Groups["firstpart"]}.{match.Groups["extendTypeSize"]}";
                 });
             
+            if (!Directory.Exists(dbFolder)) {
+                Directory.CreateDirectory(dbFolder);
+            }
+            
             File.WriteAllText(stPath, newContent);
 
             return stPath;
@@ -483,7 +508,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="targetDbPath"></param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseOperationException"></exception>
-        public bool DatabaseExists(string targetDbPath) {
+        public static bool DatabaseExists(string targetDbPath) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
 
             return File.Exists(Path.Combine(dbFolder, $"{dbPhysicalName}.db"));
@@ -558,31 +583,75 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="hostname"></param>
         /// <param name="logicalName"></param>
         /// <returns></returns>
-        public static string GetMultiConnectionString(string targetDbPath, string serviceName, string hostname = null, string logicalName = null) {
-            GetDatabaseFolderAndName(targetDbPath, out string _, out string dbPhysicalName);
+        public static string GetMultiUserConnectionString(string targetDbPath, string serviceName = null, string hostname = null, string logicalName = null) {
+            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            if (serviceName == null) {
+                return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db").CliQuoter()} -ld {logicalName ?? dbPhysicalName}";
+            }
             return $"-db {dbPhysicalName} -ld {logicalName ?? dbPhysicalName} -N TCP -H {hostname ?? "localhost"} -S {serviceName}";
         }
 
         /// <summary>
-        /// Returns the multi user connection string to use to connect to a locally hosted database
+        /// Returns the single user connection string to use to connect to a database
         /// </summary>
         /// <param name="targetDbPath"></param>
         /// <param name="logicalName"></param>
         /// <returns></returns>
-        public static string GetMultiConnectionString(string targetDbPath, string logicalName = null) {
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public static string GetSingleUserConnectionString(string targetDbPath, string logicalName = null) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
-            return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {logicalName ?? dbPhysicalName}";
+            return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {logicalName ?? dbPhysicalName} -1";
         }
 
         /// <summary>
-        /// Returns the mono user connection string to use to connect to a database
+        /// Throws exceptions if the given logical name is invalid
         /// </summary>
-        /// <param name="targetDbPath"></param>
         /// <param name="logicalName"></param>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public static void ValidateLogicalName(string logicalName) {
+            if (string.IsNullOrEmpty(logicalName)) {
+                throw new UoeDatabaseOperationException("The logical name of the database is null or empty");
+            }
+            if (logicalName.Length > DbLogicalNameMaxLength) {
+                throw new UoeDatabaseOperationException($"The logical name of the database is too long (>{DbLogicalNameMaxLength}) : {logicalName.PrettyQuote()}");
+            }
+            if (logicalName.Any(c => !c.IsAsciiLetter() && !char.IsDigit(c) && c != '_' && c != '-')) {
+                throw new UoeDatabaseOperationException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters) : {logicalName.PrettyQuote()}");
+            }
+            if (!logicalName[0].IsAsciiLetter()) {
+                throw new UoeDatabaseOperationException($"The logical name of a database should start with a english letter : {logicalName.PrettyQuote()}");
+            }
+        }
+        
+        /// <summary>
+        /// Returns a valid logical name from a string
+        /// </summary>
+        /// <param name="input"></param>
         /// <returns></returns>
-        public static string GetMonoConnectionString(string targetDbPath, string logicalName = null) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
-            return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {logicalName ?? dbPhysicalName} -1";
+        public static string GetValidLogicalName(string input) {
+            if (string.IsNullOrEmpty(input)) {
+                return "unnamed";
+            }
+            var output = new StringBuilder();
+            foreach (var character in input) {
+                if (character.IsAsciiLetter() || char.IsDigit(character) || character == '_' || character == '-') {
+                    output.Append(character);
+                }
+                if (output.Length >= DbLogicalNameMaxLength) {
+                    break;
+                }
+            }
+            return output.Length > 0 ? output.ToString() : "unnamed";
+        }
+
+        /// <summary>
+        /// Returns a valid physical name from a string
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static string GetValidPhysicalName(string input) {
+            var output = GetValidLogicalName(input);
+            return output.Length > DbPhysicalNameMaxLength ? output.Substring(0, DbPhysicalNameMaxLength) : output;
         }
 
         private static string GetHostName() {
@@ -614,6 +683,7 @@ namespace Oetools.Utilities.Openedge.Database {
             return _lastUsedProcess;
         }
 
+        /// <exception cref="UoeDatabaseOperationException"></exception>
         protected static void GetDatabaseFolderAndName(string dbPath, out string dbFolder, out string dbPhysicalName, bool needToExist = false) {
             if (string.IsNullOrEmpty(dbPath)) {
                 throw new UoeDatabaseOperationException("Invalid path, can't be null");
@@ -634,13 +704,13 @@ namespace Oetools.Utilities.Openedge.Database {
             if (dbPhysicalName.EndsWith(".db")) {
                 dbPhysicalName = dbPhysicalName.Substring(0, dbPhysicalName.Length - 3);
             }
-
-            if (dbPhysicalName.Any(char.IsWhiteSpace)) {
-                throw new UoeDatabaseOperationException($"The physical name of the database is can not contain whitespaces : {dbPhysicalName.PrettyQuote()}");
+            
+            if (dbPhysicalName.Any(c => !c.IsAsciiLetter() && !char.IsDigit(c) && c != '_' && c != '-')) {
+                throw new UoeDatabaseOperationException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters) : {dbPhysicalName.PrettyQuote()}");
             }
-
-            if (dbPhysicalName.Length > DbNameMaxLength) {
-                throw new UoeDatabaseOperationException($"The physical name of the database is too long (>{DbNameMaxLength}) : {dbPhysicalName.PrettyQuote()}");
+            
+            if (dbPhysicalName.Length > DbPhysicalNameMaxLength) {
+                throw new UoeDatabaseOperationException($"The physical name of the database is too long (>{DbPhysicalNameMaxLength}) : {dbPhysicalName.PrettyQuote()}");
             }
             
             // doesn't exist?

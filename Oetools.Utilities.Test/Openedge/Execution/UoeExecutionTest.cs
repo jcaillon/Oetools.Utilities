@@ -224,7 +224,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, dbPn2)));
             
             // try if connected well and can manage aliases
-            env.DatabaseConnectionString = $"{UoeDatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, dbPn))} {UoeDatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, dbPn2))}";
+            env.DatabaseConnectionString = $"{UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn))} {UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn2))}";
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "test1",
@@ -261,7 +261,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = true;
             
             // try if connected well and can manage aliases
-            env.DatabaseConnectionString = UoeDatabaseOperator.GetMonoConnectionString(Path.Combine(TestFolder, "random.db"));
+            env.DatabaseConnectionString = UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, "random.db"));
             
             using (var exec = new UoeExecutionCustomTest(env)) {
                 exec.NeedDatabaseConnection = true;

@@ -64,6 +64,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         /// <param name="targetDbPath"></param>
         /// <param name="dfFilePath"></param>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
         public void CreateCompilationDatabaseFromDf(string targetDbPath, string dfFilePath) {
             ProstrctCreate(targetDbPath, GenerateStructureFileFromDf(targetDbPath, dfFilePath));
             Procopy(targetDbPath);

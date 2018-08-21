@@ -204,7 +204,9 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         public void Kill() {
             Killed = true;
-            _process?.Kill();
+            if (!_process?.HasExited ?? false) {
+                _process?.Kill();
+            }
         }
 
         protected virtual void WaitUntilProcessExits(int timeoutMs) {

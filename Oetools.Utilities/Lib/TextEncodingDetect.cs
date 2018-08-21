@@ -75,7 +75,7 @@ namespace Oetools.Utilities.Lib {
                     break;
                 case EncodingEnum.Ansi:
                     // ANSI (chars in the range 0-255 range)
-                    encoding = Encoding.GetEncoding(1252);
+                    encoding = Encoding.Default;
                     break;
                 case EncodingEnum.Utf8Bom:
                 case EncodingEnum.Utf8Nobom:

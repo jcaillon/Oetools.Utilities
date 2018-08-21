@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -419,5 +420,23 @@ namespace Oetools.Utilities.Lib {
             }
         }
 
+        /// <summary>
+        /// Returns the Md5 print of a file as a string
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+        public static string GetMd5FromFilePath(string filePath) {
+            using (var md5 = MD5.Create()) {
+                using (var stream = File.OpenRead(filePath)) {
+                    StringBuilder sBuilder = new StringBuilder();
+                    foreach (var b in md5.ComputeHash(stream)) {
+                        sBuilder.Append(b.ToString("x2"));
+                    }
+                    // Return the hexadecimal string
+                    return sBuilder.ToString();
+                }
+            }
+        }
+        
     }
 }

@@ -74,13 +74,13 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             }
             
             // create .df
-            var dfPath = Path.Combine(TestFolder, "ref.df");
+            var dfPath = Path.Combine(TestFolder, "ref2.df");
             File.WriteAllText(dfPath, "ADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10");
 
             Exception ex = null;
             try {
                 using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
-                    dataAdmin.LoadDf(Path.Combine(TestFolder, "ref.db"), dfPath);
+                    dataAdmin.LoadDf(Path.Combine(TestFolder, "ref2.db"), dfPath);
                 }
             } catch (Exception e) {
                 ex = e;

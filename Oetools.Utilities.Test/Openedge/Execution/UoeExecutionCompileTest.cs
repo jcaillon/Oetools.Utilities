@@ -242,6 +242,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 
                 var compiledFile = exec.CompiledFiles.First();
                 Assert.AreEqual(false, compiledFile.CompiledCorrectly, "not CompiledCorrectly");
+                Assert.AreEqual(false, compiledFile.CompiledWithWarnings, "not even compiled with warnings");
                 Assert.AreEqual(5, compiledFile.CompilationErrors.Count, "5 CompilationErrors");
                 
                 Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 3 : 1, compiledFile.CompilationErrors[0].Line, "line");
@@ -286,6 +287,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 
                 var compiledFile = exec.CompiledFiles.First();
                 Assert.AreEqual(false, compiledFile.CompiledCorrectly, "not CompiledCorrectly");
+                Assert.AreEqual(true, compiledFile.CompiledWithWarnings, "but compiled with warnings");
                 Assert.AreEqual(2, compiledFile.CompilationErrors.Count, "2 CompilationErrors");
                 
                 Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 3 : 1, compiledFile.CompilationErrors[0].Line, "line");
@@ -628,7 +630,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
-            env.DatabaseConnectionString = UoeDatabaseOperator.GetMultiConnectionString(Path.Combine(TestFolder, "dummy.db"));
+            env.DatabaseConnectionString = UoeDatabaseOperator.GetMultiUserConnectionString(Path.Combine(TestFolder, "dummy.db"));
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "dummy",
@@ -698,7 +700,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
-            env.DatabaseConnectionString = UoeDatabaseOperator.GetMultiConnectionString(Path.Combine(TestFolder, "dummy.db"));
+            env.DatabaseConnectionString = UoeDatabaseOperator.GetMultiUserConnectionString(Path.Combine(TestFolder, "dummy.db"));
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "dummy",

@@ -106,6 +106,7 @@ namespace Oetools.Utilities.Lib.Extension {
         ///     Allows to test if a string matches one of the listOfPattern (wildcards) in the list of patterns,
         ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls;*.com;*.xml") return true
         /// </summary>
+        /// <exception cref="ArgumentException"></exception>
         public static bool TestFileNameAgainstListOfPatterns(this string filePath, string listOfPattern) {
             if (string.IsNullOrEmpty(filePath) || string.IsNullOrEmpty(listOfPattern)) {
                 return false;
@@ -258,7 +259,7 @@ namespace Oetools.Utilities.Lib.Extension {
             if (text == null) {
                 return "?";
             }
-            return $"\"{text.Replace("~", "~~").Replace("\"", "~\"").Replace("\\", "~\\").Replace("{", "~{").Replace("\n", "~n").Replace("\r", "~r").Replace("\t", "~t")}\"";
+            return $"\"{text.Replace("~", "~~").Replace("\"", "\"\"").Replace("\\", "~\\").Replace("{", "~{").Replace("\n", "~n").Replace("\r", "~r").Replace("\t", "~t")}\"";
         }
 
         /// <summary>
@@ -285,7 +286,7 @@ namespace Oetools.Utilities.Lib.Extension {
             if (text.Equals("?")) {
                 return null;
             }
-            return text.Replace("~~", "~").Replace("~\"", "\"").Replace("~\\", "\\").Replace("~{", "{").Replace("~n", "\n").Replace("~r", "\r").Replace("~t", "\t");
+            return text.Replace("~~", "~").Replace("\"\"", "\"").Replace("~\\", "\\").Replace("~{", "{").Replace("~n", "\n").Replace("~r", "\r").Replace("~t", "\t");
         }
 
         private static Regex _regex;
@@ -355,6 +356,15 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <returns></returns>
         public static string CliCompactWhitespaces(this string s) {
             return new StringBuilder(s).CliCompactWhitespaces().ToString();
+        }
+        
+        /// <summary>
+        /// Tests wheter or not a character is a letter from the ascii table
+        /// </summary>
+        /// <param name="c"></param>
+        /// <returns></returns>
+        public static bool IsAsciiLetter(this char c) {
+            return c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z';
         }
     }
 }

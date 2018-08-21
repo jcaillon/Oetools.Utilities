@@ -20,6 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
@@ -81,6 +82,8 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool IsAnalysisMode { get; set; }
         
         public bool CompiledCorrectly { get; private set; }
+        
+        public bool CompiledWithWarnings { get; private set; }
         
         /// <summary>
         /// If the compiled file is a class file, it will represent the class namespace as a path
@@ -147,7 +150,9 @@ namespace Oetools.Utilities.Openedge.Execution {
                 ComputeReferencedFiles();
             }
 
-            CompiledCorrectly = File.Exists(CompilationRcodeFilePath) && (CompilationErrors == null || CompilationErrors.Count == 0);
+            var rcodeExists = File.Exists(CompilationRcodeFilePath);
+            CompiledCorrectly = rcodeExists && (CompilationErrors == null || CompilationErrors.Count == 0);
+            CompiledWithWarnings = !CompiledCorrectly && rcodeExists && (CompilationErrors == null || CompilationErrors.All(e => e.Level != CompilationErrorLevel.Error));
         }
         
         /// <summary>
@@ -231,7 +236,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
                         (CompilationErrors ?? (CompilationErrors = new List<UoeCompilationError>())).Add(error);
                     }
-                });
+                }, Encoding.Default);
             }
         }
 
