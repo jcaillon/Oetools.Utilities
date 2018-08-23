@@ -22,7 +22,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Xml.Serialization;
 using Oetools.Utilities.Lib.Attributes;
 
 namespace Oetools.Utilities.Lib {
@@ -156,6 +155,52 @@ namespace Oetools.Utilities.Lib {
                 }
             }
             return targetObj;
+        }
+        
+        private const string GetDefaultMethodPrefix = "GetDefault";
+
+        /// <summary>
+        /// Allows to set default values to certain public properties of an object, a static method retuning the type of the property
+        /// and named GetDefaultXXX (<see cref="GetDefaultMethodPrefix"/>, where XXX is the property name) must be defined;
+        /// does not replace non null values
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public static void SetDefaultValues(object obj) {
+            if (obj == null) {
+                return;
+            }
+            var objType = obj.GetType();
+            foreach (var method in objType.GetMethods().Where(m => m.IsStatic && m.Name.StartsWith(GetDefaultMethodPrefix, StringComparison.CurrentCulture))) {
+                var prop = objType.GetProperty(method.Name.Substring(GetDefaultMethodPrefix.Length));
+                if (prop != null) {
+                    if (prop.GetValue(obj) != null) {
+                        continue;
+                    }
+                    prop.SetValue(obj, method.Invoke(null, null)); // invoke static method
+                    var childObj = prop.GetValue(obj);
+                    switch (childObj) {
+                        case string strObj:
+                            SetDefaultValues(strObj);
+                            break;
+                        case IEnumerable listItem:
+                            if (prop.PropertyType.UnderlyingSystemType.GenericTypeArguments.Length > 0) {
+                                foreach (var item in listItem) {
+                                    if (item != null) {
+                                        SetDefaultValues(item);
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            if (prop.PropertyType.IsClass && childObj != null) {
+                                SetDefaultValues(childObj);
+                            }
+                            break;
+                    }
+                }
+            }
         }
     }
 }

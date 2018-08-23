@@ -43,6 +43,27 @@ namespace Oetools.Utilities.Test.Lib {
         }
 
         [TestMethod]
+        public void SetDefaultValues_Test() {
+            var ojb = new Obj8();
+            ojb.Prop6 = new Obj2 {
+                Prop1 = "already defined"
+            };
+            Utils.SetDefaultValues(ojb);
+            Assert.IsNotNull(ojb.Prop1);
+            Assert.IsNotNull(ojb.Prop2);
+            Assert.IsNull(ojb.Prop3);
+            Assert.AreEqual(10, ojb.Prop4);
+            Assert.IsNull(ojb.Prop5);
+            Assert.AreEqual("nice", ojb.Prop1.Prop1);
+            Assert.IsNull(ojb.Prop1.Prop2);
+            Assert.IsNull(ojb.Prop1.Prop3);
+            Assert.IsNull(ojb.Prop2[0].Prop1);
+            Assert.AreEqual("cool", ojb.Prop2[0].Prop2);
+            Assert.AreEqual("already defined", ojb.Prop6.Prop1);
+            
+        }
+
+        [TestMethod]
         public void DeepCopyPublicProperties_Test_IgnoreAttribute() {
             var obj = new Obj6 {
                 Prop1 = "string1",
@@ -288,6 +309,7 @@ namespace Oetools.Utilities.Test.Lib {
 
         private class Obj2 {
             public string Prop1 { get; set; }
+            public static string GetDefaultProp1() => "nice";
 
             public IEnumerable<Obj3> Prop2 { get; set; }
 
@@ -298,6 +320,7 @@ namespace Oetools.Utilities.Test.Lib {
             public string Prop1 { get; set; }
 
             public string Prop2 { get; set; }
+            public static string GetDefaultProp2() => "cool";
         }
 
         private class Obj4 {
@@ -340,6 +363,24 @@ namespace Oetools.Utilities.Test.Lib {
         private class Obj7 : Obj6 {
             [DeepCopy(Ignore = true)]
             public override string Prop1 { get; set; }
+        }
+        
+        private class Obj8 {
+            public Obj2 Prop1 { get; set; }
+            public static Obj2 GetDefaultProp1() => new Obj2();
+
+            public List<Obj3> Prop2 { get; set; }
+            public static List<Obj3> GetDefaultProp2() => new List<Obj3> { new Obj3() };
+
+            public string Prop3 { get; set; }
+
+            public int? Prop4 { get; set; }
+            public static int GetDefaultProp4() => 10;
+
+            public List<string> Prop5 { get; set; }
+            
+            public Obj2 Prop6 { get; set; }
+            public static Obj2 GetDefaultProp6() => new Obj2();
         }
     }
 }

@@ -296,7 +296,7 @@ namespace Oetools.Utilities.Openedge {
 
                     // need to take into account relative paths
                     if (!Path.IsPathRooted(thisPath)) {
-                        thisPath = Path.GetFullPath(Path.Combine(currentDirectory, thisPath));
+                        thisPath = Path.GetFullPath(Path.Combine(currentDirectory ?? "", thisPath));
                     }
 
                     if (!Directory.Exists(thisPath) && !File.Exists(thisPath)) {
