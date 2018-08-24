@@ -51,5 +51,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         public int Column { get; set; }
         public int ErrorNumber { get; set; }
         public string Message { get; set; }
+
+        public override string ToString() => $"Line {Line}, Column {Column}, error {ErrorNumber} : {Message}";
     }
 }
