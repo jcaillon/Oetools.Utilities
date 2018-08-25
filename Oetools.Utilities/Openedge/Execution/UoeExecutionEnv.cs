@@ -55,9 +55,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool DatabaseConnectionStringAppendMaxTryOne { get; set; } = true;
         
         public string DatabaseConnectionString {
-            get {
-                return DatabaseConnectionStringAppendMaxTryOne ? _databaseConnectionString?.Replace("-db", "-ct 1 -db") : _databaseConnectionString;
-            }
+            get => DatabaseConnectionStringAppendMaxTryOne ? _databaseConnectionString?.Replace("-db", "-ct 1 -db") : _databaseConnectionString;
             set => _databaseConnectionString = value.CliCompactWhitespaces();
         }
 

@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
@@ -289,7 +290,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Allows to kill the process of this execution
         /// </summary>
         public virtual void KillProcess() {
-            if (StartDateTime == null) {
+            if (StartDateTime == null || _process == null) {
                 return;
             }
             if (!HasBeenKilled) {
@@ -298,7 +299,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 var d = DateTime.Now;
                 while (!Started && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
                 try {
-                    _process?.Kill();
+                    _process.Kill();
                 } catch (Exception e) {
                     HandledExceptions.Add(new UoeExecutionException("Error when killing the process", e));
                 }
@@ -307,20 +308,41 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         /// <summary>
         /// Synchronously wait for the execution to end
+        /// Returns true if the process has exited (can be false if timeout was reached)
         /// </summary>
         /// <param name="maxWait"></param>
-        public virtual void WaitForExecutionEnd(int maxWait = 0) {
-            if (!Started) {
-                return;
+        /// <param name="cancelSource"></param>
+        public virtual bool WaitForExecutionEnd(int maxWait = 0, CancellationTokenSource cancelSource = null) {
+            if (!Started || _process == null) {
+                return true;
             }
-            if (maxWait > 0) {
-                _process?.WaitForExit(maxWait);
+
+            if (cancelSource != null) {
+                var start = DateTime.Now;
+                var waitTime = maxWait > 500 || maxWait == 0 ? 500 : maxWait;
+                bool exited;
+                do {
+                    exited = _process.WaitForExit(waitTime);
+                } while (!exited && DateTime.Now.Subtract(start).TotalMilliseconds <= maxWait && !cancelSource.IsCancellationRequested);
+                if (!exited) {
+                    return false;
+                }
             } else {
-                _process?.WaitForExit();
+                if (maxWait > 0) {
+                    var exited = _process.WaitForExit(maxWait);
+                    if (!exited) {
+                        return false;
+                    }
+                } else {
+                    _process.WaitForExit();
+                }
             }
+
             // wait for the execution to really end
             var d = DateTime.Now;
             while (!_eventPublished && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
+
+            return true;
         }
 
         /// <summary>
@@ -444,11 +466,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                             ErrorNumber = int.Parse(split[0]),
                             ErrorMessage = split[1].ProUnescapeString()
                         };
-                        if (t.ErrorNumber == UoeConstants.StopOnCompilationReturnErrorCode) {
-                            output.Add(new UoeExecutionCompilationStoppedException());
-                        } else {
-                            output.Add(t);
-                        }
+                        output.Add(t);
                     }
                 }, Encoding.Default);
             }

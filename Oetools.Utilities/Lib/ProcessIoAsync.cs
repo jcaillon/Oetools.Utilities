@@ -34,10 +34,11 @@ namespace Oetools.Utilities.Lib {
 
         /// <summary>
         /// Wait for a process to end
+        /// Returns true if the process has exited (can be false if timeout was reached)
         /// </summary>
         /// <param name="timeoutMs"></param>
-        public void WaitForExit(int timeoutMs = 0) {
-            WaitUntilProcessExits(timeoutMs);
+        public bool WaitForExit(int timeoutMs = 0) {
+            return WaitUntilProcessExits(timeoutMs);
         }
 
         public void Dispose() {

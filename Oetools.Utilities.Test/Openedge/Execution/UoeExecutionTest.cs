@@ -17,6 +17,8 @@
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -111,8 +113,41 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
         }
         
-        private int _iOeExecutionTestKilledEvents;
         
+        [TestMethod]
+        public void OeExecution_Test_WaitFor_with_cancel_source() {
+            if (!GetEnvExecution(out UoeExecutionEnv env)) {
+                return;
+            }
+            env.UseProgressCharacterMode = true;
+            using (var exec = new UoeExecutionCustomTest(env)) {
+                exec.ProgramContent = "PAUSE 100.";
+                exec.Start();
+                var cancel = new CancellationTokenSource();
+                exec.WaitForExecutionEnd(500);
+                Assert.IsNull(exec.ExecutionTimeSpan, "the execution isn't over");
+                exec.WaitForExecutionEnd(500, cancel);
+                Assert.IsNull(exec.ExecutionTimeSpan, "the execution still isn't over");
+                Task.Factory.StartNew(() => {
+                    Thread.Sleep(500);
+                    cancel.Cancel();
+                });
+                var d = DateTime.Now;
+                exec.WaitForExecutionEnd(3000, cancel);
+                Assert.IsNull(exec.ExecutionTimeSpan, "the execution still isn't over");
+                Assert.IsTrue(DateTime.Now.Subtract(d).TotalMilliseconds < 1500, "it should have waited for the cancel and not for 3000ms (note that it has a rough precision...)");
+                exec.KillProcess();
+                exec.WaitForExecutionEnd();
+                Assert.IsTrue(exec.HasBeenKilled, "has been killed");
+                Assert.IsInstanceOfType(exec.HandledExceptions[0], typeof(UoeExecutionKilledException));
+                
+                // the end event executed correctly even if the process has been killed
+                Assert.IsNotNull(exec.ExecutionTimeSpan);
+            }
+        }
+        
+        private int _iOeExecutionTestKilledEvents;
+
         [TestMethod]
         public void OeExecution_Test_Killed() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {

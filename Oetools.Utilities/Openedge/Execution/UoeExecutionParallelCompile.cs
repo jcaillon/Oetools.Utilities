@@ -160,13 +160,29 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        public override void WaitForExecutionEnd(int maxWait = 0) {
+        /// <summary>
+        /// Wait for the compilation to end
+        /// Returns true if the process has exited (can be false if timeout was reached)
+        /// </summary>
+        /// <param name="maxWait"></param>
+        /// <param name="cancelSource"></param>
+        /// <returns></returns>
+        public override bool WaitForExecutionEnd(int maxWait = 0, CancellationTokenSource cancelSource = null) {
             if (!Started) {
-                return;
+                return true;
             }
+
+            bool hasMaxWait = maxWait > 0;
+            bool exited = true;
             foreach (var proc in _processes) {
-                proc.WaitForExecutionEnd(maxWait);
+                var d = DateTime.Now;
+                exited = exited && proc.WaitForExecutionEnd(maxWait, cancelSource);
+                maxWait -= (int) DateTime.Now.Subtract(d).TotalMilliseconds;
+                if (hasMaxWait && maxWait <= 0) {
+                    return false;
+                }
             }
+            return exited;
         }
         
         private void OnProcessExecutionException(UoeExecution obj) {

@@ -99,9 +99,9 @@ namespace Oetools.Utilities.Openedge.Execution {
 #endif
         }
 
-        protected override void WaitUntilProcessExits(int timeoutMs) {
-            base.WaitUntilProcessExits(timeoutMs);
+        protected override bool WaitUntilProcessExits(int timeoutMs) {
             RestoreSplashScreen();
+            return base.WaitUntilProcessExits(timeoutMs);
         }
 
         protected override void PrepareStart(string arguments, bool silent) {

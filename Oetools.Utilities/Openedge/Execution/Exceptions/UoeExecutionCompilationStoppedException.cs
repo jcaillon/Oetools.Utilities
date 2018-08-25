@@ -17,8 +17,17 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
+using System.Collections.Generic;
+using System.Linq;
+
 namespace Oetools.Utilities.Openedge.Execution.Exceptions {
     public class UoeExecutionCompilationStoppedException : UoeExecutionOpenedgeException {
-        public override string Message => "The compilation process stopped on the first compilation error";
+                
+        public bool StopOnWarning { get; set; }
+        
+        public List<UoeCompilationProblem> CompilationProblems { get; set; }
+        
+        public override string Message => $"The compilation process stopped on the first compilation {(StopOnWarning ? "warning" : "error")}{(CompilationProblems != null && CompilationProblems.Count > 0 ? $" :\n- {string.Join("\n- ", CompilationProblems)}" : "")}";
     }
 }

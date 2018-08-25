@@ -20,6 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Oetools.Utilities.Lib;
@@ -299,6 +300,18 @@ namespace Oetools.Utilities.Openedge.Execution {
                         file.ReadCompilationResults();
                         file.ComputeRequiredDatabaseReferences(AnalysisModeSimplifiedDatabaseReferences ? null : Env);
                     });
+                    
+                    // set UoeExecutionCompilationStoppedException exception
+                    for (int i = 0; i < HandledExceptions.Count; i++) {
+                        if (HandledExceptions[i] is UoeExecutionOpenedgeException oeException) {
+                            if (oeException.ErrorNumber == UoeConstants.StopOnCompilationReturnErrorCode) {
+                                HandledExceptions[i] = new UoeExecutionCompilationStoppedException {
+                                    CompilationProblems = CompiledFiles.Where(f => f.CompilationErrors != null).SelectMany(f => f.CompilationErrors).Where(e => StopOnCompilationError ? e is UoeCompilationError : e is UoeCompilationWarning).ToList(),
+                                    StopOnWarning = StopOnCompilationWarning
+                                };
+                            }
+                        }
+                    }
                 } catch (Exception e) {
                     HandledExceptions.Add(new UoeExecutionException("Error while reading the compilation results", e));
                 }

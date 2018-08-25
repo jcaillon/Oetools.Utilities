@@ -209,13 +209,21 @@ namespace Oetools.Utilities.Lib {
             }
         }
 
-        protected virtual void WaitUntilProcessExits(int timeoutMs) {
+        /// <summary>
+        /// Returns true if the process has exited (can be false if timeout was reached)
+        /// </summary>
+        /// <param name="timeoutMs"></param>
+        /// <returns></returns>
+        protected virtual bool WaitUntilProcessExits(int timeoutMs) {
             if (_process == null) {
-                return;
+                return true;
             }
-            
+
             if (timeoutMs > 0) {
-                _process.WaitForExit(timeoutMs);
+                var exited = _process.WaitForExit(timeoutMs);
+                if (!exited) {
+                    return false;
+                }
             } else {
                 _process.WaitForExit();
             }
@@ -225,6 +233,8 @@ namespace Oetools.Utilities.Lib {
             _process?.Close();
             _process?.Dispose();
             _process = null;
+
+            return true;
         }
 
         protected virtual void PrepareStart(string arguments, bool silent) {
