@@ -74,6 +74,75 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         }
         
         [TestMethod]
+        public void OeExecutionCompile_Test_Stop_compilation_on_error_or_warning() {
+            if (!GetEnvExecution(out UoeExecutionEnv env)) {
+                return;
+            }
+            
+            File.WriteAllText(Path.Combine(TestFolder, "stop_compil_ok.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "stop_compil_warning.p"), @"QUIT. QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "stop_compil_error.p"), @"derp.");
+            
+            env.ProPathList = new List<string> { TestFolder };
+            env.UseProgressCharacterMode = true;
+
+            // first scenario, we don't stop on error / warnings
+            
+            using (var exec = GetOeExecutionCompile(env)) {
+                exec.FilesToCompile = new List<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_warning.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_error.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_ok.p"))
+                };
+                exec.Start();
+                exec.WaitForExecutionEnd();
+                Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"not ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "expect having compiled the last file even if the file[1] has errors");
+                Assert.AreEqual(2, exec.CompiledFiles[1].CompilationErrors.Count, "expect to have compile the error file despite file[0] having warnings");
+            }
+            
+            // second scenario, stop on error
+            
+            using (var exec = GetOeExecutionCompile(env)) {
+                exec.StopOnCompilationError = true;
+                exec.FilesToCompile = new List<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_warning.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_error.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_ok.p"))
+                };
+                exec.Start();
+                exec.WaitForExecutionEnd();
+                Assert.AreEqual(true, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(1, exec.HandledExceptions.Count, $"1 exception : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(typeof(UoeExecutionCompilationStoppedException), exec.HandledExceptions[0].GetType(), $"exeption type : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(0, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "no files compiled correctly, we stopped before");
+                Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledWithWarnings), "1 file with warning");
+                Assert.AreEqual(1, exec.CompiledFiles[0].CompilationErrors.Count, "get the errors on the file that were compiled");
+                Assert.AreEqual(2, exec.CompiledFiles[1].CompilationErrors.Count, "also get errors on the file that made the compilation stopped");
+            }
+            
+            // thirs scenario, stop on warning
+            
+            using (var exec = GetOeExecutionCompile(env)) {
+                exec.StopOnCompilationWarning = true;
+                exec.FilesToCompile = new List<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_warning.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_error.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_ok.p"))
+                };
+                exec.Start();
+                exec.WaitForExecutionEnd();
+                Assert.AreEqual(true, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(1, exec.HandledExceptions.Count, $"1 exception : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(typeof(UoeExecutionCompilationStoppedException), exec.HandledExceptions[0].GetType(), $"exeption type : {string.Join("\n", exec.HandledExceptions)}");
+                Assert.AreEqual(0, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "no files compiled correctly, we stopped before");
+                Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledWithWarnings), "1 file with warning");
+                Assert.AreEqual(1, exec.CompiledFiles[0].CompilationErrors.Count, "get the errors on the file that were compiled");
+                Assert.AreEqual(null, exec.CompiledFiles[1].CompilationErrors, "we don't have anything past the first file because we stopped the process");
+            }
+        }
+        
+        [TestMethod]
         public void OeExecutionCompile_Expect_ExecutionParametersException() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;

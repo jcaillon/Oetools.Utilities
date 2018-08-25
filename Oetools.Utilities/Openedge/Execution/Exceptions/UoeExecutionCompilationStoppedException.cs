@@ -18,7 +18,7 @@
 // ========================================================================
 #endregion
 namespace Oetools.Utilities.Openedge.Execution.Exceptions {
-    public class UoeExecutionKilledException : UoeExecutionException {
-        public override string Message => "The process has been killed";
+    public class UoeExecutionCompilationStoppedException : UoeExecutionOpenedgeException {
+        public override string Message => "The compilation process stopped on the first compilation error";
     }
 }

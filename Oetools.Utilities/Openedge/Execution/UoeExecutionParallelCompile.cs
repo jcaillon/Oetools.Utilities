@@ -43,10 +43,12 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         public int TotalNumberOfProcesses => _processes.Count;
 
-        public int NumberOfProcessesRunning => _processes.Count(p => p.ExecutionTimeSpan == null);
+        public int NumberOfProcessesRunning => _processes.Count(p => p.Started && !p.Ended);
+
+        private UoeExecution _firstProcessWithExceptions;
         
         private static object _lock = new object();
-        
+
         private List<UoeExecutionCompile> _processes = new List<UoeExecutionCompile>();
         
         public UoeExecutionParallelCompile(IUoeExecutionEnv env) : base(env) {}
@@ -71,13 +73,12 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        public override void Start() {
-            StartDateTime = DateTime.Now;
+        protected override void StartInternal() {
             CheckParameters();
-            
+
             // now we do a list of those files, sorted from the biggest (in size) to the smallest file
             FilesToCompile.Sort((file1, file2) => file2.FileSize.CompareTo(file1.FileSize));
-            
+
             // ensure that each process will at least take in 10 files, starting a new process for 1 file to compile isn't efficient!
             var numberOfProcesses = Math.Min(MaxNumberOfProcesses, NumberOfFilesToCompile / MinimumNumberOfFilesPerProcess);
             numberOfProcesses = Math.Max(numberOfProcesses, 1);
@@ -114,7 +115,9 @@ namespace Oetools.Utilities.Openedge.Execution {
                     CompileWithPreprocess = CompileWithPreprocess,
                     CompileWithXref = CompileWithXref,
                     CompileUseXmlXref = CompileUseXmlXref,
-                    WorkingDirectory = WorkingDirectory
+                    WorkingDirectory = WorkingDirectory,
+                    StopOnCompilationError = StopOnCompilationError,
+                    StopOnCompilationWarning = StopOnCompilationWarning
                 };
                 exec.OnExecutionException += OnProcessExecutionException;
                 exec.OnExecutionEnd += OnProcessExecutionEnd;
@@ -122,31 +125,54 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
 
             // launch the compile process
-            foreach (var proExecutionCompile in _processes) {
-                proExecutionCompile.Start();
+            try {
+                foreach (var proExecutionCompile in _processes) {
+                    proExecutionCompile.Start();
+                }
+            } catch (Exception) {
+                Started = true;
+                KillProcess();
+                throw;
             }
         }
 
         public override void KillProcess() {
+            if (StartDateTime == null) {
+                return;
+            }
             if (!HasBeenKilled) {
+                HasBeenKilled = true;
+                // wait for the execution to start all the processes
+                var d = DateTime.Now;
+                while (!Started && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
                 try {
                     foreach (var proc in _processes) {
                         proc.KillProcess();
                     }
                 } catch (Exception e) {
                     HandledExceptions.Add(new UoeExecutionException("Error when killing compilation processes", e));
+                } finally {
+                    // wait for all the processes to actually exit correctly and publish their events
+                    d = DateTime.Now;
+                    while (NumberOfProcessesRunning > 0 && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
+                    PublishParallelCompilationResults();
                 }
             }
-            HasBeenKilled = true;
         }
 
         public override void WaitForExecutionEnd(int maxWait = 0) {
+            if (!Started) {
+                return;
+            }
             foreach (var proc in _processes) {
                 proc.WaitForExecutionEnd(maxWait);
             }
         }
         
         private void OnProcessExecutionException(UoeExecution obj) {
+            if (_firstProcessWithExceptions == null) {
+                _firstProcessWithExceptions = obj;
+            }
             // if one fails, all must fail
             KillProcess();
         }
@@ -168,13 +194,29 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (NumberOfProcessesRunning > 0) {
                 return;
             }
-            
+
+            if (!HasBeenKilled) {
+                PublishParallelCompilationResults();
+            }
+        }
+
+        private void PublishParallelCompilationResults() {
+            Monitor.Enter(_lock);
             try {
-                ExecutionTimeSpan = TimeSpan.FromMilliseconds(DateTime.Now.Subtract(StartDateTime).TotalMilliseconds);
-                HandledExceptions.AddRange(_processes.SelectMany(p => p.HandledExceptions));
+                Ended = true;
+                ExecutionTimeSpan = TimeSpan.FromMilliseconds(DateTime.Now.Subtract(StartDateTime ?? DateTime.Now).TotalMilliseconds);
+                HandledExceptions.Clear();
+                HandledExceptions.AddRange(_processes.SelectMany(p => p.HandledExceptions).Where(e => !(e is UoeExecutionKilledException)));
                 DatabaseConnectionFailed = _processes.Exists(p => p.DatabaseConnectionFailed);
                 ExecutionFailed = _processes.Exists(p => p.ExecutionFailed);
+                
+                // we clear all the killed exception because if one process fails, we kill the others
+                // The only killed exception that matter is on the first process that failed with exceptions
+                if (_firstProcessWithExceptions != null && _firstProcessWithExceptions.ExecutionHandledExceptions && _firstProcessWithExceptions.HandledExceptions.Any(e => e is UoeExecutionKilledException)) {
+                    HandledExceptions.Add(new UoeExecutionKilledException());
+                }
             } finally {
+                Monitor.Exit(_lock);
                 PublishEndEvents();
             }
         }

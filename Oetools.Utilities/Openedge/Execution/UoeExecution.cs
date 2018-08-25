@@ -96,7 +96,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Start time for this execution
         /// </summary>
-        public DateTime StartDateTime { get; protected set; }
+        public DateTime? StartDateTime { get; protected set; }
 
         /// <summary>
         /// List of handled exceptions :
@@ -163,6 +163,13 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected bool _executed;
 
         protected bool _eventPublished;
+        
+        /// <summary>
+        /// The process is considered to be running when it is <see cref="Started"/> and not <see cref="Ended"/>
+        /// </summary>
+        internal bool Started { get; set; }
+
+        internal bool Ended { get; set; }
 
         /// <summary>
         ///     Deletes temp directory and everything in it
@@ -194,18 +201,34 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
         
         /// <summary>
+        /// Starts the execution
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="UoeExecutionException"></exception>
+        public void Start() {
+            StartDateTime = DateTime.Now;
+            try {
+                StartInternal();
+            } catch (Exception) {
+                Ended = true;
+                _eventPublished = true; // to not block the wait for the exit
+                throw;
+            } finally {
+                Started = true;
+            }
+        }
+
+        /// <summary>
         ///     allows to prepare the execution environment by creating a unique temp folder
         ///     and copying every critical files into it
         ///     Then execute the progress program
         /// </summary>
         /// <returns></returns>
         /// <exception cref="UoeExecutionException"></exception>
-        public virtual void Start() {
-            StartDateTime = DateTime.Now;
-            
+        protected virtual void StartInternal() {
             // check parameters
             CheckParameters();
-            
+
             Utils.CreateDirectoryIfNeeded(_tempDir);
 
             // write propath
@@ -214,6 +237,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 // TODO : find a better working directory that would shorten the propath
                 throw new UoeExecutionParametersException($"The propath used is too long (>{UoeConstants.MaximumPropathLength}) : {propath.PrettyQuote()}");
             }
+
             File.WriteAllText(_propathFilePath, propath, Encoding.Default);
 
             // Set info
@@ -232,6 +256,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             foreach (var var in PreprocessedVars) {
                 runnerProgram.AppendLine($"&SCOPED-DEFINE {var.Key} {var.Value}");
             }
+
             runnerProgram.AppendLine(ProgramProgressRun);
             AppendProgramToRun(runnerProgram);
             File.WriteAllText(_runnerPath, runnerProgram.ToString(), Encoding.Default);
@@ -242,14 +267,16 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (!string.IsNullOrWhiteSpace(Env.ProExeCommandLineParameters)) {
                 _exeParameters.Append($" {Env.ProExeCommandLineParameters.Trim()}");
             }
+
             if (!string.IsNullOrEmpty(Env.IniFilePath)) {
                 _exeParameters.Append($" -ininame {Env.IniFilePath.CliQuoter()} -basekey {"INI".CliQuoter()}");
             }
+
             if (!string.IsNullOrEmpty(WorkingDirectory) && Directory.Exists(WorkingDirectory)) {
                 _processStartDir = WorkingDirectory;
                 _exeParameters.Append($" -T {_tempDir.CliQuoter()}");
             }
-            
+
             // start the process
             _process = new UoeProcessIo(Env.DlcDirectoryPath, ForceCharacterModeUse || Env.UseProgressCharacterMode && !RequiresGraphicalMode, Env.CanProVersionUseNoSplash) {
                 WorkingDirectory = _processStartDir
@@ -262,12 +289,20 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Allows to kill the process of this execution
         /// </summary>
         public virtual void KillProcess() {
-            try {
-                _process.Kill();
-            } catch (Exception e) {
-                HandledExceptions.Add(new UoeExecutionException("Error when killing the process", e));
+            if (StartDateTime == null) {
+                return;
             }
-            HasBeenKilled = true;
+            if (!HasBeenKilled) {
+                HasBeenKilled = true;
+                // wait for the execution to start and then kill it
+                var d = DateTime.Now;
+                while (!Started && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
+                try {
+                    _process?.Kill();
+                } catch (Exception e) {
+                    HandledExceptions.Add(new UoeExecutionException("Error when killing the process", e));
+                }
+            }
         }
 
         /// <summary>
@@ -275,6 +310,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// </summary>
         /// <param name="maxWait"></param>
         public virtual void WaitForExecutionEnd(int maxWait = 0) {
+            if (!Started) {
+                return;
+            }
             if (maxWait > 0) {
                 _process?.WaitForExit(maxWait);
             } else {
@@ -282,7 +320,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
             // wait for the execution to really end
             var d = DateTime.Now;
-            while (!_eventPublished && DateTime.Now.Subtract(d).TotalMilliseconds <= 5000) { }
+            while (!_eventPublished && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
         }
 
         /// <summary>
@@ -341,7 +379,8 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         protected virtual void GetProcessResults() {
-            ExecutionTimeSpan = TimeSpan.FromMilliseconds(DateTime.Now.Subtract(StartDateTime).TotalMilliseconds);
+            Ended = true;
+            ExecutionTimeSpan = TimeSpan.FromMilliseconds(DateTime.Now.Subtract(StartDateTime ?? DateTime.Now).TotalMilliseconds);
 
             // if the db log file exists, then the connect statement failed
             if (File.Exists(_dbErrorLogPath)) {
@@ -359,7 +398,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
 
             if (HasBeenKilled) {
-                HandledExceptions.Add(new UoeExecutionKilledException("Execution failed, the process was killed"));
+                HandledExceptions.Add(new UoeExecutionKilledException());
                 ExecutionFailed = true;
             } else if (_process.ExitCode > 0 || !File.Exists(_errorLogPath)) {
                 // exit code not 0 or the log file wasn't created, indicating that the procedure didn't run until the end correctly
@@ -405,7 +444,11 @@ namespace Oetools.Utilities.Openedge.Execution {
                             ErrorNumber = int.Parse(split[0]),
                             ErrorMessage = split[1].ProUnescapeString()
                         };
-                        output.Add(t);
+                        if (t.ErrorNumber == UoeConstants.StopOnCompilationReturnErrorCode) {
+                            output.Add(new UoeExecutionCompilationStoppedException());
+                        } else {
+                            output.Add(t);
+                        }
                     }
                 }, Encoding.Default);
             }

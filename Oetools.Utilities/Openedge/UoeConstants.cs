@@ -38,5 +38,7 @@ namespace Oetools.Utilities.Openedge {
 
         public const int MaximumCharacterLength = 31990;
         public const int MaximumPropathLength = 31990;
+        
+        public const int StopOnCompilationReturnErrorCode = -991;
     }
 }

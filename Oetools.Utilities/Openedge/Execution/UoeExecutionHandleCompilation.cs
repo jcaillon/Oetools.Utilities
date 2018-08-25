@@ -32,6 +32,18 @@ namespace Oetools.Utilities.Openedge.Execution {
     public abstract class UoeExecutionHandleCompilation : UoeExecution {
         
         /// <summary>
+        /// Immediately stop the compilation process when a compilation error (include warnings) is found,
+        /// the remaining files will not get compiled
+        /// </summary>
+        public bool StopOnCompilationError { get; set; }
+        
+        /// <summary>
+        /// Immediately stop the compilation process when a compilation warning is found,
+        /// the remaining files will not get compiled
+        /// </summary>
+        public bool StopOnCompilationWarning { get; set; }
+        
+        /// <summary>
         ///     When true, we activate the log just before compiling with FileId active + we use xref list the referenced
         ///     tables/sequences of the .r
         /// </summary>
@@ -262,6 +274,9 @@ namespace Oetools.Utilities.Openedge.Execution {
             SetPreprocessedVar("CompilerMultiCompile", CompilerMultiCompile.ToString());
             SetPreprocessedVar("ProVerHigherOrEqualTo11.7", Env.IsProVersionHigherOrEqualTo(new Version(11, 7, 0)).ToString());
             SetPreprocessedVar("CompileOptions", CompileOptions.ProPreProcStringify());
+            SetPreprocessedVar("StopOnCompilationError", StopOnCompilationError.ToString());
+            SetPreprocessedVar("StopOnCompilationWarning", StopOnCompilationWarning.ToString());
+            SetPreprocessedVar("StopOnCompilationReturnErrorCode", UoeConstants.StopOnCompilationReturnErrorCode.ToString());
         }
 
         protected override void AppendProgramToRun(StringBuilder runnerProgram) {
@@ -269,7 +284,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             runnerProgram.AppendLine(ProgramProgressCompile);
         }
         
-        private string ProgramProgressCompile => OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution_compile.p");
+        private string ProgramProgressCompile => OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution_handle_compilation.p");
 
         /// <summary>
         /// Get the results for each compiled files

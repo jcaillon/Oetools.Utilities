@@ -23,6 +23,7 @@ using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Execution;
+using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Test.Openedge.Execution {
     
@@ -63,6 +64,84 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             public override int MinimumNumberOfFilesPerProcess => 1;
 
             public UoeExecutionParallelCompile2(IUoeExecutionEnv env) : base(env) { }
+        }
+        
+        [TestMethod]
+        public void OeExecutionParallelCompile_Test_Stop_compilation_on_error() {
+            if (!GetEnvExecution(out UoeExecutionEnv env)) {
+                return;
+            }
+            
+            File.WriteAllText(Path.Combine(TestFolder, "test_stop_ok.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "test_stop_error.p"), @"derp.");
+            env.UseProgressCharacterMode = true;
+            using (var exec = GetOeExecutionCompile(env) as UoeExecutionParallelCompile) {
+                Assert.IsNotNull(exec);
+                exec.StopOnCompilationError = true;
+                exec.MaxNumberOfProcesses = 20;
+                exec.FilesToCompile = new List<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_error.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p"))
+                };
+                exec.Start();
+                exec.WaitForExecutionEnd();
+                Assert.AreEqual(1, exec.HandledExceptions.Count, $"should have just 1 stop exception {string.Join(",", exec.HandledExceptions)}");
+                Assert.IsTrue(exec.HandledExceptions.Exists(e => e is UoeExecutionCompilationStoppedException), "stop exception");
+            }
+        }
+        
+        [TestMethod]
+        public void OeExecutionParallelCompile_Test_Start_Failed() {
+            if (!GetEnvExecution(out UoeExecutionEnv env)) {
+                return;
+            }
+            
+            File.WriteAllText(Path.Combine(TestFolder, "test_start_fail_proc.p"), @"QUIT.");
+            env.UseProgressCharacterMode = true;
+            using (var exec = GetOeExecutionCompile(env) as UoeExecutionParallelCompile) {
+                Assert.IsNotNull(exec);
+                exec.MaxNumberOfProcesses = 8;
+                exec.FilesToCompile = new List<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc_does_not_exist.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p"))
+                };
+                try {
+                    exec.Start();
+                    Assert.Fail("The start throws an exception");
+                } catch (Exception e) {
+                    Assert.IsNotNull(e);
+                }
+                exec.WaitForExecutionEnd();
+                Assert.AreEqual(1, exec.HandledExceptions.Count, $"for the multi compilation, if a process fails to start we kill the others, so we should see a killed exception here {string.Join(",", exec.HandledExceptions)}");
+            }
         }
         
         [TestMethod]

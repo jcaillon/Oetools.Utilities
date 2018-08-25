@@ -18,16 +18,19 @@ This file was created with the 3P :  https://jcaillon.github.io/3P/
     &SCOPED-DEFINE CompileListFilePath ""
     &SCOPED-DEFINE CompileProgressionFilePath ""
     /* LOG-MANAGER doesn't exist prior 10.2 so we can't analyse in early versions */
-    &SCOPED-DEFINE IsAnalysisMode FALSE
-    &SCOPED-DEFINE GetRcodeTableList FALSE
+    &SCOPED-DEFINE IsAnalysisMode false
+    &SCOPED-DEFINE GetRcodeTableList false
     /* for version >= 10.2 */
     &SCOPED-DEFINE ProVerHigherOrEqualTo10.2 true
     &SCOPED-DEFINE UseXmlXref false
     &SCOPED-DEFINE CompileStatementExtraOptions 
-    &SCOPED-DEFINE CompilerMultiCompile false 
+    &SCOPED-DEFINE CompilerMultiCompile false
     &SCOPED-DEFINE ProVerHigherOrEqualTo11.7 true
     /* the OPTIONS option was introduced in 11.7 */
     &SCOPED-DEFINE CompileOptions "" 
+    &SCOPED-DEFINE StopOnCompilationError false
+    &SCOPED-DEFINE StopOnCompilationWarning false
+    &SCOPED-DEFINE StopOnCompilationReturnErrorCode -991
 &ENDIF
 
 &IF DEFINED(RunProgramMode) = 0 &THEN
@@ -65,6 +68,8 @@ PROCEDURE program_to_run PRIVATE:
     ------------------------------------------------------------------------------*/
 
     DEFINE VARIABLE li_order AS INTEGER NO-UNDO INITIAL 0.
+    DEFINE VARIABLE ll_fileHasError AS LOGICAL NO-UNDO.
+    DEFINE VARIABLE ll_fileHasWarning AS LOGICAL NO-UNDO.
     
     &IF {&ProVerHigherOrEqualTo10.2} &THEN
         COMPILER:MULTI-COMPILE = {&CompilerMultiCompile}.
@@ -160,9 +165,16 @@ PROCEDURE program_to_run PRIVATE:
         /* handles the errors on the compile statement itself */
         fi_output_last_error(INPUT {&ErrorLogPath}).
         
-        RUN pi_handleCompilationErrors (INPUT tt_list.sourcePath, INPUT tt_list.errorLogPath) NO-ERROR.
+        RUN pi_handleCompilationErrors (INPUT tt_list.sourcePath, INPUT tt_list.errorLogPath, OUTPUT ll_fileHasError, OUTPUT ll_fileHasWarning) NO-ERROR.
         fi_output_last_error(INPUT {&ErrorLogPath}).
         
+        IF ({&StopOnCompilationError} AND ll_fileHasError) OR 
+            ({&StopOnCompilationWarning} AND (ll_fileHasError OR ll_fileHasWarning)) THEN DO:
+            /* output a special error recognizable by the C# side and stop before completion */
+            fi_write(INPUT {&ErrorLogPath}, INPUT "{&StopOnCompilationReturnErrorCode}~t" + fi_escape_special_char(INPUT "Compilation stopped") + "~n").
+            RETURN "".
+        END.
+                
         &IF {&IsAnalysisMode} AND {&GetRcodeTableList} AND {&ProVerHigherOrEqualTo10.2} &THEN
             /* Here we generate a file that lists all db.tables + CRC referenced in the .r code produced */
             RUN pi_getRcodeTableList (INPUT tt_list.sourcePath, INPUT tt_list.outDirectory, INPUT tt_list.rcodeTableList) NO-ERROR.
@@ -185,23 +197,33 @@ PROCEDURE pi_handleCompilationErrors PRIVATE:
 
     DEFINE INPUT PARAMETER ipc_from AS CHARACTER NO-UNDO.
     DEFINE INPUT PARAMETER ipc_logpath AS CHARACTER NO-UNDO.
+    DEFINE OUTPUT PARAMETER opl_hasError AS LOGICAL NO-UNDO INITIAL FALSE.
+    DEFINE OUTPUT PARAMETER opl_hasWarning AS LOGICAL NO-UNDO INITIAL FALSE.
     DEFINE VARIABLE lc_msg AS CHARACTER NO-UNDO INITIAL "".
+    DEFINE VARIABLE ll_isWarning AS LOGICAL NO-UNDO.
 
     /* if PROVERSION >= 10.2 */
     &IF {&ProVerHigherOrEqualTo10.2} &THEN
         IF COMPILER:NUM-MESSAGES > 0 THEN DO:
             DEFINE VARIABLE li_i AS INTEGER NO-UNDO.
             DO li_i = 1 TO COMPILER:NUM-MESSAGES:
-                ASSIGN lc_msg = lc_msg + SUBSTITUTE("&1~t&2~t&3~t&4~t&5~t&6~t&7&8",
-                    ipc_from,
-                    COMPILER:GET-FILE-NAME(li_i),
-                    IF COMPILER:GET-MESSAGE-TYPE(li_i) = 2 THEN "Warning" ELSE "Error",
-                    COMPILER:GET-ERROR-ROW(li_i),
-                    COMPILER:GET-ERROR-COLUMN(li_i),
-                    COMPILER:GET-NUMBER(li_i),
-                    fi_escape_special_char(INPUT TRIM(REPLACE(REPLACE(COMPILER:GET-MESSAGE(li_i), "** ", ""), " (" + STRING(COMPILER:GET-NUMBER(li_i)) + ")", ""))),
-                    "~r~n"
-                    ).
+                ASSIGN 
+                    ll_isWarning = COMPILER:GET-MESSAGE-TYPE(li_i) = 2
+                    lc_msg = lc_msg + SUBSTITUTE("&1~t&2~t&3~t&4~t&5~t&6~t&7&8",
+                        ipc_from,
+                        COMPILER:GET-FILE-NAME(li_i),
+                        IF ll_isWarning THEN "Warning" ELSE "Error",
+                        COMPILER:GET-ERROR-ROW(li_i),
+                        COMPILER:GET-ERROR-COLUMN(li_i),
+                        COMPILER:GET-NUMBER(li_i),
+                        fi_escape_special_char(INPUT TRIM(REPLACE(REPLACE(COMPILER:GET-MESSAGE(li_i), "** ", ""), " (" + STRING(COMPILER:GET-NUMBER(li_i)) + ")", ""))),
+                        "~r~n"
+                        )
+                    .
+                IF ll_isWarning THEN
+                    ASSIGN opl_hasWarning = TRUE.
+                ELSE
+                    ASSIGN opl_hasError = TRUE.
             END.
         END.
     &ELSE
@@ -209,21 +231,28 @@ PROCEDURE pi_handleCompilationErrors PRIVATE:
             DEFINE VARIABLE li_j AS INTEGER NO-UNDO.
             DEFINE VARIABLE lc_m AS CHARACTER NO-UNDO.
             DO li_j = 1 TO ERROR-STATUS:NUM-MESSAGES:
-                ASSIGN lc_m = fi_escape_special_char(INPUT REPLACE(REPLACE(ERROR-STATUS:GET-MESSAGE(li_j), "** ", ""), " (" + STRING(ERROR-STATUS:GET-NUMBER(li_j)) + ")", "")).
-                ASSIGN lc_msg = lc_msg + SUBSTITUTE("&1~t&2~t&3~t&4~t&5~t&6~t&7&8",
-                    ipc_from,
-                    IF COMPILER:FILE-NAME > "" THEN COMPILER:FILE-NAME ELSE ipc_from,
-                    IF COMPILER:WARNING AND lc_m BEGINS "WARNING" THEN "Warning" ELSE "Error",
-                    IF COMPILER:ERROR-ROW > 0 THEN COMPILER:ERROR-ROW ELSE 1,
-                    IF COMPILER:ERROR-COLUMN > 0 THEN COMPILER:ERROR-COLUMN ELSE 1,
-                    ERROR-STATUS:GET-NUMBER(li_j),
-                    lc_m,
-                    "~r~n"
-                    ).
+                ASSIGN 
+                    lc_m = fi_escape_special_char(INPUT REPLACE(REPLACE(ERROR-STATUS:GET-MESSAGE(li_j), "** ", ""), " (" + STRING(ERROR-STATUS:GET-NUMBER(li_j)) + ")", ""))
+                    ll_isWarning = COMPILER:WARNING AND lc_m BEGINS "WARNING"
+                    lc_msg = lc_msg + SUBSTITUTE("&1~t&2~t&3~t&4~t&5~t&6~t&7&8",
+                        ipc_from,
+                        IF COMPILER:FILE-NAME > "" THEN COMPILER:FILE-NAME ELSE ipc_from,
+                        IF ll_isWarning THEN "Warning" ELSE "Error",
+                        IF COMPILER:ERROR-ROW > 0 THEN COMPILER:ERROR-ROW ELSE 1,
+                        IF COMPILER:ERROR-COLUMN > 0 THEN COMPILER:ERROR-COLUMN ELSE 1,
+                        ERROR-STATUS:GET-NUMBER(li_j),
+                        lc_m,
+                        "~r~n"
+                        )
+                    .
+                IF ll_isWarning THEN
+                    ASSIGN opl_hasWarning = TRUE.
+                ELSE
+                    ASSIGN opl_hasError = TRUE.
             END.
         END.
     &ENDIF
-
+        
     IF lc_msg > "" THEN
         fi_write(INPUT ipc_logpath, INPUT lc_msg).
 
