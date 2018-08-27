@@ -175,12 +175,11 @@ namespace Oetools.Utilities.Lib {
             foreach (var method in objType.GetMethods().Where(m => m.IsStatic && m.Name.StartsWith(GetDefaultMethodPrefix, StringComparison.CurrentCulture))) {
                 var prop = objType.GetProperty(method.Name.Substring(GetDefaultMethodPrefix.Length));
                 if (prop != null) {
-                    if (prop.GetValue(obj) != null) {
-                        continue;
+                    var propValue = prop.GetValue(obj);
+                    if (propValue == null) {
+                        prop.SetValue(obj, method.Invoke(null, null)); // invoke static method
                     }
-                    prop.SetValue(obj, method.Invoke(null, null)); // invoke static method
-                    var childObj = prop.GetValue(obj);
-                    switch (childObj) {
+                    switch (propValue) {
                         case string strObj:
                             SetDefaultValues(strObj);
                             break;
@@ -194,8 +193,8 @@ namespace Oetools.Utilities.Lib {
                             }
                             break;
                         default:
-                            if (prop.PropertyType.IsClass && childObj != null) {
-                                SetDefaultValues(childObj);
+                            if (prop.PropertyType.IsClass && propValue != null) {
+                                SetDefaultValues(propValue);
                             }
                             break;
                     }

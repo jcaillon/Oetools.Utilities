@@ -91,62 +91,6 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Allows to test if a string matches one of the listOfPattern (wildcards) in the list of patterns,
-        ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls;*.com;*.xml") return true
-        ///     Ex : "path/file.xml".TestAgainstListOfPatterns("*.xls;*.com;*.xml") return false!
-        /// </summary>
-        public static bool TestAgainstListOfPatterns(this string source, string listOfPattern) {
-            if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(listOfPattern)) {
-                return false;
-            }
-            return listOfPattern.Split(';').Where(s => !string.IsNullOrEmpty(s)).ToList().Exists(s => new Regex(s.PathWildCardToRegex()).IsMatch(source));
-        }
-
-        /// <summary>
-        ///     Allows to test if a string matches one of the listOfPattern (wildcards) in the list of patterns,
-        ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls;*.com;*.xml") return true
-        /// </summary>
-        /// <exception cref="ArgumentException"></exception>
-        public static bool TestFileNameAgainstListOfPatterns(this string filePath, string listOfPattern) {
-            if (string.IsNullOrEmpty(filePath) || string.IsNullOrEmpty(listOfPattern)) {
-                return false;
-            }
-            return listOfPattern.Split(';').Where(s => !string.IsNullOrEmpty(s)).ToList().Exists(s => new Regex(s.PathWildCardToRegex()).IsMatch(Path.GetFileName(filePath)));
-        }
-
-        /// <summary>
-        ///     Allows to tranform a matching string using **, * and ? (wildcards) into a valid regex expression
-        ///     it escapes regex special char so it will work as you expect!
-        ///     Ex: foo*.xls? will become ^foo.*\.xls.$
-        ///     - ** matches any char any nb of time (greedy match! allows to do stuff like C:\((**))((*)).txt)
-        ///     - * matches only non path separators any time
-        ///     - ? matches non path separators 1 time
-        ///     - (( will be transformed into open capturing parenthesis
-        ///     - )) will be transformed into close capturing parenthesis
-        ///     - || will be transformed into |
-        /// </summary>
-        /// <param name="pattern"></param>
-        /// <remarks>
-        /// validate the pattern first with <see cref="Utils.ValidatePathWildCard"/> to make sure the (( and )) are legit
-        /// </remarks>
-        /// <returns></returns>
-        public static string PathWildCardToRegex(this string pattern) {
-            if (string.IsNullOrEmpty(pattern)) {
-                return null;
-            }
-            pattern = Regex.Escape(pattern.Replace("\\", "/"))
-                .Replace(@"\(\(", @"(")
-                .Replace(@"\)\)", @")")
-                .Replace(@"\|\|", @"|")
-                .Replace(@"/", @"[\\/]")
-                .Replace(@"\*\*", ".*?")
-                .Replace(@"\*", @"[^\\/]*")
-                .Replace(@"\?", @"[^\\/]")
-                ;
-            return $"^{pattern}$";
-        }
-
-        /// <summary>
         /// Checks if a string has correct place horders, return false if they are opened and not closed
         /// i.e. : "^zf^ez$f$" return true with tags ^ start $ end and depth 2
         /// </summary>

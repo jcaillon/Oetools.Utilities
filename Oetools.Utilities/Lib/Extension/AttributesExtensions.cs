@@ -61,7 +61,11 @@ namespace Oetools.Utilities.Lib.Extension {
             var element = objectType.GetAttributeFrom<XmlElementAttribute>(objectPropertyNameOf);
             if (element == null) {
                 var attribute = objectType.GetAttributeFrom<XmlAttributeAttribute>(objectPropertyNameOf);
-                return attribute?.AttributeName ?? objectPropertyNameOf;
+                if (attribute == null) {
+                    var array = objectType.GetAttributeFrom<XmlArrayAttribute>(objectPropertyNameOf);
+                    return array?.ElementName ?? objectPropertyNameOf;
+                }
+                return attribute.AttributeName ?? objectPropertyNameOf;
             }
             return element.ElementName ?? objectPropertyNameOf;
         }

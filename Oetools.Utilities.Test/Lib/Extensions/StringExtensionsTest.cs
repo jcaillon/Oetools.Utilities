@@ -51,49 +51,6 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         }
         
         [TestMethod]
-        [DataRow(@"file.xml", @"*.xml", true)]
-        [DataRow(@"file.xml", @"*.fk;*.xml", true)]
-        [DataRow(@"file.derp", @"*.fk;*.xml", false)]
-        [DataRow(@"path/file.xml", @"*.fk;*.xml", true)]
-        [DataRow(@"path2\file.xml", @"*.fk;*.xml", true)]
-        [DataRow(@"path2\file", @"*.fk;*.xml", false)]
-        [DataRow(@"file.fk", @"*.fk;*.xml", true)]
-        [DataRow(@"", @"*.fk;*.xml", false)]
-        [DataRow(@"file", @"", false)]
-        [DataRow(null, null, false)]
-        public void TestFileAgainstListOfExtensions_Test(string source, string pattern, bool expected) {
-            Assert.AreEqual(expected, source.TestFileNameAgainstListOfPatterns(pattern));
-        }
-        
-        [TestMethod]
-        [DataRow(@"c/folder/file.ext", @"fack", false)]
-        [DataRow(@"c/folder/file.ext", @"fack;**folder**", true)]
-        [DataRow(@"c/folder/file.ext", @"f((old))er", false)]
-        [DataRow(@"c/folder/file.ext", @"**folder**", true)]
-        [DataRow(@"c/folder/file.ext", @"**/file", false)]
-        [DataRow(@"c/folder/file.ext", @"((**))/file.ext", true)]
-        [DataRow(@"c\folder\file.ext", @"**\file.ext", true)]
-        [DataRow(@"c\folder\file.ext", @"**\file.*", true)]
-        [DataRow(@"c\folder\file.ext", @"((**\??le.*))", true)]
-        [DataRow(@"c\folder\file.ext", @"*\file.ext", false)]
-        [DataRow(@"c/folder\file.ext", @"d/**", false)]
-        [DataRow(@"c/folder\file.ext", @"?/**", true)]
-        [DataRow(@"c/folder\file.ext", @"c/**", true)]
-        [DataRow(@"c/folder\file.ext", @"c/**((*.ext))", true)]
-        [DataRow(@"c/folder\file.ext", @"c/*/*", true)]
-        [DataRow(@"c/folder\file.ext", @"c/*/*/*", false)]
-        [DataRow(@"c/folder/file.ext", @"c\folder/((**))", true)]
-        [DataRow(@"c\folder/file.ext", @"c/((folder/((**))file.ext))", true)]
-        [DataRow(@"c\folder/file.ext", @"((**))\((fo((ld))er))/**file**", true)]
-        [DataRow(@"c\folder/file.ext", @"**/*/**", true)]
-        [DataRow(@"file.ext", @"**/*/**/*", false)]
-        [DataRow(@"file.ext", null, false)]
-        [DataRow(@"file.ext", @"", false)]
-        public void TestAgainstListOfPatterns_Test(string source, string pattern, bool expected) {
-            Assert.AreEqual(expected, source.TestAgainstListOfPatterns(pattern));
-        }
-        
-        [TestMethod]
         [DataRow(@"a{{b{{c}}}}d", "abcd")]
         [DataRow(@"0{{1}}{{2}}{{3}}", "0123")]
         [DataRow(@"{{0}}{{1}}{{2}}{{3}}", "0123")]
@@ -143,25 +100,6 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow(@"{{bla", DisplayName = "unclosed place holder")]
         public void ReplacePlaceHolders_Test_expect_exceptions2(string pattern) {
             Assert.ThrowsException<Exception>(() => pattern.ReplacePlaceHolders(s => s));
-        }
-        
-        [TestMethod]
-        [DataRow(@"c\file.ext", @"c/((**))((*)).ext", @"d/{{2}}.new", @"d/file.new")]
-        [DataRow(@"c\folder/file.ext", @"c/((**))((*)).ext", @"d/{{2}}.new", @"d/file.new")]
-        [DataRow(@"c\folder/file.ext", @"c/((**))((movie||file)).ext", @"d/{{2}}.new", @"d/file.new")]
-        [DataRow(@"c\folder/file.ext", @"c/((**))((movie||derp)).ext", @"d/{{2}}.new", @"d/2.new")]
-        [DataRow(@"c\folder/file.ext", @"c/((**))((*)).ext", @"{{0}}", @"c\folder/file.ext")]
-        [DataRow(@"c\folder/file.ext", @"c/((**))((*)).ext", @"nop", @"nop")]
-        [DataRow(@"c\folder/file.ext", @"c/f((old))er/((?))ile.**", @"{{1}} {{2}}k", @"old fk")]
-        [DataRow(@"c\folder/file.ext", @"c/((*))/**", @"{{1}} {{name}}", @"folder name")]
-        public void ReplacePlaceHoldersInPathRegex_Test(string path, string pattern, string replacementString, string expected) {
-            var match = new Regex(pattern.PathWildCardToRegex()).Match(path);
-            Assert.AreEqual(expected, replacementString.ReplacePlaceHolders(s => {
-                if (match.Success && match.Groups[s].Success) {
-                    return match.Groups[s].Value;
-                }
-                return s;
-            }), pattern);
         }
         
         [TestMethod]
