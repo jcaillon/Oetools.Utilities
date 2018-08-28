@@ -177,7 +177,8 @@ namespace Oetools.Utilities.Lib {
                 if (prop != null) {
                     var propValue = prop.GetValue(obj);
                     if (propValue == null) {
-                        prop.SetValue(obj, method.Invoke(null, null)); // invoke static method
+                        propValue = method.Invoke(null, null);
+                        prop.SetValue(obj, propValue); // invoke static method
                     }
                     switch (propValue) {
                         case string strObj:
