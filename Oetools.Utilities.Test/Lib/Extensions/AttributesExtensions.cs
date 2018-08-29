@@ -30,7 +30,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [TestMethod]
         public void GetAttributeFrom_Test() {
             Assert.AreEqual("NameOfProperty1", typeof(Obj1).GetAttributeFrom<XmlElementAttribute>(nameof(Obj1.Property1)).ElementName);
-            Assert.AreEqual(null, typeof(Obj1).GetAttributeFrom<XmlElementAttribute>("field1"));
+            Assert.AreEqual(null, typeof(Obj1).GetAttributeFrom<XmlElementAttribute>("_field1"));
         }
 
         [TestMethod]
@@ -46,15 +46,18 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         
         [XmlRoot("NameOfObj1")]
         private class Obj1 {
-            
+
             [XmlElement("NameOfProperty1")]
-            public string Property1 { get; set; }
+            public string Property1 {
+                get => _field1;
+                set => _field1 = value;
+            }
 
             [XmlAttribute("NameOfProperty2")]
             public string Property2 { get; set; }
 
             [XmlElement("NameOfField1")]
-            private string field1;
+            private string _field1;
         }
         
     }

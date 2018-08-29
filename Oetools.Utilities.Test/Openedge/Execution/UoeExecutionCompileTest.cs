@@ -89,7 +89,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             // first scenario, we don't stop on error / warnings
             
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_warning.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_error.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_ok.p"))
@@ -98,14 +98,14 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForExecutionEnd();
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"not ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "expect having compiled the last file even if the file[1] has errors");
-                Assert.AreEqual(2, exec.CompiledFiles[1].CompilationErrors.Count, "expect to have compile the error file despite file[0] having warnings");
+                Assert.AreEqual(2, exec.CompiledFiles.ElementAt(1).CompilationErrors.Count, "expect to have compile the error file despite file[0] having warnings");
             }
             
             // second scenario, stop on error
             
             using (var exec = GetOeExecutionCompile(env)) {
                 exec.StopOnCompilationError = true;
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_warning.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_error.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_ok.p"))
@@ -117,15 +117,15 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.AreEqual(typeof(UoeExecutionCompilationStoppedException), exec.HandledExceptions[0].GetType(), $"exeption type : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(0, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "no files compiled correctly, we stopped before");
                 Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledWithWarnings), "1 file with warning");
-                Assert.AreEqual(1, exec.CompiledFiles[0].CompilationErrors.Count, "get the errors on the file that were compiled");
-                Assert.AreEqual(2, exec.CompiledFiles[1].CompilationErrors.Count, "also get errors on the file that made the compilation stopped");
+                Assert.AreEqual(1, exec.CompiledFiles.ElementAt(0).CompilationErrors.Count, "get the errors on the file that were compiled");
+                Assert.AreEqual(2, exec.CompiledFiles.ElementAt(1).CompilationErrors.Count, "also get errors on the file that made the compilation stopped");
             }
             
             // thirs scenario, stop on warning
             
             using (var exec = GetOeExecutionCompile(env)) {
                 exec.StopOnCompilationWarning = true;
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_warning.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_error.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_ok.p"))
@@ -137,8 +137,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.AreEqual(typeof(UoeExecutionCompilationStoppedException), exec.HandledExceptions[0].GetType(), $"exeption type : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(0, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "no files compiled correctly, we stopped before");
                 Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledWithWarnings), "1 file with warning");
-                Assert.AreEqual(1, exec.CompiledFiles[0].CompilationErrors.Count, "get the errors on the file that were compiled");
-                Assert.AreEqual(null, exec.CompiledFiles[1].CompilationErrors, "we don't have anything past the first file because we stopped the process");
+                Assert.AreEqual(1, exec.CompiledFiles.ElementAt(0).CompilationErrors.Count, "get the errors on the file that were compiled");
+                Assert.AreEqual(null, exec.CompiledFiles.ElementAt(1).CompilationErrors, "we don't have anything past the first file because we stopped the process");
             }
         }
         
@@ -153,7 +153,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.ThrowsException<UoeExecutionParametersException>(() => exec.Start(), "nothing to compile");
             }
             using (var exec = GetOeExecutionCompile(env)) {
-               exec.FilesToCompile = new List<UoeFileToCompile> {
+               exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile("doesnotexist.p")
                 };
                 // file does not exist exception
@@ -192,7 +192,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = false;
             
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "ok.p"))
                 };
                 exec.CompileWithDebugList = debugList;
@@ -252,7 +252,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             env.UseProgressCharacterMode = false;
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "witherrors.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "witherrors_in_include.p"))
                 };
@@ -301,7 +301,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             
             env.UseProgressCharacterMode = true;
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "withwarnings_in_include.p"))
                 };
                 exec.Start();
@@ -346,7 +346,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             
             env.UseProgressCharacterMode = true;
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "withwarnings_in_include.p"))
                 };
                 exec.Start();
@@ -377,16 +377,19 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 return;
             }
             
-            File.WriteAllText(Path.Combine(TestFolder, "progression.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "progression1.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "progression2.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "progression3.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "progression4.p"), @"QUIT.");
             env.ProPathList = new List<string> { TestFolder };
 
             env.UseProgressCharacterMode = false;
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
-                    new UoeFileToCompile(Path.Combine(TestFolder, "progression.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "progression.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "progression.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "progression.p"))
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "progression1.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "progression2.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "progression3.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "progression4.p"))
                 };
                 exec.Start();
                 exec.WaitForExecutionEnd();
@@ -411,13 +414,13 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = false;
             using (var exec = GetOeExecutionCompile(env)) {
                 exec.CompileStatementExtraOptions = extraCompileStatementExtraOptions;
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "extraoptions.p"))
                 };
                 exec.Start();
                 exec.WaitForExecutionEnd();
                 Assert.AreEqual(!executionSuccess, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
-                Assert.AreEqual(executionSuccess, exec.CompiledFiles[0].CompiledCorrectly);
+                Assert.AreEqual(executionSuccess, exec.CompiledFiles.ElementAt(0).CompiledCorrectly);
             }
         }
         
@@ -437,13 +440,13 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = false;
             using (var exec = GetOeExecutionCompile(env)) {
                 exec.CompileOptions = compilerOptions;
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "compileoptions.p"))
                 };
                 exec.Start();
                 exec.WaitForExecutionEnd();
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
-                Assert.AreEqual(compileSuccess, exec.CompiledFiles[0].CompiledCorrectly);
+                Assert.AreEqual(compileSuccess, exec.CompiledFiles.ElementAt(0).CompiledCorrectly);
             }
         }
         
@@ -458,7 +461,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             env.UseProgressCharacterMode = false;
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "niceu.p")) {
                         CompiledPath = Path.Combine(TestFolder, "sourcepath.p")
                     }
@@ -492,7 +495,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = false;
             
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "preferedtarget.p")) {
                         PreferedTargetDirectory = targetDir
                     }
@@ -536,14 +539,14 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = false;
             
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "ClassFail.p"))
                 };
                 exec.Start();
                 exec.WaitForExecutionEnd();
                 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
-                Assert.AreEqual(2, exec.CompiledFiles[0].CompilationErrors.Count, $"exec.CompiledFiles[0].CompilationErrors : {string.Join("\n", exec.CompiledFiles[0].CompilationErrors)}");
+                Assert.AreEqual(2, exec.CompiledFiles.ElementAt(0).CompilationErrors.Count, $"exec.CompiledFiles[0].CompilationErrors : {string.Join("\n", exec.CompiledFiles.ElementAt(0).CompilationErrors)}");
             }
         }
         
@@ -573,7 +576,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = false;
             
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "namespace", "random", "Class1.cls")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "namespace", "random", "Class2.cls"))
                 };
@@ -587,10 +590,10 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), "all compile ok");
                 
-                Assert.AreEqual(true, File.Exists(exec.CompiledFiles[0].CompilationRcodeFilePath), "RCODE1");
-                Assert.AreEqual(true, File.Exists(exec.CompiledFiles[1].CompilationRcodeFilePath), "RCODE2");
-                Assert.AreEqual(exec.CompiledFiles[0].ClassNamespacePath, Path.Combine("namespace", "random"));
-                Assert.AreEqual(exec.CompiledFiles[1].ClassNamespacePath, Path.Combine("namespace", "random"));
+                Assert.AreEqual(true, File.Exists(exec.CompiledFiles.ElementAt(0).CompilationRcodeFilePath), "RCODE1");
+                Assert.AreEqual(true, File.Exists(exec.CompiledFiles.ElementAt(1).CompilationRcodeFilePath), "RCODE2");
+                Assert.AreEqual(exec.CompiledFiles.ElementAt(0).ClassNamespacePath, Path.Combine("namespace", "random"));
+                Assert.AreEqual(exec.CompiledFiles.ElementAt(1).ClassNamespacePath, Path.Combine("namespace", "random"));
             }
         }
         
@@ -626,7 +629,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = false;
             
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "namespace", "cool", "Class1.cls"))
                 };
                 exec.CompileInAnalysisMode = true;
@@ -636,10 +639,10 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), "all compile ok");
                 
-                Assert.AreEqual(3, exec.CompiledFiles[0].RequiredFiles.Count, "required files");
-                Assert.AreEqual(true, exec.CompiledFiles[0].RequiredFiles.ToList().Exists(f => f.Equals(Path.Combine(TestFolder, "includes", "analysefilesfirst.i"))), "1");
-                Assert.AreEqual(true, exec.CompiledFiles[0].RequiredFiles.ToList().Exists(f => f.Equals(Path.Combine(TestFolder, "analysefilessecond.i"))), "1");
-                Assert.AreEqual(true, exec.CompiledFiles[0].RequiredFiles.ToList().Exists(f => f.Equals(Path.Combine(TestFolder, "namespace", "cool", "Class2.cls"))), "1");
+                Assert.AreEqual(3, exec.CompiledFiles.ElementAt(0).RequiredFiles.Count, "required files");
+                Assert.AreEqual(true, exec.CompiledFiles.ElementAt(0).RequiredFiles.ToList().Exists(f => f.Equals(Path.Combine(TestFolder, "includes", "analysefilesfirst.i"))), "1");
+                Assert.AreEqual(true, exec.CompiledFiles.ElementAt(0).RequiredFiles.ToList().Exists(f => f.Equals(Path.Combine(TestFolder, "analysefilessecond.i"))), "1");
+                Assert.AreEqual(true, exec.CompiledFiles.ElementAt(0).RequiredFiles.ToList().Exists(f => f.Equals(Path.Combine(TestFolder, "namespace", "cool", "Class2.cls"))), "1");
             }
         }
         
@@ -708,7 +711,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             };
             
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "analyserefdb.p"))
                 };
                 exec.CompileUseXmlXref = true;
@@ -718,10 +721,10 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForExecutionEnd();
                 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed procedure : {string.Join("\n", exec.HandledExceptions)}");
-                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all procedures compile ok : {string.Join(",", exec.CompiledFiles[0].CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
+                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all procedures compile ok : {string.Join(",", exec.CompiledFiles.ElementAt(0).CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
                 
-                Assert.AreEqual(references, string.Join(",", exec.CompiledFiles[0].RequiredDatabaseReferences.Select(r => r.QualifiedName)), "procedure ref");
-                Assert.IsTrue(exec.CompiledFiles[0].RequiredDatabaseReferences.Where(r => r is UoeDatabaseReferenceTable).Cast<UoeDatabaseReferenceTable>().All(r => !string.IsNullOrEmpty(r.Crc)));
+                Assert.AreEqual(references, string.Join(",", exec.CompiledFiles.ElementAt(0).RequiredDatabaseReferences.Select(r => r.QualifiedName)), "procedure ref");
+                Assert.IsTrue(exec.CompiledFiles.ElementAt(0).RequiredDatabaseReferences.Where(r => r is UoeDatabaseReferenceTable).Cast<UoeDatabaseReferenceTable>().All(r => !string.IsNullOrEmpty(r.Crc)));
             }
         }
         
@@ -778,7 +781,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             };
             
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "namespace", "cool", "Class1.cls"))
                 };
                 exec.CompileUseXmlXref = true;
@@ -788,10 +791,10 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForExecutionEnd();
                 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
-                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all compile ok : {string.Join(",", exec.CompiledFiles[0].CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
+                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all compile ok : {string.Join(",", exec.CompiledFiles.ElementAt(0).CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
                 
-                Assert.AreEqual(references, string.Join(",", exec.CompiledFiles[0].RequiredDatabaseReferences.Select(r => r.QualifiedName)), "ref");
-                Assert.IsTrue(exec.CompiledFiles[0].RequiredDatabaseReferences.Where(r => r is UoeDatabaseReferenceTable).Cast<UoeDatabaseReferenceTable>().All(r => !string.IsNullOrEmpty(r.Crc)));
+                Assert.AreEqual(references, string.Join(",", exec.CompiledFiles.ElementAt(0).RequiredDatabaseReferences.Select(r => r.QualifiedName)), "ref");
+                Assert.IsTrue(exec.CompiledFiles.ElementAt(0).RequiredDatabaseReferences.Where(r => r is UoeDatabaseReferenceTable).Cast<UoeDatabaseReferenceTable>().All(r => !string.IsNullOrEmpty(r.Crc)));
             }
         }
         
@@ -803,16 +806,19 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 return;
             }
             
-            File.WriteAllText(Path.Combine(TestFolder, "test_events.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "test_events1.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "test_events2.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "test_events3.p"), @"QUIT.");
+            File.WriteAllText(Path.Combine(TestFolder, "test_events4.p"), @"QUIT.");
             
             // when it goes ok
             env.UseProgressCharacterMode = true;
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events.p"))
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events1.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events2.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events3.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events4.p"))
                 };
                 exec.OnExecutionEnd += execution => _iOeExecutionTestEvents++;
                 exec.OnExecutionOk += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 2;
@@ -822,17 +828,18 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForExecutionEnd();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual(3, _iOeExecutionTestEvents);
+                
             }
             
             // when it goes wrong
             env.UseProgressCharacterMode = true;
             env.ProExeCommandLineParameters = "oups i did it again";
             using (var exec = GetOeExecutionCompile(env)) {
-                exec.FilesToCompile = new List<UoeFileToCompile> {
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events.p"))
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events1.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events2.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events3.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_events4.p"))
                 };
                 exec.OnExecutionEnd += execution => _iOeExecutionTestEvents++;
                 exec.OnExecutionOk += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 2;
@@ -845,8 +852,6 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             
         }
-        
-        private int _iOeExecutionTestKilledEvents;
         
         protected bool GetEnvExecution(out UoeExecutionEnv env) {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {

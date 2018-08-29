@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
@@ -71,31 +72,33 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;
             }
-            
-            File.WriteAllText(Path.Combine(TestFolder, "test_stop_ok.p"), @"QUIT.");
+
+            for (int i = 1; i <= 15; i++) {
+                File.WriteAllText(Path.Combine(TestFolder, $"test_stop_ok{i}.p"), @"QUIT.");
+            }
             File.WriteAllText(Path.Combine(TestFolder, "test_stop_error.p"), @"derp.");
             env.UseProgressCharacterMode = true;
             using (var exec = GetOeExecutionCompile(env) as UoeExecutionParallelCompile) {
                 Assert.IsNotNull(exec);
                 exec.StopOnCompilationError = true;
                 exec.MaxNumberOfProcesses = 20;
-                exec.FilesToCompile = new List<UoeFileToCompile> {
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok1.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok2.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok3.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok4.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok5.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok6.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok7.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok8.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok9.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok10.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok11.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok12.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_error.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok.p"))
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok13.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok14.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok15.p"))
                 };
                 exec.Start();
                 exec.WaitForExecutionEnd();
@@ -110,28 +113,30 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 return;
             }
             
-            File.WriteAllText(Path.Combine(TestFolder, "test_start_fail_proc.p"), @"QUIT.");
+            for (int i = 1; i <= 15; i++) {
+                File.WriteAllText(Path.Combine(TestFolder, $"test_start_fail_proc{i}.p"), @"QUIT.");
+            }
             env.UseProgressCharacterMode = true;
             using (var exec = GetOeExecutionCompile(env) as UoeExecutionParallelCompile) {
                 Assert.IsNotNull(exec);
                 exec.MaxNumberOfProcesses = 8;
-                exec.FilesToCompile = new List<UoeFileToCompile> {
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
+                exec.FilesToCompile = new FileList<UoeFileToCompile> {
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc1.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc2.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc3.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc_does_not_exist.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc.p"))
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc4.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc5.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc6.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc7.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc8.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc9.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc10.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc11.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc12.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc13.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc14.p")),
+                    new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc15.p"))
                 };
                 try {
                     exec.Start();
@@ -150,31 +155,19 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 return;
             }
             
-            File.WriteAllText(Path.Combine(TestFolder, "test_nb_proc.p"), @"QUIT.");
+            for (int i = 1; i <= 15; i++) {
+                File.WriteAllText(Path.Combine(TestFolder, $"test_nb_proc{i}.p"), @"QUIT.");
+            }
             
             // when it goes ok
             env.UseProgressCharacterMode = true;
             using (var exec = GetOeExecutionCompile(env) as UoeExecutionParallelCompile) {
                 Assert.IsNotNull(exec);
                 exec.MaxNumberOfProcesses = 8;
-                exec.FilesToCompile = new List<UoeFileToCompile> {
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p")),
-                    new UoeFileToCompile(Path.Combine(TestFolder, "test_nb_proc.p"))
-                };
+                exec.FilesToCompile = new FileList<UoeFileToCompile>();
+                for (int i = 1; i <= 15; i++) {
+                    exec.FilesToCompile.Add(new UoeFileToCompile(Path.Combine(TestFolder, $"test_nb_proc{i}.p")));
+                }
                 exec.Start();
                 exec.WaitForExecutionEnd();
                 Assert.AreEqual(8, exec.TotalNumberOfProcesses);

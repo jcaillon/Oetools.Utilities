@@ -18,7 +18,6 @@
 // ========================================================================
 #endregion
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -110,17 +109,17 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// List of the files to compile / run / prolint
         /// </summary>
-        public List<UoeFileToCompile> FilesToCompile { get; set; }
+        public FileList<UoeFileToCompile> FilesToCompile { get; set; }
 
         /// <summary>
         /// List of the compiled files
         /// </summary>
-        public List<UoeCompiledFile> CompiledFiles { get; } = new List<UoeCompiledFile>();
-        
+        public FileList<UoeCompiledFile> CompiledFiles { get; } = new FileList<UoeCompiledFile>();
+
         /// <summary>
         /// Total number of files to compile
         /// </summary>
-        public int NumberOfFilesToCompile => FilesToCompile?.Count ?? 0;
+        public int NumberOfFilesToCompile => FilesToCompile.Count;
 
         /// <summary>
         /// Number of files already treated
@@ -161,7 +160,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected override void CheckParameters() {
             base.CheckParameters();
-            if (FilesToCompile == null || FilesToCompile.Count == 0) {
+            if (FilesToCompile == null || !FilesToCompile.Any()) {
                 throw new UoeExecutionParametersException("No files specified");
             }
             if ((CompileInAnalysisMode || AnalysisModeSimplifiedDatabaseReferences) && !Env.IsProVersionHigherOrEqualTo(new Version(10, 2, 0))) {
@@ -177,8 +176,8 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             // for each file of the list
             var filesListcontent = new StringBuilder();
+
             var count = 0;
-            
             foreach (var file in FilesToCompile) {
                 if (!File.Exists(file.CompiledPath)) {
                     throw new UoeExecutionParametersException($"Couldn\'t find the source file : {file.CompiledPath.PrettyQuote()}");
@@ -188,10 +187,12 @@ namespace Oetools.Utilities.Openedge.Execution {
                 var baseFileName = Path.GetFileNameWithoutExtension(file.CompiledPath);
 
                 var compiledFile = new UoeCompiledFile(file);
-                CompiledFiles.Add(compiledFile);
+                if (!CompiledFiles.TryAdd(compiledFile)) {
+                    continue;
+                }
                 
                 // get the output directory that will be use to generate the .r (and listing debug-list...)
-                if (Path.GetExtension(file.SourcePath ?? "").Equals(UoeConstants.ExtCls)) {
+                if (Path.GetExtension(file.SourceFilePath ?? "").Equals(UoeConstants.ExtCls)) {
                     // for *.cls files, as many *.r files are generated, we need to compile in a temp directory
                     // we need to know which *.r files were generated for each input file
                     // so each file gets his own sub tempDir

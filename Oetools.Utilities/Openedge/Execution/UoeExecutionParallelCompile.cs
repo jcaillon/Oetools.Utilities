@@ -17,10 +17,12 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Openedge.Execution {
@@ -75,24 +77,26 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected override void StartInternal() {
             CheckParameters();
-
-            // now we do a list of those files, sorted from the biggest (in size) to the smallest file
-            FilesToCompile.Sort((file1, file2) => file2.FileSize.CompareTo(file1.FileSize));
-
+            
             // ensure that each process will at least take in 10 files, starting a new process for 1 file to compile isn't efficient!
             var numberOfProcesses = Math.Min(MaxNumberOfProcesses, NumberOfFilesToCompile / MinimumNumberOfFilesPerProcess);
             numberOfProcesses = Math.Max(numberOfProcesses, 1);
 
-            var fileLists = new List<List<UoeFileToCompile>>();
+            var fileLists = new List<FileList<UoeFileToCompile>>();
             var currentProcess = 0;
-            foreach (var file in FilesToCompile) {
+            
+            // foreach, sorted from the biggest (in size) to the smallest file
+            foreach (var file in FilesToCompile.OrderByDescending(compile => compile.FileSize)) {
+                
                 // create a new process when needed
                 if (currentProcess >= fileLists.Count) {
-                    fileLists.Add(new List<UoeFileToCompile>());
+                    fileLists.Add(new FileList<UoeFileToCompile>());
                 }
 
                 // assign the file to the current process
-                fileLists[currentProcess].Add(file);
+                if (!fileLists[currentProcess].TryAdd(file)) {
+                    continue;
+                }
 
                 // we will assign the next file to the next process...
                 currentProcess++;
@@ -198,7 +202,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             Monitor.Enter(_lock);
             try {
                 if (obj is UoeExecutionCompile compilation) {
-                    CompiledFiles.AddRange(compilation.CompiledFiles);
+                    CompiledFiles.TryAddRange(compilation.CompiledFiles);
                 }        
             } catch (Exception e) {
                 HandledExceptions.Add(new UoeExecutionException("Error when checking the compilation results", e));

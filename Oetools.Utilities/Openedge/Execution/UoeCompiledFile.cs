@@ -30,7 +30,7 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// <summary>
     ///     This class represents a file thas been compiled
     /// </summary>
-    public class UoeCompiledFile {
+    public class UoeCompiledFile : IFileListItem {
         /// <summary>
         ///     The path to the source that has been compiled
         /// </summary>
@@ -119,7 +119,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         ///     Constructor
         /// </summary>
         public UoeCompiledFile(UoeFileToCompile fileToCompile) {
-            SourceFilePath = fileToCompile.SourcePath;
+            SourceFilePath = fileToCompile.SourceFilePath;
             CompiledFilePath = fileToCompile.CompiledPath;
             BaseFileName = Path.GetFileNameWithoutExtension(SourceFilePath);
         }

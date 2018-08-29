@@ -50,6 +50,24 @@ namespace Oetools.Utilities.Test.Lib {
         [TestMethod]
         [DataRow(null, null, true, DisplayName = "null")]
         [DataRow(@"", @"", true, DisplayName = "empty")]
+        [DataRow(@"a", @"", false)]
+        [DataRow(@"a", @"b", false)]
+        [DataRow(@"a", @"a", true)]
+        [DataRow(@"aa", @"ab", false)]
+        [DataRow(@"aa", @"aa", true)]
+        [DataRow(@"aaa", @"aba", false)]
+        [DataRow(@"aaa", @"aaa", true)]
+        [DataRow(@"file", @"file2", false)]
+        [DataRow(@"file", @"file", true)]
+        [DataRow(@"d:\folder\file.ext", @"c:\folder\file.ext", false)]
+        [DataRow(@"c:\folder\file.ext", @"c:\folder\file.ext", true)]
+        public void PathEquals(string path1, string path2, bool expect) {
+            Assert.AreEqual(expect, path1.PathEquals(path2), $"{path1 ?? "null"} vs {path2 ?? "null"}");
+        }
+        
+        [TestMethod]
+        [DataRow(null, null, true, DisplayName = "null")]
+        [DataRow(@"", @"", true, DisplayName = "empty")]
         [DataRow(@"\\server\folder\file", @"C:\", true)]
         [DataRow(@"d:\zefef", @"/bouh", true)]
         [DataRow(@"d:\zefef", @"c:\folder", false)]
@@ -106,14 +124,14 @@ namespace Oetools.Utilities.Test.Lib {
         [TestMethod]
         [DataRow(null, false, DisplayName = "null")]
         [DataRow(@"", false, DisplayName = "empty")]
-        [DataRow(@"zf|ezefdze", false, DisplayName = "Invalid char")]
+        [DataRow(@"zf""ezefdze", false, DisplayName = "Invalid char")]
         [DataRow(@"<<000", false, DisplayName = "unbalanced <<")]
         [DataRow(@">>00000", false, DisplayName = "too many >>")]
         [DataRow(@"C:\windows\**\?*", true)]
         [DataRow(@"/linux/**/?*", true)]
         public void ValidatePathWildCard_Test(string pattern, bool expectOk) {
             if (!expectOk) {
-                Assert.ThrowsException<Exception>(() => Utils.ValidatePathWildCard(pattern));
+                Assert.ThrowsException<Exception>(() => Utils.ValidatePathWildCard(pattern), pattern ?? "null");
             } else {
                 Utils.ValidatePathWildCard(pattern);
             }

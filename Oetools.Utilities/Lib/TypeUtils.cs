@@ -73,6 +73,16 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
+        /// Returns a new object that have the same public property values
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static T GetDeepCopy<T>(this T obj) {
+            return (T) DeepCopyPublicProperties(obj, typeof(T));
+        }
+        
+        /// <summary>
         /// Copies all the public properties of one object to another
         /// </summary>
         /// <remarks>

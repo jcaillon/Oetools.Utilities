@@ -17,9 +17,10 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System.Collections.Generic;
+
 using System.IO;
 using System.Linq;
+using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
@@ -27,7 +28,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
     internal class UoeExecutionRun : UoeExecutionHandleCompilation {
 
-        public bool RunSilently { get; set; } = false;
+        public bool RunSilently { get; set; }
         
         public string FullClientLogPath { get; set; }
 
@@ -43,7 +44,9 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (string.IsNullOrEmpty(_filePathToRun)) {
                 throw new UoeExecutionParametersException("The path of the file to run is empty or null");
             }
-            FilesToCompile = new List<UoeFileToCompile> { new UoeFileToCompile(_filePathToRun) };
+            FilesToCompile = new FileList<UoeFileToCompile> {
+                new UoeFileToCompile(_filePathToRun)
+            };
             base.CheckParameters();
         }
 
@@ -51,7 +54,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected override void SetExecutionInfo() {
             base.SetExecutionInfo();
-            WorkingDirectory = WorkingDirectory ?? Path.GetDirectoryName(FilesToCompile.First().SourcePath);
+            WorkingDirectory = WorkingDirectory ?? Path.GetDirectoryName(FilesToCompile.First().SourceFilePath);
             
             SetPreprocessedVar("RunProgramMode", true.ToString());
             SetPreprocessedVar("RunFullClientLogPath", FullClientLogPath.ProPreProcStringify());

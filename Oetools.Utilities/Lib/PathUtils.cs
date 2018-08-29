@@ -25,6 +25,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Xml;
 using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
@@ -33,6 +34,37 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     public static partial class Utils {
 
+        public static FileList<T> ToFileList<T>(this IEnumerable<T> list) where T : IFileListItem {
+            var output = new FileList<T>();
+            output.TryAddRange(list);
+            return output;
+        }
+        
+        /// <summary>
+        /// Returns true if two path are equals
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="path2"></param>
+        /// <returns></returns>
+        public static bool PathEquals(this string path, string path2) {
+            if (path == null || path2 == null) {
+                return path == null && path2 == null;
+            }
+            if (path.Length != path2.Length) {
+                return false;
+            }
+            var iFromStart = 0;
+            var iFromEnd = path.Length - 1;
+            while (iFromStart < iFromEnd) {
+                if (path[iFromStart] != path2[iFromStart] || path[iFromEnd] != path2[iFromEnd]) {
+                    return false;
+                }
+                iFromStart++;
+                iFromEnd--;
+            }
+            return path.Length == 0 || path[iFromStart] == path2[iFromStart];
+        }
+        
         /// <summary>
         /// Test if two paths are on the same drive (for instance D:\folder and D:\file.ext are on the same drive D:),
         /// if we have no way of knowing (for instance, if 
@@ -230,7 +262,7 @@ namespace Oetools.Utilities.Lib {
             if (excludePatterns != null) {
                 excludeRegexes = excludePatterns.Select(s => new Regex(s)).ToList();
             }
-            var hiddenDirList = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            var hiddenDirList = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var folderStack = new Stack<string>();
             folderStack.Push(folderPath);
             while (folderStack.Count > 0) {
