@@ -74,8 +74,8 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         private void ReadExtractFile() {
             if (!string.IsNullOrEmpty(_databaseExtractFilePath) && File.Exists(_databaseExtractFilePath)) {
-                _tablesCrc = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
-                _sequences = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+                _tablesCrc = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                _sequences = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 using (var reader = new UoeExportReader(_databaseExtractFilePath, Encoding.Default)) {
                     string currentDatabaseName = null;
                     while (reader.ReadRecord(out List<string> record, out int _, true)) {

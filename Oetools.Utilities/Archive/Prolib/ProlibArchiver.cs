@@ -98,13 +98,13 @@ namespace Oetools.Utilities.Archive.Prolib {
                         });
                         
                         // for files containing a space, we don't have a choice, call extract for each...
-                        foreach (var file in subFolder.Value.Where(f => f.RelativePath.ContainsCi(" "))) {
+                        foreach (var file in subFolder.Value.Where(f => f.RelativePath.Contains(" "))) {
                             if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -create -nowarn -add {file.RelativePath.CliQuoter()}")) {
                                 progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.BatchOutput.ToString())));
                             }
                         }
 
-                        var remainingFiles = subFolder.Value.Where(f => !f.RelativePath.ContainsCi(" ")).ToList();
+                        var remainingFiles = subFolder.Value.Where(f => !f.RelativePath.Contains(" ")).ToList();
                         if (remainingFiles.Count > 0) {
                             // for the other files, we can use the -pf parameter
                             var pfContent = new StringBuilder();
@@ -196,18 +196,18 @@ namespace Oetools.Utilities.Archive.Prolib {
                 prolibExe.WorkingDirectory = extractionFolder;
 
                 // create the subfolders needed to extract each file
-                foreach (var folder in files.Select(f => Path.GetDirectoryName(f.RelativePathInArchive)).Distinct(StringComparer.CurrentCultureIgnoreCase)) {
+                foreach (var folder in files.Select(f => Path.GetDirectoryName(f.RelativePathInArchive)).Distinct(StringComparer.OrdinalIgnoreCase)) {
                     Directory.CreateDirectory(Path.Combine(extractionFolder, folder));
                 }
 
                 // for files containing a space, we don't have a choice, call extract for each...
-                foreach (var file in files.Where(deploy => deploy.RelativePathInArchive.ContainsCi(" "))) {
+                foreach (var file in files.Where(deploy => deploy.RelativePathInArchive.Contains(" "))) {
                     if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -extract {file.RelativePathInArchive.CliQuoter()}")) {
                         throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.BatchOutput.ToString()));
                     }
                 }
 
-                var remainingFiles = files.Where(deploy => !deploy.RelativePathInArchive.ContainsCi(" ")).ToList();
+                var remainingFiles = files.Where(deploy => !deploy.RelativePathInArchive.Contains(" ")).ToList();
                 if (remainingFiles.Count > 0) {
                     // for the other files, we can use the -pf parameter
                     var pfContent = new StringBuilder();

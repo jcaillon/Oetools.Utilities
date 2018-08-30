@@ -34,7 +34,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     The path to the source that has been compiled
         /// </summary>
-        public string SourceFilePath { get; }
+        public string FilePath { get; }
 
         /// <summary>
         /// The path of the file that actually needs to be compiled
@@ -119,9 +119,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         ///     Constructor
         /// </summary>
         public UoeCompiledFile(UoeFileToCompile fileToCompile) {
-            SourceFilePath = fileToCompile.SourceFilePath;
+            FilePath = fileToCompile.FilePath;
             CompiledFilePath = fileToCompile.CompiledPath;
-            BaseFileName = Path.GetFileNameWithoutExtension(SourceFilePath);
+            BaseFileName = Path.GetFileNameWithoutExtension(FilePath);
         }
 
         private bool _compilationResultsRead;
@@ -130,7 +130,6 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (_compilationResultsRead) {
                 return;
             }
-
             _compilationResultsRead = true;
             
             // make sure that the expected generated files are actually generated
@@ -206,7 +205,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         private void AddWarningIfFileDefinedButDoesNotExist(string path) {
             if (!string.IsNullOrEmpty(path) && !File.Exists(path)) {
                 (CompilationErrors ?? (CompilationErrors = new List<UoeCompilationProblem>())).Add(new UoeCompilationWarning {
-                    SourceFilePath = SourceFilePath,
+                    FilePath = FilePath,
                     Column = 1,
                     Line = 1,
                     ErrorNumber = 0,
@@ -223,11 +222,11 @@ namespace Oetools.Utilities.Openedge.Execution {
                         if (!Enum.TryParse(fields[2], true, out CompilationErrorLevel compilationErrorLevel))
                             compilationErrorLevel = CompilationErrorLevel.Error;
                         var problem = UoeCompilationProblem.New(compilationErrorLevel);
-                        problem.SourceFilePath = fields[1].Equals(CompiledFilePath) ? SourceFilePath : fields[1];
+                        problem.FilePath = fields[1].Equals(CompiledFilePath) ? FilePath : fields[1];
                         problem.Line = Math.Max(1, (int) fields[3].ConvertFromStr(typeof(int)));
                         problem.Column = Math.Max(1, (int) fields[4].ConvertFromStr(typeof(int)));
                         problem.ErrorNumber = Math.Max(0, (int) fields[5].ConvertFromStr(typeof(int)));
-                        problem.Message = fields[6].ProUnescapeString().Replace(CompiledFilePath, SourceFilePath).Trim();
+                        problem.Message = fields[6].ProUnescapeString().Replace(CompiledFilePath, FilePath).Trim();
                         (CompilationErrors ?? (CompilationErrors = new List<UoeCompilationProblem>())).Add(problem);
                     }
                 }, Encoding.Default);
@@ -237,7 +236,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         private void CorrectRcodePathForClassFiles() {
             
             // this only concerns cls files
-            if (SourceFilePath.EndsWith(UoeConstants.ExtCls, StringComparison.CurrentCultureIgnoreCase)) {
+            if (FilePath.EndsWith(UoeConstants.ExtCls, StringComparison.OrdinalIgnoreCase)) {
                 // Handle the case of .cls files, for which several .r code are compiled
                 // if the file we compiled implements/inherits from another class, there is more than 1 *.r file generated.
                 // Moreover, they are generated in their respective package folders
@@ -269,10 +268,10 @@ namespace Oetools.Utilities.Openedge.Execution {
                 RequiredFiles = UoeUtilities.GetReferencedFilesFromFileIdLog(CompilationFileIdLogFilePath, Encoding.Default);
                 
                 RequiredFiles.RemoveWhere(f => 
-                    f.EqualsCi(CompiledFilePath) ||
-                    f.EndsWith(".r", StringComparison.CurrentCultureIgnoreCase) ||
-                    f.EndsWith(".pl", StringComparison.CurrentCultureIgnoreCase) ||
-                    !String.IsNullOrEmpty(CompilationXrefFilePath) && f.EqualsCi(CompilationXrefFilePath));
+                    f.PathEquals(CompiledFilePath) ||
+                    f.EndsWith(".r", StringComparison.OrdinalIgnoreCase) ||
+                    f.EndsWith(".pl", StringComparison.OrdinalIgnoreCase) ||
+                    !String.IsNullOrEmpty(CompilationXrefFilePath) && f.PathEquals(CompilationXrefFilePath));
                 
             }
         }

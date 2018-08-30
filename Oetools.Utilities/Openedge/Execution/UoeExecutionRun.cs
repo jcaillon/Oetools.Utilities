@@ -54,7 +54,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected override void SetExecutionInfo() {
             base.SetExecutionInfo();
-            WorkingDirectory = WorkingDirectory ?? Path.GetDirectoryName(FilesToCompile.First().SourceFilePath);
+            WorkingDirectory = WorkingDirectory ?? Path.GetDirectoryName(FilesToCompile.First().FilePath);
             
             SetPreprocessedVar("RunProgramMode", true.ToString());
             SetPreprocessedVar("RunFullClientLogPath", FullClientLogPath.ProPreProcStringify());

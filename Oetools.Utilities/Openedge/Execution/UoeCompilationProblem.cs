@@ -42,7 +42,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Path of the file in which we found the error
         /// (can be different from the actual compiled file if the error is in an include)
         /// </summary>
-        public string SourceFilePath { get; set; }
+        public string FilePath { get; set; }
         
         /// <summary>
         /// Line starts at 1

@@ -53,7 +53,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
         private ProcessIo _lastUsedProcess;
 
-        private Dictionary<string, ProcessIo> _processIos = new Dictionary<string, ProcessIo>(StringComparer.CurrentCultureIgnoreCase);
+        private Dictionary<string, ProcessIo> _processIos = new Dictionary<string, ProcessIo>();
 
         /// <summary>
         /// Returns the path to _dbutil (or null if not found in the dlc folder)
@@ -216,7 +216,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}") || !dbUtil.BatchOutput.ToString().ContainsCi("(1365)")) {
+            if (!dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}") || !dbUtil.BatchOutput.ToString().Contains("(1365)")) {
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
 
@@ -255,7 +255,7 @@ namespace Oetools.Utilities.Openedge.Database {
            
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"prostrct repair {dbPhysicalName}") || !dbUtil.BatchOutput.ToString().ContainsCi("(13485)")) {
+            if (!dbUtil.TryExecute($"prostrct repair {dbPhysicalName}") || !dbUtil.BatchOutput.ToString().Contains("(13485)")) {
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
 
@@ -381,9 +381,9 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var output = proUtil.BatchOutput.ToString();
             switch (output) {
-                case string _ when output.ContainsCi("(276)"):
+                case string _ when output.Contains("(276)"):
                     return DatabaseBusyMode.MultiUser;
-                case string _ when output.ContainsCi("(263)"):
+                case string _ when output.Contains("(263)"):
                     return DatabaseBusyMode.SingleUser;
                 default:
                     return DatabaseBusyMode.NotBusy;
@@ -539,7 +539,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         public static void KillAllMproSrv() {
             Process.GetProcesses()
-                .Where(p => p.ProcessName.ContainsCi("_mprosrv"))
+                .Where(p => p.ProcessName.Contains("_mprosrv"))
                 .ToList()
                 .ForEach(p => p.Kill());
         }

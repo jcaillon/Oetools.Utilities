@@ -32,14 +32,14 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// The path to the source file
         /// </summary>
-        public string SourceFilePath { get; set; }
+        public string FilePath { get; set; }
 
         /// <summary>
         /// The path of the file that actually needs to be compiled
         /// (can be different from sourcepath if we edited it without saving it for instance)
         /// </summary>
         public string CompiledPath {
-            get => _compilePath ?? SourceFilePath;
+            get => _compilePath ?? FilePath;
             set => _compilePath = value;
         }
 
@@ -55,7 +55,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         public long FileSize { get; set; }
 
         public UoeFileToCompile(string sourceFilePath) {
-            SourceFilePath = sourceFilePath;
+            FilePath = sourceFilePath;
         }
     }
 

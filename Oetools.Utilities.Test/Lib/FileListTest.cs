@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Test.Lib {
@@ -33,13 +34,13 @@ namespace Oetools.Utilities.Test.Lib {
         [TestMethod]
         public void Test_performances() {
             List<string> files = new List<string>();
-            for (int i = 0; i < 10000; i++) {
+            for (int i = 0; i < 1000; i++) {
                 files.Add(Path.Combine("C:\\folder\\subfolder\\again\\even\\more\\subfolder\\to\\makeit\\super\\long\\and\\realistic", $"file{i}.ext"));
             }
-            for (int i = 0; i < 10000; i++) {
+            for (int i = 0; i < 1000; i++) {
                 files.Add(Path.Combine("D:\\folder\\subfolder\\again\\even\\more\\subfolder\\to\\makeit\\super\\long\\and\\realistic", $"file{i}.ext"));
             }
-            for (int i = 0; i < 10000; i++) {
+            for (int i = 0; i < 1000; i++) {
                 files.Add(Path.Combine("C:\\folder\\subfolder\\again\\even\\THIS FOLDER CHANGES\\subfolder\\to\\makeit\\super\\long\\and\\realistic", $"file{i}.ext"));
             }
 
@@ -48,11 +49,19 @@ namespace Oetools.Utilities.Test.Lib {
                 fileList.Add(new UoeFileToCompile(file));
             }
             
-            Console.WriteLine("FileList done in {0} ms", TestHelper.Time(() => {
-                foreach (var file in files) {
-                    string found = null;
-                    found = fileList[file].SourceFilePath;
-                    Assert.AreEqual(file, found);
+            Console.WriteLine("PathEquals done in {0} ms", TestHelper.Time(() => {
+                foreach (var file1 in files) {
+                    foreach (var file2 in files) {
+                        Assert.IsNotNull(file1.PathEquals(file2));
+                    }
+                }
+            }).Milliseconds.ToString());
+            
+            Console.WriteLine("Equals done in {0} ms", TestHelper.Time(() => {
+                foreach (var file1 in files) {
+                    foreach (var file2 in files) {
+                        Assert.IsNotNull(file1.EqualsCi(file2));
+                    }
                 }
             }).Milliseconds.ToString());
             
@@ -65,7 +74,7 @@ namespace Oetools.Utilities.Test.Lib {
                 foreach (var file in files) {
                     string found = null;
                     if (dic.ContainsKey(file)) {
-                        found = dic[file].SourceFilePath;
+                        found = dic[file].FilePath;
                     }
                     Assert.AreEqual(file, found);
                 }
@@ -94,19 +103,19 @@ namespace Oetools.Utilities.Test.Lib {
 
             var j = 0;
             foreach (var compile in fileList) {
-                Assert.AreEqual(j.ToString(), compile.SourceFilePath);
+                Assert.AreEqual(j.ToString(), compile.FilePath);
                 j++;
             }
             
             Assert.AreEqual(1000, fileList.Count);
             
             for (int i = 0; i < 1000; i++) {
-                Assert.AreEqual(i.ToString(), fileList[i.ToString()].SourceFilePath);
+                Assert.AreEqual(i.ToString(), fileList[i.ToString()].FilePath);
             }
             
             j = 0;
             foreach (var compile in fileList) {
-                Assert.AreEqual(j.ToString(), fileList[compile].SourceFilePath);
+                Assert.AreEqual(j.ToString(), fileList[compile].FilePath);
                 j++;
             }
             

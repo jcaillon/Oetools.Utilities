@@ -21,6 +21,6 @@
 namespace Oetools.Utilities.Lib {
     public interface IFileListItem {
         
-        string SourceFilePath { get; }
+        string FilePath { get; }
     }
 }

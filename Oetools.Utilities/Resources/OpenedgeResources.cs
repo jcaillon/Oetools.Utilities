@@ -17,7 +17,7 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System;
+
 using System.Collections.Generic;
 using System.Text;
 
@@ -29,7 +29,7 @@ namespace Oetools.Utilities.Resources {
             return Resources.GetBytesFromResource($"{nameof(Oetools)}.{nameof(Utilities)}.{nameof(Resources)}.Openedge.{fileName}");
         }
 
-        private static Dictionary<string, string> _openedgeAsString = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
+        private static Dictionary<string, string> _openedgeAsString = new Dictionary<string, string>();
         
         /// <summary>
         /// Returns the openedge program/file as a string from the resources

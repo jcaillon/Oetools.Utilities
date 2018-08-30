@@ -192,7 +192,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 }
                 
                 // get the output directory that will be use to generate the .r (and listing debug-list...)
-                if (Path.GetExtension(file.SourceFilePath ?? "").Equals(UoeConstants.ExtCls)) {
+                if (Path.GetExtension(file.FilePath ?? "").Equals(UoeConstants.ExtCls)) {
                     // for *.cls files, as many *.r files are generated, we need to compile in a temp directory
                     // we need to know which *.r files were generated for each input file
                     // so each file gets his own sub tempDir
@@ -307,7 +307,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         if (HandledExceptions[i] is UoeExecutionOpenedgeException oeException) {
                             if (oeException.ErrorNumber == UoeConstants.StopOnCompilationReturnErrorCode) {
                                 HandledExceptions[i] = new UoeExecutionCompilationStoppedException {
-                                    CompilationProblems = CompiledFiles.Where(f => f.CompilationErrors != null).SelectMany(f => f.CompilationErrors).Where(e => StopOnCompilationError ? e is UoeCompilationError : e is UoeCompilationWarning).ToList(),
+                                    CompilationProblems = CompiledFiles.CopyWhere(f => f.CompilationErrors != null).SelectMany(f => f.CompilationErrors).Where(e => StopOnCompilationError ? e is UoeCompilationError : e is UoeCompilationWarning).ToList(),
                                     StopOnWarning = StopOnCompilationWarning
                                 };
                             }

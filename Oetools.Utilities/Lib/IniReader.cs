@@ -47,10 +47,10 @@ namespace Oetools.Utilities.Lib {
                     return;
                 if (line.StartsWith("[") && line.EndsWith("]")) {
                     currentSection = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
-                    _ini[line.Substring(1, line.LastIndexOf("]", StringComparison.CurrentCultureIgnoreCase) - 1)] = currentSection;
+                    _ini[line.Substring(1, line.LastIndexOf("]", StringComparison.Ordinal) - 1)] = currentSection;
                     return;
                 }
-                var idx = line.IndexOf("=", StringComparison.CurrentCultureIgnoreCase);
+                var idx = line.IndexOf("=", StringComparison.Ordinal);
                 if (idx == -1)
                     currentSection[line] = "";
                 else

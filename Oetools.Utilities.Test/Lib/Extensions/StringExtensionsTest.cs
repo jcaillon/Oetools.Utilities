@@ -19,7 +19,6 @@
 #endregion
 using System;
 using System.Text;
-using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
 

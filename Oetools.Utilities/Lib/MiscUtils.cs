@@ -17,6 +17,7 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System.Runtime.InteropServices;
 
 namespace Oetools.Utilities.Lib {

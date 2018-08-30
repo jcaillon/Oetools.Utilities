@@ -19,7 +19,6 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Oetools.Utilities.Openedge.Execution.Exceptions {
     public class UoeExecutionCompilationStoppedException : UoeExecutionOpenedgeException {

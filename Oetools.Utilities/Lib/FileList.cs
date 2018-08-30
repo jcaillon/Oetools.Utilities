@@ -25,6 +25,11 @@ using System.Linq;
 
 namespace Oetools.Utilities.Lib {
 
+    /// <summary>
+    /// Class to handle a list of unique files
+    /// The point of this implementation is to quickly find out if a file exists in this list
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class FileList<T> : IEnumerable<T> where T : IFileListItem {
         
         private Dictionary<string, T> _dic = new Dictionary<string, T>(Utils.IsRuntimeWindowsPlatform ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
@@ -44,8 +49,8 @@ namespace Oetools.Utilities.Lib {
         }
         
         public T this[T file] {
-            get => this[file?.SourceFilePath];
-            set => this[file?.SourceFilePath] = value;
+            get => this[file?.FilePath];
+            set => this[file?.FilePath] = value;
         }
         
         public IEnumerator<T> GetEnumerator() {
@@ -57,34 +62,37 @@ namespace Oetools.Utilities.Lib {
         }
 
         public void Add(T item) {
-            if (item?.SourceFilePath == null) {
+            if (item?.FilePath == null) {
                 throw new ArgumentNullException(nameof(item));
             }
-            _dic.Add(item.SourceFilePath, item);
+            _dic.Add(item.FilePath, item);
         }
 
         public void AddRange(IEnumerable<T> list) {
             if (list != null) {
-                foreach (var item in list.Where(item => item?.SourceFilePath != null)) {
-                    _dic.Add(item.SourceFilePath, item);
+                foreach (var item in list.Where(item => item?.FilePath != null)) {
+                    _dic.Add(item.FilePath, item);
                 }
             }
         }
 
-        public void TryAddRange(IEnumerable<T> list) {
+        public int TryAddRange(IEnumerable<T> list) {
+            int nbAdded = 0;
             if (list != null) {
-                foreach (var item in list.Where(item => item?.SourceFilePath != null && !_dic.ContainsKey(item.SourceFilePath))) {
-                    _dic.Add(item.SourceFilePath, item);
+                foreach (var item in list.Where(item => item?.FilePath != null && !_dic.ContainsKey(item.FilePath))) {
+                    _dic.Add(item.FilePath, item);
+                    nbAdded++;
                 }
             }
+            return nbAdded;
         }
 
         public bool TryAdd(T item) {
-            if (item?.SourceFilePath == null) {
+            if (item?.FilePath == null) {
                 throw new ArgumentNullException(nameof(item));
             }
-            if (!_dic.ContainsKey(item.SourceFilePath)) {
-                _dic.Add(item.SourceFilePath, item);
+            if (!_dic.ContainsKey(item.FilePath)) {
+                _dic.Add(item.FilePath, item);
                 return true;
             }
             return false;
@@ -95,7 +103,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         public bool Contains(T item) {
-            return Contains(item?.SourceFilePath);
+            return Contains(item?.FilePath);
         }
 
         public bool Contains(string path) {
@@ -106,7 +114,7 @@ namespace Oetools.Utilities.Lib {
             if (item == null) {
                 throw new ArgumentNullException(nameof(item));
             }
-            return _dic.Remove(item.SourceFilePath);
+            return _dic.Remove(item.FilePath);
         }
 
         public int Count => _dic.Count;
@@ -119,7 +127,12 @@ namespace Oetools.Utilities.Lib {
             return output;
         }
         
-        public FileList<T> Where(Func<T, bool> selector) {
+        /// <summary>
+        /// Returns of a copy of this list, with only the items selected
+        /// </summary>
+        /// <param name="selector"></param>
+        /// <returns></returns>
+        public FileList<T> CopyWhere(Func<T, bool> selector) {
             var output = new FileList<T>();
             foreach (var item in this) {
                 if (selector(item)) {

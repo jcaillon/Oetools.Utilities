@@ -25,7 +25,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
-using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Openedge {
@@ -44,7 +43,7 @@ namespace Oetools.Utilities.Openedge {
             // we want to read this kind of line :
             // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID   Open E:\Common\CommonObj.i ID=33
             // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID   Open E:\Common space\CommonObji.cls ID=33
-            var references = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            var references = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             using (var reader = new UoeExportReader(filePath, encoding ?? Encoding.Default)) {
                 while (reader.MoveToNextRecordField()) {
                     if (reader.RecordFieldNumber != 5 || reader.RecordValue != "FILEID") {
@@ -86,7 +85,7 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="encoding"></param>
         /// <returns></returns>
         public static HashSet<string> GetDatabaseReferencesFromXrefFile(string filePath, Encoding encoding = null) {
-            var references = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            var references = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             using (var reader = new UoeExportReader(filePath, encoding ?? Encoding.Default)) {
                 while (reader.MoveToNextRecordField()) {
                     if (reader.RecordFieldNumber != 3) {
@@ -212,7 +211,7 @@ namespace Oetools.Utilities.Openedge {
                     "Program/Execution",
                     "Syntax"
                 };
-                var cat = categories.FirstOrDefault(c => c.StartsWith(Category, StringComparison.CurrentCultureIgnoreCase));
+                var cat = categories.FirstOrDefault(c => c.StartsWith(Category, StringComparison.OrdinalIgnoreCase));
                 return string.Format("{0}{1}{2}", cat != null ? $"({cat}) " : "", Description, KnowledgeBase.Length > 2 ? $" ({KnowledgeBase.StripQuotes()})" : "");
             }
         }

@@ -31,7 +31,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Oetools.Utilities.Lib;
-using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Ftp {
     /*
@@ -1003,11 +1002,11 @@ namespace Oetools.Utilities.Ftp {
                     } catch (FtpCommandException) {
                         // ignored, it means the folder doesn't exist
                     }
-                    endPos = curDir.LastIndexOf("/", StringComparison.CurrentCultureIgnoreCase);
+                    endPos = curDir.LastIndexOf("/", StringComparison.Ordinal);
                 } while (endPos > -1);
                 if (!curDir.Equals(remoteDirName)) {
                     do {
-                        endPos = remoteDirName.IndexOf("/", endPos + 1, StringComparison.CurrentCultureIgnoreCase);
+                        endPos = remoteDirName.IndexOf("/", endPos + 1, StringComparison.Ordinal);
                         if (endPos > -1) {
                             curDir = remoteDirName.Substring(0, endPos);
                             MkdCmd(curDir);

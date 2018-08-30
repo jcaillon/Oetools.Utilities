@@ -25,7 +25,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Xml;
 using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
@@ -50,19 +49,7 @@ namespace Oetools.Utilities.Lib {
             if (path == null || path2 == null) {
                 return path == null && path2 == null;
             }
-            if (path.Length != path2.Length) {
-                return false;
-            }
-            var iFromStart = 0;
-            var iFromEnd = path.Length - 1;
-            while (iFromStart < iFromEnd) {
-                if (path[iFromStart] != path2[iFromStart] || path[iFromEnd] != path2[iFromEnd]) {
-                    return false;
-                }
-                iFromStart++;
-                iFromEnd--;
-            }
-            return path.Length == 0 || path[iFromStart] == path2[iFromStart];
+            return path.Equals(path2, StringComparison.OrdinalIgnoreCase);
         }
         
         /// <summary>

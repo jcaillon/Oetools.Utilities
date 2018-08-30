@@ -75,7 +75,7 @@ namespace Oetools.Utilities.Lib.Extension {
             if (s == null || comp == null) {
                 return s == null && comp == null;
             }
-            return s.Equals(comp, StringComparison.CurrentCultureIgnoreCase);
+            return s.Equals(comp, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -83,9 +83,10 @@ namespace Oetools.Utilities.Lib.Extension {
         /// </summary>
         /// <param name="source"></param>
         /// <param name="toCheck"></param>
+        /// <param name="comparison"></param>
         /// <returns></returns>
-        public static bool ContainsCi(this string source, string toCheck) {
-            return source.IndexOf(toCheck, StringComparison.CurrentCultureIgnoreCase) >= 0;
+        public static bool ContainsCi(this string source, string toCheck, StringComparison comparison = StringComparison.Ordinal) {
+            return source.IndexOf(toCheck, comparison) >= 0;
         }
 
         /// <summary>
