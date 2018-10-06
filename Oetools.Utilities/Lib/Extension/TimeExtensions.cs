@@ -26,18 +26,14 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <summary>
         /// Get the time elapsed in a human readable format
         /// </summary>
-        public static string ConvertToHumanTime(this TimeSpan? tn) {
-            if (tn == null) {
-                return string.Empty;
-            }
-            var t = (TimeSpan) tn;
-            if (t.Hours > 0)
-                return $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s";
-            if (t.Minutes > 0)
-                return $"{t.Minutes:D2}m:{t.Seconds:D2}s";
-            if (t.Seconds > 0)
-                return $"{t.Seconds:D2}s";
-            return $"{t.Milliseconds:D3}ms";
+        public static string ConvertToHumanTime(this TimeSpan tn) {
+            if (tn.Hours > 0)
+                return $"{tn.Hours:D2}h:{tn.Minutes:D2}m:{tn.Seconds:D2}s";
+            if (tn.Minutes > 0)
+                return $"{tn.Minutes:D2}m:{tn.Seconds:D2}s";
+            if (tn.Seconds > 0)
+                return $"{tn.Seconds:D2}s";
+            return $"{tn.Milliseconds:D3}ms";
         }
     }
 }
