@@ -32,7 +32,7 @@ namespace Oetools.Utilities.Openedge {
     /// An encrypted file is 1 byte longer than the decrypted one
     /// A file is encrypted if it starts with the byte 0x13
     /// </summary>
-    public class UoeEncrypt {
+    public class UoeEncryptor {
         
         private const string DefaultXcodeKey = "Progress";
         private const short MaxKey = 15;
@@ -40,7 +40,7 @@ namespace Oetools.Utilities.Openedge {
         private readonly ushort[] _lookupTable;
         private readonly byte[] _keyData;
 
-        public UoeEncrypt(string key) {
+        public UoeEncryptor(string key) {
             _lookupTable = GetConstantLookupTable();
             _keyData = GetKeyData(key);
         }

@@ -45,7 +45,7 @@ namespace Oetools.Utilities.Openedge {
             }
 
             if (_lookupTable == null) {
-                _lookupTable = UoeEncrypt.GetConstantLookupTable();
+                _lookupTable = UoeEncryptor.GetConstantLookupTable();
             }
 
             byte[] scratch = new byte[16];
