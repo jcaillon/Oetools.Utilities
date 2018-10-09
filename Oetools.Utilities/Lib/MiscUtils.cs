@@ -42,6 +42,18 @@ namespace Oetools.Utilities.Lib {
 #endif
             }
         }
+        /// <summary>
+        /// Returns true if the current executable targets .net framework (false if .net core)
+        /// </summary>
+        public static bool IsNetFrameworkBuild {
+            get {
+#if WINDOWSONLYBUILD
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
         
     }
 }

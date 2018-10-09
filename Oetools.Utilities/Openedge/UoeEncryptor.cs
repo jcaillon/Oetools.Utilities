@@ -82,7 +82,7 @@ namespace Oetools.Utilities.Openedge {
         public byte[] ConvertData(byte[] data, bool encode) {
             
             if (data == null || data.Length == 0) {
-                return data;
+                throw new UoeAlreadyConvertedException("The data is empty, no conversion needed");
             }
             
             var isEncoded = IsFirstByteFromEncryptedFile(data[0]);
