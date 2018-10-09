@@ -40,11 +40,20 @@ namespace Oetools.Utilities.Openedge {
         private readonly ushort[] _lookupTable;
         private readonly byte[] _keyData;
 
+        /// <summary>
+        /// New encryptor using the given encryption key
+        /// </summary>
+        /// <param name="key">If null, will default to Progress</param>
         public UoeEncryptor(string key) {
             _lookupTable = GetConstantLookupTable();
             _keyData = GetKeyData(key);
         }
 
+        /// <summary>
+        /// Returns true if the given filepath is already encrypted
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
         public bool IsFileEncrypted(string filePath) {
             using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1)) {
                 var firstByte = stream.ReadByte();
@@ -52,10 +61,24 @@ namespace Oetools.Utilities.Openedge {
             }
         }
 
+        /// <summary>
+        /// Convert (either encrypt or decrypt) a file
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="encode"></param>
+        /// <param name="outputFilePath"></param>
+        /// <exception cref="UoeAlreadyConvertedException"></exception>
         public void ConvertFile(string filePath, bool encode, string outputFilePath) {
             File.WriteAllBytes(outputFilePath, ConvertData(File.ReadAllBytes(filePath), encode));
         }
         
+        /// <summary>
+        /// Convert (either encrypt or decrypt) a byte array
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="encode"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeAlreadyConvertedException"></exception>
         public byte[] ConvertData(byte[] data, bool encode) {
             
             if (data == null || data.Length == 0) {
@@ -65,7 +88,7 @@ namespace Oetools.Utilities.Openedge {
             var isEncoded = IsFirstByteFromEncryptedFile(data[0]);
             
             if (encode && isEncoded || !encode && !isEncoded) {
-                throw new Exception($"The data is already {(encode ? "encoded" : "decoded")}");
+                throw new UoeAlreadyConvertedException($"The data is already {(encode ? "encoded" : "decoded")}");
             }
 
             var keyData = _keyData.ToArray();
@@ -79,14 +102,12 @@ namespace Oetools.Utilities.Openedge {
             }
             
             for (int i = encode ? 0 : 1; i < data.Length; i++) {
-                if (data[i] != 13 || !encode) {
-                    var base1 = (byte) (idx++ & MaxKey);
-                    var keyValue = keyData[(base1 + keyData[MaxKey - base1]) & MaxKey];
-                    convertedBytes[idx] = (byte)(data[i] ^ keyValue);
-                    crcValue = (ushort) (_lookupTable[(encode ? data[i] : convertedBytes[idx]) & byte.MaxValue] ^ _lookupTable[crcValue & byte.MaxValue] ^ ((crcValue >> 8) & byte.MaxValue));
-                    crcValue = (ushort) (_lookupTable[keyValue & byte.MaxValue] ^ _lookupTable[crcValue & byte.MaxValue] ^ ((crcValue >> 8) & byte.MaxValue));
-                    keyData[base1] = (byte) (crcValue & byte.MaxValue);
-                }
+                var base1 = (byte) (idx++ & MaxKey);
+                var keyValue = keyData[(base1 + keyData[MaxKey - base1]) & MaxKey];
+                convertedBytes[idx] = (byte)(data[i] ^ keyValue);
+                crcValue = (ushort) (_lookupTable[(encode ? data[i] : convertedBytes[idx]) & byte.MaxValue] ^ _lookupTable[crcValue & byte.MaxValue] ^ ((crcValue >> 8) & byte.MaxValue));
+                crcValue = (ushort) (_lookupTable[keyValue & byte.MaxValue] ^ _lookupTable[crcValue & byte.MaxValue] ^ ((crcValue >> 8) & byte.MaxValue));
+                keyData[base1] = (byte) (crcValue & byte.MaxValue);
             }
             
             var output = new byte[encode ? idx + 1 : idx];
@@ -94,7 +115,7 @@ namespace Oetools.Utilities.Openedge {
             return output;
         }
         
-        public static ushort[] GetConstantLookupTable() {
+        internal static ushort[] GetConstantLookupTable() {
             var constantsTable = new ushort[256];
             for (int j = 0; j < constantsTable.Length; j++) {
                 for (short k = 1, l = 0xC0; k < byte.MaxValue ; k <<= 1, l <<= 1) {
@@ -123,8 +144,7 @@ namespace Oetools.Utilities.Openedge {
             return outputKeyBytes;
         }
         
-        private static bool IsFirstByteFromEncryptedFile(int firstByte) => firstByte == 0x13;
-        
+        private static bool IsFirstByteFromEncryptedFile(int firstByte) => (firstByte | 2) == 0x13;
     }
 }
 
