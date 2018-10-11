@@ -59,29 +59,63 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
 
 
         [TestMethod]
-        public void CreatePl() {
+        public void Test() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            ProlibArchiver archiver = new ProlibArchiver(dlcPath);
-            List<IFileToArchive> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.pl");
-            listFiles.AddRange(TestHelper.GetPackageTestFilesList(TestFolder, "out2.pl"));
-            
-            TestHelper.CreateSourceFiles(listFiles);
-            
-            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
-
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out.pl")));
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out2.pl")));
+            var archiver = CreatePl(dlcPath, out var listFiles);
 
             // verify
             ListPl(dlcPath, listFiles);
             
+            // extract
+            Extract(archiver, listFiles);
+            
             // delete files
-            DeleteFilesInPl(dlcPath, listFiles);
+            DeleteFilesInPl(archiver, dlcPath, listFiles.Select(f => new FileToExtract {
+                ArchivePath = f.ArchivePath,
+                RelativePathInArchive = f.RelativePathInArchive,
+                ExtractionPath = null
+            }).ToList());
+
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
+                Assert.AreEqual(0, archiver.ListFiles(groupedFiles.Key).Count);
+            }
         }
 
+        private ProlibArchiver CreatePl(string dlcPath, out List<IFileToArchive> listFiles) {
+            ProlibArchiver archiver = new ProlibArchiver(dlcPath);
+            listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.pl");
+            listFiles.AddRange(TestHelper.GetPackageTestFilesList(TestFolder, "out2.pl"));
+
+            TestHelper.CreateSourceFiles(listFiles);
+
+            archiver.PackFileSet(listFiles);
+
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out.pl")));
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out2.pl")));
+            
+            return archiver;
+        }
+
+        private void Extract(ProlibArchiver archiver, List<IFileToArchive> listFiles) {
+            var extractDir = Path.Combine(TestFolder, "extract");
+            var listToExtract = new List<FileToExtract>();
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
+                foreach (var file in groupedFiles) {
+                    listToExtract.Add(new FileToExtract {
+                        ArchivePath = groupedFiles.Key,
+                        RelativePathInArchive = file.RelativePathInArchive,
+                        ExtractionPath = Path.Combine(extractDir, Path.GetFileName(groupedFiles.Key), file.RelativePathInArchive)
+                    });
+                }
+            }
+            archiver.ExtractFileSet(listToExtract);
+            foreach (var fileToExtract in listToExtract) {
+                Assert.IsTrue(File.Exists(fileToExtract.ExtractionPath));
+            }
+        }
 
         private void ListPl(string dlcPath, List<IFileToArchive> listFiles) {
             IArchiver archiver = new ProlibArchiver(dlcPath);
@@ -90,15 +124,14 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
                 foreach (var file in files) {
                     Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInArchive.Equals(file.RelativePathInArchive)));
                 }
-
                 Assert.AreEqual(groupedFiles.ToList().Count, files.Count);
             }
         }
         
         
-        private void DeleteFilesInPl(string dlcPath, List<IFileToArchive> listFiles) {
-            IArchiver archiver = new ProlibArchiveDeleter(dlcPath);
-            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
+        private void DeleteFilesInPl(IArchiver archiver, string dlcPath, List<FileToExtract> listFiles) {
+            
+            archiver.DeleteFileSet(listFiles);
             
             // list files
             foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {

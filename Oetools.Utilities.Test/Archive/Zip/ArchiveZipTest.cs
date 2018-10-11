@@ -49,11 +49,13 @@ namespace Oetools.Utilities.Test.Archive.Zip {
         public void CreateZip_noCompression() {
             // creates the .zip
             IArchiver archiver = new ZipArchiver();
+            archiver.SetCompressionLevel(CompressionLvl.None);
+            
             List<IFileToArchive> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.zip");
             listFiles.AddRange(TestHelper.GetPackageTestFilesList(TestFolder, "out2.zip"));
             
             TestHelper.CreateSourceFiles(listFiles);
-            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
+            archiver.PackFileSet(listFiles);
 
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out.zip")));
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out2.zip")));

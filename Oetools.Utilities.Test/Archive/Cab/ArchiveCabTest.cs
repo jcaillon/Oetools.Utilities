@@ -53,7 +53,7 @@ namespace Oetools.Utilities.Test.Archive.Cab {
             listFiles.AddRange(TestHelper.GetPackageTestFilesList(TestFolder, "out2.cab"));
             
             TestHelper.CreateSourceFiles(listFiles);           
-            archiver.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
+            archiver.PackFileSet(listFiles);
             
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out.cab")));
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out2.cab")));

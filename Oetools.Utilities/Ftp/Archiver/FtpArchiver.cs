@@ -29,10 +29,8 @@ namespace Oetools.Utilities.Ftp.Archiver {
     
     public class FtpArchiver : Archive.Archiver, IArchiver {
 
-        /// <summary>
-        ///     Send files to a FTP server
-        /// </summary>
-        public void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
+        /// <inheritdoc cref="IArchiver.PackFileSet"/>
+        public void PackFileSet(IEnumerable<IFileToArchive> files) {
             foreach (var ftpGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 try {
                     ftpGroupedFiles.Key.ParseFtpAddress(out var uri, out var userName, out var passWord, out var host, out var port, out _);
@@ -41,14 +39,25 @@ namespace Oetools.Utilities.Ftp.Archiver {
                     ConnectOrReconnectFtp(ftp, userName, passWord, host, port);
 
                     foreach (var file in ftpGroupedFiles) {
-                        SendFile(file, ftp, progressHandler);
+                        SendFile(file, ftp);
                     }
                 } catch (Exception e) {
-                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, ftpGroupedFiles.Key, null, e));
+                    throw new ArchiveException($"Failed to send files to {ftpGroupedFiles.Key.PrettyQuote()}.", e);
                 }
+                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, ftpGroupedFiles.Key, null, null));
             }
         }
-        
+
+        /// <summary>
+        /// Not used
+        /// </summary>
+        /// <param name="compressionLevel"></param>
+        public void SetCompressionLevel(CompressionLvl compressionLevel) { }
+
+        /// <inheritdoc cref="IArchiver.OnProgress"/>
+        public event EventHandler<ArchiveProgressionEventArgs> OnProgress;
+
+        /// <inheritdoc cref="IArchiver.ListFiles"/>
         public List<IFileArchived> ListFiles(string ftpUri) {
             ftpUri.ParseFtpAddress(out var uri, out var userName, out var passWord, out var host, out var port, out var relativePath);
             
@@ -66,7 +75,17 @@ namespace Oetools.Utilities.Ftp.Archiver {
                 .ToList();
         }
 
-        private void SendFile(IFileToArchive file, FtpsClient ftp, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
+        /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
+        public void ExtractFileSet(IEnumerable<IFileToExtract> files) {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        public void DeleteFileSet(IEnumerable<IFileToExtract> files) {
+            throw new NotImplementedException();
+        }
+
+        private void SendFile(IFileToArchive file, FtpsClient ftp) {
             try {
                 try {
                     ftp.PutFile(file.SourcePath, file.RelativePathInArchive);
@@ -76,9 +95,9 @@ namespace Oetools.Utilities.Ftp.Archiver {
                     ftp.SetCurrentDirectory("/");
                     ftp.PutFile(file.SourcePath, file.RelativePathInArchive);
                 }
-                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, file.ArchivePath, file.RelativePathInArchive, null));
+                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, file.ArchivePath, file.SourcePath, file.RelativePathInArchive));
             } catch (Exception e) {
-                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, file.ArchivePath, file.RelativePathInArchive, e));
+                throw new ArchiveException($"Failed to send {file.SourcePath.PrettyQuote()} to {file.ArchivePath} and distant path {file.RelativePathInArchive}.", e);
             }
         }
 
@@ -131,7 +150,7 @@ namespace Oetools.Utilities.Ftp.Archiver {
 
             // failed?
             if (!ftp.Connected) {
-                throw new Exception($"Failed to connect to a FTP server with : Username : {userName ?? "none"}, Password : {passWord ?? "none"}, Host : {host}, Port : {(port == 0 ? 21 : port)}");
+                throw new ArchiveException($"Failed to connect to a FTP server with : Username : {userName ?? "none"}, Password : {passWord ?? "none"}, Host : {host}, Port : {(port == 0 ? 21 : port)}");
             }
         }
 

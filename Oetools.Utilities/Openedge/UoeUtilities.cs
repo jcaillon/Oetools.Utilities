@@ -180,8 +180,8 @@ namespace Oetools.Utilities.Openedge {
                             Number = errorNumber,
                             Text = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
                             Description = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
-                            Category = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
-                            KnowledgeBase = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
+                            CategoryFirstLetter = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
+                            KnowledgeBase = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty
                         };
                         break;
                     }
@@ -198,20 +198,26 @@ namespace Oetools.Utilities.Openedge {
             public int Number { get; set; }
             public string Text { get; set; }
             public string Description { get; set; }
-            public string Category { get; set; }
+            public string CategoryFirstLetter { get; set; }
             public string KnowledgeBase { get; set; }
 
+            public string Category {
+                get {
+                    var categories = new List<string> {
+                        "Compiler",
+                        "Database",
+                        "Index",
+                        "Miscellaneous",
+                        "Operating System",
+                        "Program/Execution",
+                        "Syntax"
+                    };
+                    return categories.FirstOrDefault(c => c.StartsWith(CategoryFirstLetter, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+
             public override string ToString() {
-                var categories = new List<string> {
-                    "Compiler",
-                    "Database",
-                    "Index",
-                    "Miscellaneous",
-                    "Operating System",
-                    "Program/Execution",
-                    "Syntax"
-                };
-                var cat = categories.FirstOrDefault(c => c.StartsWith(Category, StringComparison.OrdinalIgnoreCase));
+                var cat = Category;
                 return string.Format("{0}{1}{2}", cat != null ? $"({cat}) " : "", Description, KnowledgeBase.Length > 2 ? $" ({KnowledgeBase.StripQuotes()})" : "");
             }
         }

@@ -1,7 +1,7 @@
-﻿#region header
+#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (CompressionLvl.cs) is part of Oetools.Utilities.
+// This file (ArchiveException.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,21 +17,12 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
+using System;
+
 namespace Oetools.Utilities.Archive {
-    public enum CompressionLvl {
-        /// <summary>
-        /// Do not compress files, only store.
-        /// </summary>
-        None,
-
-        /// <summary>
-        /// The compression operation should complete as quickly as possible, even if the resulting files are not optimally compressed.
-        /// </summary>
-        Fastest,
-
-        /// <summary>
-        /// The compression operation should be optimally compressed, even if the operation takes a longer time to complete.
-        /// </summary>
-        Optimal
+    public class ArchiveException : Exception {
+        public ArchiveException(string message) : base(message) { }
+        public ArchiveException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

@@ -34,24 +34,26 @@ namespace Oetools.Utilities.Archive.Prolib {
     /// </summary>
     public class ProlibArchiver : Archiver, IArchiver {
         
-        protected readonly string DlcPath;
-        
-        /// <summary>
-        /// Returns the path to _dbutil (or null if not found in the dlc folder)
-        /// </summary>
-        protected string ProliPath {
-            get {
-                string exeName = Utils.IsRuntimeWindowsPlatform ? "prolib.exe" : "prolib";
-                var outputPath = Path.Combine(DlcPath, "bin", exeName);
-                return File.Exists(outputPath) ? outputPath : null;
+        private readonly string _prolibPath;
+
+        public ProlibArchiver(string dlcPath) {
+            _prolibPath = Path.Combine(dlcPath, "bin", Utils.IsRuntimeWindowsPlatform ? "prolib.exe" : "prolib");
+            if (!File.Exists(_prolibPath)) {
+                throw new ArchiveException($"Could not find the prolib executable : {_prolibPath.PrettyQuote()}.");
             }
         }
 
-        public ProlibArchiver(string dlcPath) {
-            DlcPath = dlcPath;
-        }
+        /// <summary>
+        /// Not used.
+        /// </summary>
+        /// <param name="compressionLevel"></param>
+        public void SetCompressionLevel(CompressionLvl compressionLevel) { }
 
-        public virtual void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
+        /// <inheritdoc cref="IArchiver.OnProgress"/>
+        public event EventHandler<ArchiveProgressionEventArgs> OnProgress;
+
+        /// <inheritdoc cref="IArchiver.PackFileSet"/>
+        public virtual void PackFileSet(IEnumerable<IFileToArchive> files) {
             foreach (var plGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 try {
                     var archiveFolder = CreateArchiveFolder(plGroupedFiles.Key);
@@ -74,12 +76,11 @@ namespace Oetools.Utilities.Archive.Prolib {
                                     Directory.CreateDirectory(subFolderPath);
                                 }
                             }
-
                             subFolders[subFolderPath].Add(new FilesToMove(file.SourcePath, Path.Combine(uniqueTempFolder, file.RelativePathInArchive), file.RelativePathInArchive));
                         }
                     }
 
-                    var prolibExe = new ProcessIo(ProliPath) {
+                    var prolibExe = new ProcessIo(_prolibPath) {
                         WorkingDirectory = uniqueTempFolder
                     };
 
@@ -100,8 +101,9 @@ namespace Oetools.Utilities.Archive.Prolib {
                         // for files containing a space, we don't have a choice, call extract for each...
                         foreach (var file in subFolder.Value.Where(f => f.RelativePath.Contains(" "))) {
                             if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -create -nowarn -add {file.RelativePath.CliQuoter()}")) {
-                                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.BatchOutput.ToString())));
+                                throw new ArchiveException($"Failed to pack {file.Origin.PrettyQuote()} into {plGroupedFiles.Key.PrettyQuote()} and relative archive path {file.RelativePath}.", new ArchiveException(prolibExe.BatchOutput.ToString()));
                             }
+                            OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.Origin, file.RelativePath));
                         }
 
                         var remainingFiles = subFolder.Value.Where(f => !f.RelativePath.Contains(" ")).ToList();
@@ -118,9 +120,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                             File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
 
                             if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
-                                foreach (var file in remainingFiles) {
-                                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, new Exception(prolibExe.BatchOutput.ToString())));
-                                }
+                                throw new ArchiveException($"Failed to pack to {plGroupedFiles.Key.PrettyQuote()}.", new Exception(prolibExe.BatchOutput.ToString()));
                             }
 
                             if (File.Exists(pfPath)) {
@@ -134,11 +134,12 @@ namespace Oetools.Utilities.Archive.Prolib {
                                 if (file.Move) {
                                     File.Move(file.Temp, file.Origin);
                                 } else if (!File.Exists(file.Temp)) {
-                                    throw new Exception($"Couldn\'t move back the temporary file {file.Origin} from {file.Temp}");
+                                    throw new ArchiveException($"Failed to move back the temporary file {file.Origin} from {file.Temp}.");
                                 }
                             } catch (Exception e) {
-                                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.RelativePath, e));
+                                throw new ArchiveException($"Failed to move back the temporary file {file.Origin} from {file.Temp}.", e);
                             }
+                            OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.Origin, file.RelativePath));
                         });
                     }
 
@@ -148,13 +149,15 @@ namespace Oetools.Utilities.Archive.Prolib {
                     // delete temp folder
                     Directory.Delete(uniqueTempFolder, true);
                 } catch (Exception e) {
-                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, plGroupedFiles.Key, null, e));
+                    throw new ArchiveException($"Failed to pack to {plGroupedFiles.Key.PrettyQuote()}.", e);
                 }
+                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, plGroupedFiles.Key, null, null));
             }
         }
 
+        /// <inheritdoc cref="IArchiver.ListFiles"/>
         public List<IFileArchived> ListFiles(string archivePath) {
-            var prolibExe = new ProcessIo(ProliPath);
+            var prolibExe = new ProcessIo(_prolibPath);
 
             if (!prolibExe.TryExecute($"{archivePath.CliQuoter()} -list")) {
                 throw new Exception("Error while listing files from a .pl", new Exception(prolibExe.BatchOutput.ToString()));
@@ -184,50 +187,111 @@ namespace Oetools.Utilities.Archive.Prolib {
 
             return outputList;
         }
-
-        /// <summary>
-        /// Extract the files given
-        /// </summary>
-        /// <param name="files"></param>
-        /// <param name="extractionFolder"></param>
-        public void ExtractFiles(List<IFileArchived> files, string extractionFolder) {
-            var prolibExe = new ProcessIo(ProliPath);
+        
+        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        public void DeleteFileSet(IEnumerable<IFileToExtract> files) {
+            var prolibExe = new ProcessIo(_prolibPath);
             foreach (var plGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
-                prolibExe.WorkingDirectory = extractionFolder;
+                try {
+                    var archiveFolder = Path.GetDirectoryName(plGroupedFiles.Key);
+                    if (!string.IsNullOrEmpty(archiveFolder)) {
+                        prolibExe.WorkingDirectory = archiveFolder;
+                    }
 
-                // create the subfolders needed to extract each file
-                foreach (var folder in files.Select(f => Path.GetDirectoryName(f.RelativePathInArchive)).Distinct(StringComparer.OrdinalIgnoreCase)) {
-                    Directory.CreateDirectory(Path.Combine(extractionFolder, folder));
+                    // for files containing a space, we don't have a choice, call delete for each...
+                    foreach (var file in plGroupedFiles.Where(deploy => deploy.RelativePathInArchive.Contains(" "))) {
+                        if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -delete {file.RelativePathInArchive.CliQuoter()}")) {
+                            throw new ArchiveException($"Failed to delete {file.RelativePathInArchive.PrettyQuote()} in {plGroupedFiles.Key.PrettyQuote()}.", new ArchiveException(prolibExe.BatchOutput.ToString()));
+                        }
+                        OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, null, file.RelativePathInArchive));
+                    }
+
+                    var remainingFiles = plGroupedFiles.Where(deploy => !deploy.RelativePathInArchive.Contains(" ")).ToList();
+                    if (remainingFiles.Count > 0) {
+                        // for the other files, we can use the -pf parameter
+                        var pfContent = new StringBuilder();
+                        pfContent.AppendLine("-delete");
+                        foreach (var file in remainingFiles) {
+                            pfContent.AppendLine(file.RelativePathInArchive);
+                        }
+
+                        var pfPath = $"{plGroupedFiles.Key}~{Path.GetRandomFileName()}.pf";
+
+                        File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
+                    
+                        // now we just need to add the content of temp folders into the .pl
+                        if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
+                            throw new ArchiveException($"Failed to delete files in {plGroupedFiles.Key.PrettyQuote()}.", new ArchiveException(prolibExe.BatchOutput.ToString()));
+                        }
+                        foreach (var file in remainingFiles) {
+                            OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, null, file.RelativePathInArchive));
+                        }
+                    
+                        if (File.Exists(pfPath)) {
+                            File.Delete(pfPath);
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new ArchiveException($"Failed to process {plGroupedFiles.Key.PrettyQuote()}.", e);
                 }
+                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, plGroupedFiles.Key, null, null));
+            }
+        }
 
-                // for files containing a space, we don't have a choice, call extract for each...
-                foreach (var file in files.Where(deploy => deploy.RelativePathInArchive.Contains(" "))) {
-                    if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -extract {file.RelativePathInArchive.CliQuoter()}")) {
-                        throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.BatchOutput.ToString()));
+        /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
+        public void ExtractFileSet(IEnumerable<IFileToExtract> files) {
+            var prolibExe = new ProcessIo(_prolibPath);
+            foreach (var plGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
+                try {
+                    foreach (var extractDirGroupedFiles in plGroupedFiles.GroupBy(f => Path.GetDirectoryName(f.ExtractionPath))) {
+                        prolibExe.WorkingDirectory = extractDirGroupedFiles.Key;
+                        Directory.CreateDirectory(extractDirGroupedFiles.Key);
+                        
+                        // for files containing a space, we don't have a choice, call extract for each...
+                        foreach (var file in extractDirGroupedFiles.Where(deploy => deploy.RelativePathInArchive.Contains(" "))) {
+                            if (File.Exists(file.ExtractionPath)) {
+                                File.Delete(file.ExtractionPath);
+                            }
+                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -yank {file.RelativePathInArchive.CliQuoter()}")) {
+                                throw new ArchiveException($"Failed to extract {file.RelativePathInArchive.PrettyQuote()} from {plGroupedFiles.Key.PrettyQuote()}.", new Exception(prolibExe.BatchOutput.ToString()));
+                            }
+                            OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.ExtractionPath, file.RelativePathInArchive));
+                        }
+    
+                        var remainingFiles = extractDirGroupedFiles.Where(deploy => !deploy.RelativePathInArchive.Contains(" ")).ToList();
+                        if (remainingFiles.Count > 0) {
+                            // for the other files, we can use the -pf parameter
+                            var pfContent = new StringBuilder();
+                            pfContent.AppendLine("-yank");
+                            foreach (var file in remainingFiles) {
+                                pfContent.AppendLine(file.RelativePathInArchive);
+                                if (File.Exists(file.ExtractionPath)) {
+                                    File.Delete(file.ExtractionPath);
+                                }
+                            }
+    
+                            var pfPath = Path.Combine(extractDirGroupedFiles.Key, $"{Path.GetFileName(plGroupedFiles.Key)}~{Path.GetRandomFileName()}.pf");
+    
+                            File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
+    
+                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
+                                throw new ArchiveException($"Failed to extract from {plGroupedFiles.Key.PrettyQuote()}.", new Exception(prolibExe.BatchOutput.ToString()));
+                            }
+    
+                            foreach (var file in remainingFiles) {
+                                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, plGroupedFiles.Key, file.ExtractionPath, file.RelativePathInArchive));
+                            }
+    
+                            if (File.Exists(pfPath)) {
+                                File.Delete(pfPath);
+                            }
+                        }
                     }
+                } catch (Exception e) {
+                    throw new ArchiveException($"Failed to process {plGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-
-                var remainingFiles = files.Where(deploy => !deploy.RelativePathInArchive.Contains(" ")).ToList();
-                if (remainingFiles.Count > 0) {
-                    // for the other files, we can use the -pf parameter
-                    var pfContent = new StringBuilder();
-                    pfContent.AppendLine("-extract");
-                    foreach (var file in remainingFiles) {
-                        pfContent.AppendLine(file.RelativePathInArchive);
-                    }
-
-                    var pfPath = Path.Combine(extractionFolder, $"{Path.GetFileName(plGroupedFiles.Key)}~{Path.GetRandomFileName()}.pf");
-
-                    File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
-
-                    if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
-                        throw new Exception("Error while extracting a file from a .pl", new Exception(prolibExe.BatchOutput.ToString()));
-                    }
-
-                    if (File.Exists(pfPath)) {
-                        File.Delete(pfPath);
-                    }
-                }
+                
+                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, plGroupedFiles.Key, null, null)); 
             }
         }
 

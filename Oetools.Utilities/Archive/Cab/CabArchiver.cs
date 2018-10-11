@@ -23,6 +23,7 @@ using System.IO;
 using System.Linq;
 using Oetools.Utilities.Archive.Compression;
 using Oetools.Utilities.Archive.Compression.Cab;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Archive.Cab {
     
@@ -30,24 +31,52 @@ namespace Oetools.Utilities.Archive.Cab {
     ///     Allows to pack files into a cab
     /// </summary>
     public class CabArchiver : Archiver, IArchiver {
+
+        private CompressionLevel _compressionLevel = CompressionLevel.None;
+
+        /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
+        public void SetCompressionLevel(CompressionLvl compressionLevel) {
+            switch (compressionLevel) {
+                case CompressionLvl.None:
+                    _compressionLevel = CompressionLevel.None;
+                    break;
+                case CompressionLvl.Fastest:
+                    _compressionLevel = CompressionLevel.Min;
+                    break;
+                case CompressionLvl.Optimal:
+                    _compressionLevel = CompressionLevel.Max;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(compressionLevel), compressionLevel, null);
+            }
+        }
         
-        public void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
+        /// <inheritdoc cref="IArchiver.PackFileSet"/>
+        public void PackFileSet(IEnumerable<IFileToArchive> files) {
             foreach (var cabGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 try {
                     CreateArchiveFolder(cabGroupedFiles.Key);
                     var cabInfo = new CabInfo(cabGroupedFiles.Key);
                     var filesDic = cabGroupedFiles.ToDictionary(file => file.RelativePathInArchive, file => file.SourcePath);
-                    cabInfo.PackFileSet(filesDic, CompressionLevel.None, (sender, args) => {
+                    cabInfo.PackFileSet(filesDic, _compressionLevel, (sender, args) => {
                         if (args.ProgressType == ArchiveProgressType.FinishFile) {
-                            progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, args.CurrentArchiveName, args.CurrentFileName, args.TreatmentException));
+                            OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, args.CurrentArchiveName, null, args.CurrentFileName));
+                        }
+                        if (args.TreatmentException != null) {
+                            throw new ArchiveException($"Failed to pack into {args.CurrentArchiveName.PrettyQuote()} and relative archive path {args.CurrentFileName}.", args.TreatmentException);
                         }
                     });
                 } catch (Exception e) {
-                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, cabGroupedFiles.Key, null, e));
+                    throw new ArchiveException($"Failed to pack to {cabGroupedFiles.Key.PrettyQuote()}.", e);
                 }
+                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, cabGroupedFiles.Key, null, null));
             }
         }
 
+        /// <inheritdoc cref="IArchiver.OnProgress"/>
+        public event EventHandler<ArchiveProgressionEventArgs> OnProgress;
+
+        /// <inheritdoc cref="IArchiver.ListFiles"/>
         public List<IFileArchived> ListFiles(string archivePath) {
             return new CabInfo(archivePath)
                 .GetFiles()
@@ -59,5 +88,16 @@ namespace Oetools.Utilities.Archive.Cab {
                 } as IFileArchived)
                 .ToList();
         }
+
+        /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
+        public void ExtractFileSet(IEnumerable<IFileToExtract> files) {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        public void DeleteFileSet(IEnumerable<IFileToExtract> files) {
+            throw new NotImplementedException();
+        }
+
     }
 }

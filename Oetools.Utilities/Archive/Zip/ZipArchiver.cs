@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using Oetools.Utilities.Lib.Extension;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
 
 namespace Oetools.Utilities.Archive.Zip {
@@ -29,34 +30,57 @@ namespace Oetools.Utilities.Archive.Zip {
     ///     Allows to pack files into zip
     /// </summary>
     public class ZipArchiver : Archiver, IArchiver {
-        public void PackFileSet(List<IFileToArchive> files, CompressionLvl compressionLevel, EventHandler<ArchiveProgressionEventArgs> progressHandler) {
+
+        private CompressionLevel _compressionLevel = CompressionLevel.NoCompression;
+        
+        /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
+        public void SetCompressionLevel(CompressionLvl compressionLevel) {
+            switch (compressionLevel) {
+                case CompressionLvl.None:
+                    _compressionLevel = CompressionLevel.NoCompression;
+                    break;
+                case CompressionLvl.Fastest:
+                    _compressionLevel = CompressionLevel.Fastest;
+                    break;
+                case CompressionLvl.Optimal:
+                    _compressionLevel = CompressionLevel.Optimal;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(compressionLevel), compressionLevel, null);
+            }
+        }
+
+        /// <inheritdoc cref="IArchiver.OnProgress"/>
+        public event EventHandler<ArchiveProgressionEventArgs> OnProgress;
+        
+        /// <inheritdoc cref="IArchiver.PackFileSet"/>
+        public void PackFileSet(IEnumerable<IFileToArchive> files) {
             foreach (var zipGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
-                //var zipInfo = new ZipInfo(cabGroupedFiles.Key);
-                //var filesDic = cabGroupedFiles.ToDictionary(file => file.RelativePathInPack, file => file.From);
-                //zipInfo.PackFileSet(filesDic, CompressionLevel.None, (sender, args) => {
-                //    if (args.ProgressType == ArchiveProgressType.FinishFile) {
-                //        progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(args.CurrentFileName, args.TreatmentException, args.CannotCancel));
-                //    }
-                //});
                 try {
                     CreateArchiveFolder(zipGroupedFiles.Key);
                     var zipMode = File.Exists(zipGroupedFiles.Key) ? ZipArchiveMode.Update : ZipArchiveMode.Create;
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, zipMode)) {
                         foreach (var file in zipGroupedFiles) {
                             try {
-                                zip.CreateEntryFromFile(file.SourcePath, file.RelativePathInArchive, CompressionLevel.Fastest);
+                                zip.CreateEntryFromFile(file.SourcePath, file.RelativePathInArchive, _compressionLevel);
                             } catch (Exception e) {
-                                progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, zipGroupedFiles.Key, file.RelativePathInArchive, e));
+                                throw new ArchiveException($"Failed to pack {file.SourcePath.PrettyQuote()} into {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {file.RelativePathInArchive}.", e);
                             }
+                            OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, zipGroupedFiles.Key, file.SourcePath, file.RelativePathInArchive));
                         }
                     }
                 } catch (Exception e) {
-                    progressHandler?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, zipGroupedFiles.Key, null, e));
+                    throw new ArchiveException($"Failed to pack to {zipGroupedFiles.Key.PrettyQuote()}.", e);
                 }
+                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, zipGroupedFiles.Key, null, null));
             }
         }
 
+        /// <inheritdoc cref="IArchiver.ListFiles"/>
         public List<IFileArchived> ListFiles(string archivePath) {
+            if (!File.Exists(archivePath)) {
+                throw new Compression.ArchiveException($"The archive does not exist : {archivePath.PrettyQuote()}.");
+            }
             using (var archive = ZipFile.OpenRead(archivePath)) {
                 return archive.Entries
                     .Select(entry => new ZipFileArchived {
@@ -67,6 +91,16 @@ namespace Oetools.Utilities.Archive.Zip {
                     } as IFileArchived)
                     .ToList();
             }
+        }
+
+        /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
+        public void ExtractFileSet(IEnumerable<IFileToExtract> files) {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        public void DeleteFileSet(IEnumerable<IFileToExtract> files) {
+            throw new NotImplementedException();
         }
     }
 }
