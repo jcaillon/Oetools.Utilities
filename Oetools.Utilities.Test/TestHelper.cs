@@ -45,30 +45,10 @@ namespace Oetools.Utilities.Test {
             return true;
         }
         
-        public static bool GetProlibPath(out string prolibPath) {
-            bool ret = GetDlcPath(out string dlcPath);
-            if (!ret) {
-                prolibPath = null;
-                return false;
-            }
-            prolibPath = Path.Combine(dlcPath, "bin", Utils.IsRuntimeWindowsPlatform ? "prolib.exe" : "prolib");
-            var exists = File.Exists(prolibPath);
-            if (!exists) {
-                Console.WriteLine("Cancelling test, prolib not found!");
-            }
-            return exists;
-        }
-        
         public static string GetTestFolder(string testName) {
             var path = Path.Combine(TestFolder, testName);
             Directory.CreateDirectory(path);
             return path;
-        }
-
-        public static void CreateSourceFiles(List<IFileToArchive> listFiles) {
-            foreach (var file in listFiles) {
-                File.WriteAllText(file.SourcePath, Path.GetFileName(file.SourcePath));
-            }
         }
 
         public static void CreateDatabaseFromDf(string targetDatabasePath, string dfPath) {
@@ -81,32 +61,11 @@ namespace Oetools.Utilities.Test {
             }
         }
         
-        public static TimeSpan Time(Action action)
-        {
+        public static TimeSpan Time(Action action) {
             Stopwatch stopwatch = Stopwatch.StartNew();
             action();
             stopwatch.Stop();
             return stopwatch.Elapsed;
-        }
-
-        public static List<IFileToArchive> GetPackageTestFilesList(string testFolder, string outPackName) {
-            return new List<IFileToArchive> {
-                new FileToArchive {
-                    SourcePath = Path.Combine(testFolder, "file1.txt"),
-                    ArchivePath = Path.Combine(testFolder, outPackName),
-                    RelativePathInArchive = "file1.txt"
-                },
-                new FileToArchive {
-                    SourcePath = Path.Combine(testFolder, "file2.txt"),
-                    ArchivePath = Path.Combine(testFolder, outPackName),
-                    RelativePathInArchive = Path.Combine("subfolder1", "file2.txt")
-                },
-                new FileToArchive {
-                    SourcePath = Path.Combine(testFolder, "file3.txt"),
-                    ArchivePath = Path.Combine(testFolder, outPackName),
-                    RelativePathInArchive = Path.Combine("subfolder1", "bla", "file3.txt")
-                }
-            };
         }
     }
 }

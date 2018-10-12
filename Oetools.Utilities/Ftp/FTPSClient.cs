@@ -231,9 +231,9 @@ namespace Oetools.Utilities.Ftp {
         private string _hostname;
 
         private const string AnonUsername = "anonymous";
-        private const string AnonPassword = "randompwd"; // dummy password
+        private const string AnonPassword = "anonymous@localhost.com"; // dummy password
 
-        private const string ClntName = "3P";
+        private const string ClntName = "noyacode";
 
         private const EsslSupportMode DefaultSslSupportMode = EsslSupportMode.CredentialsRequired | EsslSupportMode.DataChannelRequested;
 
@@ -644,6 +644,10 @@ namespace Oetools.Utilities.Ftp {
             return EndStreamCommand(FtpStream.EAllowedOperation.Read);
         }
 
+        private string CleanRemotePath(string path) {
+            return $"/{path.Replace("\\", "/").TrimStart('/')}";
+        }
+        
         /// <summary>
         ///     GetFile overload to easily transfer a file from remote to local
         /// </summary>
@@ -988,6 +992,7 @@ namespace Oetools.Utilities.Ftp {
         ///     Creates the given remote directory.
         /// </summary>
         public void MakeDir(string remoteDirName, bool recursive = false) {
+            remoteDirName = CleanRemotePath(remoteDirName);
             if (!recursive) {
                 MkdCmd(remoteDirName);
             } else {
@@ -1328,7 +1333,7 @@ namespace Oetools.Utilities.Ftp {
             }
         }
 
-        private ulong SendFile(string localFileName, string remoteFileName, Stream s, FileTransferCallback transferCallback) {
+        private ulong SendFile(string localFileName, string remoteFileName, Stream s, FileTransferCallback transferCallback) {          
             ulong totalBytes = 0;
 
             ulong? fileTransferSize = null;
@@ -1740,7 +1745,7 @@ namespace Oetools.Utilities.Ftp {
         }
 
         private void StorCmd(string fileName) {
-            HandleCmd("STOR " + fileName);
+            HandleCmd("STOR " + CleanRemotePath(fileName));
         }
 
         private void StouCmd(out string fileName) {
@@ -1758,23 +1763,23 @@ namespace Oetools.Utilities.Ftp {
         }
 
         private void AppeCmd(string fileName) {
-            HandleCmd("APPE " + fileName);
+            HandleCmd("APPE " + CleanRemotePath(fileName));
         }
 
         private void RetrCmd(string fileName) {
-            HandleCmd("RETR " + fileName);
+            HandleCmd("RETR " + CleanRemotePath(fileName));
         }
 
         private void DeleCmd(string fileName) {
-            HandleCmd("DELE " + fileName);
+            HandleCmd("DELE " + CleanRemotePath(fileName));
         }
 
         private void MkdCmd(string dirName) {
-            HandleCmd("MKD " + dirName);
+            HandleCmd("MKD " + CleanRemotePath(dirName));
         }
 
         private void RmdCmd(string dirName) {
-            HandleCmd("RMD " + dirName);
+            HandleCmd("RMD " + CleanRemotePath(dirName));
         }
 
         private void CdupCmd() {
@@ -1795,7 +1800,7 @@ namespace Oetools.Utilities.Ftp {
         }
 
         private void CwdCmd(string dirName) {
-            HandleCmd("CWD " + dirName);
+            HandleCmd("CWD " + CleanRemotePath(dirName));
         }
 
         /// <summary>
@@ -1850,19 +1855,19 @@ namespace Oetools.Utilities.Ftp {
         }
 
         private void ListCmd(string dirName) {
-            HandleCmd("LIST" + (dirName != null ? " " + dirName : ""));
+            HandleCmd("LIST" + (dirName != null ? " " + CleanRemotePath(dirName) : ""));
         }
 
         private void NlstCmd(string dirName) {
-            HandleCmd("NLST" + (dirName != null ? " " + dirName : ""));
+            HandleCmd("NLST" + (dirName != null ? " " + CleanRemotePath(dirName) : ""));
         }
 
         private void RnfrCmd(string fileOldName) {
-            HandleCmd("RNFR " + fileOldName);
+            HandleCmd("RNFR " + CleanRemotePath(fileOldName));
         }
 
         private void RntoCmd(string fileNewName) {
-            HandleCmd("RNTO " + fileNewName);
+            HandleCmd("RNTO " + CleanRemotePath(fileNewName));
         }
 
         private void QuitCmd(bool waitForAnswer) {

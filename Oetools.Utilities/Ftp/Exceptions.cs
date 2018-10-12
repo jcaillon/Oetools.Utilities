@@ -94,6 +94,8 @@ namespace Oetools.Utilities.Ftp {
             : base(reply.Message) {
             ErrorCode = reply.Code;
         }
+
+        public override string Message => $"{base.Message} ({ErrorCode})";
     }
 
     /// <summary>

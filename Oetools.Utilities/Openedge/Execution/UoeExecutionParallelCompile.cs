@@ -169,9 +169,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Returns true if the process has exited (can be false if timeout was reached)
         /// </summary>
         /// <param name="maxWait"></param>
-        /// <param name="cancelSource"></param>
+        /// <param name="cancelToken"></param>
         /// <returns></returns>
-        public override bool WaitForExecutionEnd(int maxWait = 0, CancellationTokenSource cancelSource = null) {
+        public override bool WaitForExecutionEnd(int maxWait = 0, CancellationToken? cancelToken = null) {
             if (!Started) {
                 return true;
             }
@@ -180,7 +180,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             bool exited = true;
             foreach (var proc in _processes) {
                 var d = DateTime.Now;
-                exited = exited && proc.WaitForExecutionEnd(maxWait, cancelSource);
+                exited = exited && proc.WaitForExecutionEnd(maxWait, cancelToken);
                 maxWait -= (int) DateTime.Now.Subtract(d).TotalMilliseconds;
                 if (hasMaxWait && maxWait <= 0) {
                     return false;

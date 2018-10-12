@@ -1,7 +1,7 @@
-﻿#region header
+#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IFileToExtract.cs) is part of Oetools.Utilities.
+// This file (IFileArchivedBase.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,22 +17,19 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-namespace Oetools.Utilities.Archive {
-    public interface IFileToExtract {
-        
-        /// <summary>
-        /// Path to the archive in which this file is archived
-        /// </summary>
-        string ArchivePath { get; set; }
-        
-        /// <summary>
-        /// Give the relative path of the file in the archive/package
-        /// </summary>
-        string RelativePathInArchive { get; set; }
 
+namespace Oetools.Utilities.Archive {
+    public interface IFileArchivedBase {
+        
         /// <summary>
-        /// Absolute path at which this file should be extracted from the archive
+        /// Path to the archive in which this file is archived.
         /// </summary>
-        string ExtractionPath { get; set; }
+        string ArchivePath { get; }
+        
+        /// <summary>
+        /// Relative path of the file in the archive.
+        /// </summary>
+        string RelativePathInArchive { get; }
+        
     }
 }

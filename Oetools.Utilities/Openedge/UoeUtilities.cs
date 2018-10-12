@@ -150,7 +150,7 @@ namespace Oetools.Utilities.Openedge {
         /// </summary>
         /// <returns></returns>
         public static string GetDlcPathFromEnv() {
-            return Environment.GetEnvironmentVariable(UoeConstants.OeDlcEnvVar);
+            return Environment.GetEnvironmentVariable(UoeConstants.OeDlcEnvVar) ?? throw new Exception("Can't find the openedge installation directory (DLC).");
         }
 
         /// <summary>

@@ -126,14 +126,14 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 var cancel = new CancellationTokenSource();
                 exec.WaitForExecutionEnd(500);
                 Assert.IsNull(exec.ExecutionTimeSpan, "the execution isn't over");
-                exec.WaitForExecutionEnd(500, cancel);
+                exec.WaitForExecutionEnd(500, cancel.Token);
                 Assert.IsNull(exec.ExecutionTimeSpan, "the execution still isn't over");
                 Task.Factory.StartNew(() => {
                     Thread.Sleep(500);
                     cancel.Cancel();
                 });
                 var d = DateTime.Now;
-                exec.WaitForExecutionEnd(3000, cancel);
+                exec.WaitForExecutionEnd(3000, cancel.Token);
                 Assert.IsNull(exec.ExecutionTimeSpan, "the execution still isn't over");
                 Assert.IsTrue(DateTime.Now.Subtract(d).TotalMilliseconds < 1500, "it should have waited for the cancel and not for 3000ms (note that it has a rough precision...)");
                 exec.KillProcess();

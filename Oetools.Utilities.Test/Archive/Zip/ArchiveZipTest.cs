@@ -27,7 +27,7 @@ using Oetools.Utilities.Archive.Zip;
 namespace Oetools.Utilities.Test.Archive.Zip {
     
     [TestClass]
-    public class ArchiveZipTest {
+    public class ArchiveZipTest : ArchiveTest {
         private static string _testFolder;
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ArchiveZipTest)));
@@ -46,77 +46,23 @@ namespace Oetools.Utilities.Test.Archive.Zip {
         }
 
         [TestMethod]
-        public void CreateZip_noCompression() {
-            // creates the .zip
-            IArchiver archiver = new ZipArchiver();
-            archiver.SetCompressionLevel(CompressionLvl.None);
-            
-            List<IFileToArchive> listFiles = TestHelper.GetPackageTestFilesList(TestFolder, "out.zip");
-            listFiles.AddRange(TestHelper.GetPackageTestFilesList(TestFolder, "out2.zip"));
-            
-            TestHelper.CreateSourceFiles(listFiles);
-            archiver.PackFileSet(listFiles);
+        public void Test() {
+            ZipArchiver archiver = new ZipArchiver();
 
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out.zip")));
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "out2.zip")));
+            var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.zip"));
+            listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2.zip")));
             
+            CreateArchive(archiver, listFiles);
+
             // verify
-            ListZip(listFiles);
-        }
-
-        private void ListZip(List<IFileToArchive> listFiles) {
-            IArchiver archiver = new ZipArchiver();
-            foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
-                var files = archiver.ListFiles(groupedFiles.Key);
-                foreach (var file in files) {
-                    Assert.IsTrue(groupedFiles.ToList().Exists(f => f.RelativePathInArchive.Equals(file.RelativePathInArchive)));
-                }
-                Assert.AreEqual(groupedFiles.ToList().Count, files.Count);
-            }
-        }
-
-        /*
-         // does not add, will replace the existing .zip
-        [TestMethod]
-        public void AddToZip() {
-            var zipPath = Path.Combine(TestFolder, "out.zip");
-            IPackager packager = new ZipPackager(zipPath);
+            ListArchive(archiver, listFiles);
             
-            var listFiles = new List<IFileToDeployInPackage>();
+            // extract
+            Extract(archiver, listFiles);
+            
+            // delete files
+            DeleteFilesInArchive(archiver, listFiles);
 
-            var fileName = "file3.txt";
-            var filePath = Path.Combine(TestFolder, fileName);
-            File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToDeployInPackage {
-                From = filePath,
-                PackPath = zipPath,
-                RelativePathInPack = fileName
-            });
-
-            fileName = "file4.txt";
-            filePath = Path.Combine(TestFolder, fileName);
-            File.WriteAllText(filePath, fileName);
-            listFiles.Add(new FileToDeployInPackage {
-                From = filePath,
-                PackPath = zipPath,
-                RelativePathInPack = Path.Combine("subfolder2", fileName)
-            });
-
-            packager.PackFileSet(listFiles, CompressionLvl.None, ProgressHandler);
-
-            string smd5;
-            using (var md5 = MD5.Create()) {
-                using (var stream = File.OpenRead(zipPath)) {
-                    smd5 = Convert.ToBase64String(md5.ComputeHash(stream));
-                }
-            }
-
-            File.WriteAllText(Path.Combine(_testFolder, "md5sum.txt"), smd5);
-
-            Assert.AreEqual("p6AQVqZ6uVQcWTg8TEe4tg==", smd5);
         }
-        */
-
-        private void ProgressHandler(object sender, ArchiveProgressionEventArgs e) { }
     }
 }

@@ -311,19 +311,19 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Returns true if the process has exited (can be false if timeout was reached)
         /// </summary>
         /// <param name="maxWait"></param>
-        /// <param name="cancelSource"></param>
-        public virtual bool WaitForExecutionEnd(int maxWait = 0, CancellationTokenSource cancelSource = null) {
+        /// <param name="cancelToken"></param>
+        public virtual bool WaitForExecutionEnd(int maxWait = 0, CancellationToken? cancelToken = null) {
             if (!Started || _process == null) {
                 return true;
             }
 
-            if (cancelSource != null) {
+            if (cancelToken is CancellationToken nonNullCancelToken) {
                 var start = DateTime.Now;
                 var waitTime = maxWait > 500 || maxWait == 0 ? 500 : maxWait;
                 bool exited;
                 do {
                     exited = _process.WaitForExit(waitTime);
-                } while (!exited && DateTime.Now.Subtract(start).TotalMilliseconds <= maxWait && !cancelSource.IsCancellationRequested);
+                } while (!exited && DateTime.Now.Subtract(start).TotalMilliseconds <= maxWait && !nonNullCancelToken.IsCancellationRequested);
                 if (!exited) {
                     return false;
                 }

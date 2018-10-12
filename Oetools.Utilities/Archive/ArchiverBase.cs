@@ -19,9 +19,17 @@
 #endregion
 using System;
 using System.IO;
+using System.Threading;
 
 namespace Oetools.Utilities.Archive {
-    public abstract class Archiver {
+    
+    public abstract class ArchiverBase {
+        
+        protected CancellationToken? _cancelToken;
+
+        public void SetCancellationToken(CancellationToken? cancelToken) {
+            _cancelToken = cancelToken;
+        }
 
         /// <summary>
         /// Creates the folder so that the given archive file can be created, returns the folder path

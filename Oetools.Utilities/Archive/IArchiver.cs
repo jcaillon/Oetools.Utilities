@@ -19,6 +19,7 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Oetools.Utilities.Archive {
 
@@ -29,40 +30,53 @@ namespace Oetools.Utilities.Archive {
         /// </summary>
         /// <param name="compressionLevel"></param>
         void SetCompressionLevel(CompressionLvl compressionLevel);
+
+        /// <summary>
+        /// Sets a cancellation token that can be used to interrupt the process if needed.
+        /// </summary>
+        void SetCancellationToken(CancellationToken? cancelToken);
         
         /// <summary>
         /// Event published when the archiving process is progressing.
+        /// Either when a new file is archived successfully or when an archive is done.
         /// </summary>
         event EventHandler<ArchiveProgressionEventArgs> OnProgress;
         
         /// <summary>
-        /// Pack files into archives
+        /// Pack files into archives.
+        /// Non existing source files will cause an <see cref="ArchiveException"/>.
+        /// Packing into an existing archive will update it.
+        /// Packing existing files with update them.
         /// </summary>
-        /// <param name="files">List of files to archive</param>
+        /// <param name="filesToPack"></param>
         /// <exception cref="ArchiveException"></exception>
-        void PackFileSet(IEnumerable<IFileToArchive> files);
+        void PackFileSet(IEnumerable<IFileToArchive> filesToPack);
 
         /// <summary>
-        /// List all the files in an archive
+        /// List all the files in an archive.
         /// </summary>
         /// <param name="archivePath"></param>
         /// <returns></returns>
         /// <exception cref="ArchiveException"></exception>
-        List<IFileArchived> ListFiles(string archivePath);
+        IEnumerable<IFileArchived> ListFiles(string archivePath);
         
         /// <summary>
-        /// Extracts the given files from archives
+        /// Extracts the given files from archives.
+        /// Requesting the extraction a file that does not exist in the archive will not throw an exception.
+        /// However, the <see cref="OnProgress"/> event will only be called on actually processed files.
         /// </summary>
-        /// <param name="files"></param>
+        /// <param name="filesToExtract"></param>
         /// <exception cref="ArchiveException"></exception>
-        void ExtractFileSet(IEnumerable<IFileToExtract> files);
+        void ExtractFileSet(IEnumerable<IFileArchivedToExtract> filesToExtract);
         
         /// <summary>
-        /// Deletes the given files from archives
+        /// Deletes the given files from archives.
+        /// Requesting the deletion a file that does not exist in the archive will not throw an exception.
+        /// However, the <see cref="OnProgress"/> event will only be called on actually processed files.
         /// </summary>
-        /// <param name="files"></param>
+        /// <param name="filesToDelete"></param>
         /// <exception cref="ArchiveException"></exception>
-        void DeleteFileSet(IEnumerable<IFileToExtract> files);
+        void DeleteFileSet(IEnumerable<IFileArchivedToDelete> filesToDelete);
         
     }
 

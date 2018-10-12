@@ -100,7 +100,7 @@ namespace Oetools.Utilities.Ftp {
         private static EDirectoryListingStyle GuessDirectoryListingStyle(string[] recordList) {
             foreach (var s in recordList) {
                 if (s.Length > 10
-                    && Regex.IsMatch(s.Substring(0, 10), "(-|d)(-|r)(-|w)(-|x)(-|r)(-|w)(-|x)(-|r)(-|w)(-|x)")) return EDirectoryListingStyle.UnixStyle;
+                    && Regex.IsMatch(s.Substring(0, 11), "(-|d)(-|r)(-|w)(-|x)(-|r)(-|w)(-|x)(-|r)(-|w)(-|x)")) return EDirectoryListingStyle.UnixStyle;
                 if (s.Length > 8
                     && Regex.IsMatch(s.Substring(0, 8), "[0-9][0-9]-[0-9][0-9]-[0-9][0-9]")) return EDirectoryListingStyle.WindowsStyle;
             }
@@ -117,7 +117,8 @@ namespace Oetools.Utilities.Ftp {
 
             var f = new DirectoryListItem();
             var processstr = record.Trim();
-            f.Flags = processstr.Substring(0, 9);
+            processstr = processstr.Substring(processstr.IndexOf(' ') - 10);
+            f.Flags = processstr.Substring(0, 10);
             f.IsDirectory = f.Flags[0] == 'd';
             // Note: there is no way to determine here if the symlink refers to a dir or a file
             f.IsSymLink = f.Flags[0] == 'l';

@@ -46,8 +46,6 @@ namespace Oetools.Utilities.Test.Openedge {
 
         [TestMethod]
         public void Test() {
-            File.WriteAllBytes(@"C:\Users\jcaillon\Desktop\try\derp\Project_converted.xsd", new UoeEncryptor("123456789azerty").ConvertData(File.ReadAllBytes(@"C:\Users\jcaillon\Desktop\try\Project.xsd"), true));
-
             foreach (var password in new List<string> { null, "pwd", "waytoolongbutitsok" }) {
                 var xcode = new UoeEncryptor(password);
 

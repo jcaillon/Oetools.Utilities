@@ -30,13 +30,17 @@ namespace Oetools.Utilities.Ftp {
         public class FtpsClients {
             private Dictionary<string, FtpsClient> _ftpClients = new Dictionary<string, FtpsClient>();
 
-            private void DisconnectFtp() {
-                foreach (var ftpsClient in _ftpClients) ftpsClient.Value.Close();
+            public void DisconnectFtp() {
+                foreach (var ftpsClient in _ftpClients) {
+                    ftpsClient.Value.Close();
+                }
                 _ftpClients.Clear();
             }
 
             public FtpsClient Get(string id) {
-                if (!_ftpClients.ContainsKey(id)) Set(id, new FtpsClient());
+                if (!_ftpClients.ContainsKey(id)) {
+                    Set(id, new FtpsClient());
+                }
                 return _ftpClients[id];
             }
 

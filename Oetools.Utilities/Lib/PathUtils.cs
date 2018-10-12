@@ -241,10 +241,10 @@ namespace Oetools.Utilities.Lib {
         /// <param name="options"></param>
         /// <param name="excludePatterns">should be regex expressions</param>
         /// <param name="excludeHidden"></param>
-        /// <param name="cancelSource"></param>
+        /// <param name="cancelToken"></param>
         /// <returns></returns>
         /// <exception cref="OperationCanceledException"></exception>
-        public static IEnumerable<string> EnumerateAllFolders(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHidden = false, CancellationTokenSource cancelSource = null) {
+        public static IEnumerable<string> EnumerateAllFolders(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHidden = false, CancellationToken? cancelToken = null) {
             List<Regex> excludeRegexes = null;
             if (excludePatterns != null) {
                 excludeRegexes = excludePatterns.Select(s => new Regex(s)).ToList();
@@ -253,7 +253,7 @@ namespace Oetools.Utilities.Lib {
             var folderStack = new Stack<string>();
             folderStack.Push(folderPath);
             while (folderStack.Count > 0) {
-                cancelSource?.Token.ThrowIfCancellationRequested();
+                cancelToken?.ThrowIfCancellationRequested();
                 foreach (var dir in Directory.EnumerateDirectories(folderStack.Pop(), "*", SearchOption.TopDirectoryOnly)) {
                     if (hiddenDirList.Contains(dir)) {
                         continue;
@@ -280,10 +280,10 @@ namespace Oetools.Utilities.Lib {
         /// <param name="options"></param>
         /// <param name="excludePatterns">should be regex expressions</param>
         /// <param name="excludeHiddenFolders"></param>
-        /// <param name="cancelSource"></param>
+        /// <param name="cancelToken"></param>
         /// <returns></returns>
         /// <exception cref="OperationCanceledException"></exception>
-        public static IEnumerable<string> EnumerateAllFiles(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHiddenFolders = false, CancellationTokenSource cancelSource = null) {
+        public static IEnumerable<string> EnumerateAllFiles(string folderPath, SearchOption options = SearchOption.AllDirectories, List<string> excludePatterns = null, bool excludeHiddenFolders = false, CancellationToken? cancelToken = null) {
             List<Regex> excludeRegexes = null;
             if (excludePatterns != null) {
                 excludeRegexes = excludePatterns.Select(s => new Regex(s)).ToList();
@@ -291,7 +291,7 @@ namespace Oetools.Utilities.Lib {
             var folderStack = new Stack<string>();
             folderStack.Push(folderPath);
             while (folderStack.Count > 0) {
-                cancelSource?.Token.ThrowIfCancellationRequested();
+                cancelToken?.ThrowIfCancellationRequested();
                 var folder = folderStack.Pop();
                 foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly)) {
                     if (excludeRegexes != null && excludeRegexes.Any(r => r.IsMatch(file))) {

@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Oetools.Utilities.Archive.Compression;
 using Oetools.Utilities.Archive.Compression.Cab;
 using Oetools.Utilities.Lib.Extension;
@@ -29,11 +30,12 @@ namespace Oetools.Utilities.Archive.Cab {
     
     /// <summary>
     ///     Allows to pack files into a cab
+    /// TODO : rewrite a real implementation in pure C#
     /// </summary>
-    public class CabArchiver : Archiver, IArchiver {
+    public class CabArchiver : ArchiverBase, IArchiver {
 
         private CompressionLevel _compressionLevel = CompressionLevel.None;
-
+        
         /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
         public void SetCompressionLevel(CompressionLvl compressionLevel) {
             switch (compressionLevel) {
@@ -52,20 +54,23 @@ namespace Oetools.Utilities.Archive.Cab {
         }
         
         /// <inheritdoc cref="IArchiver.PackFileSet"/>
-        public void PackFileSet(IEnumerable<IFileToArchive> files) {
-            foreach (var cabGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
+        public void PackFileSet(IEnumerable<IFileToArchive> filesToPack) {
+            foreach (var cabGroupedFiles in filesToPack.GroupBy(f => f.ArchivePath)) {
                 try {
                     CreateArchiveFolder(cabGroupedFiles.Key);
                     var cabInfo = new CabInfo(cabGroupedFiles.Key);
                     var filesDic = cabGroupedFiles.ToDictionary(file => file.RelativePathInArchive, file => file.SourcePath);
                     cabInfo.PackFileSet(filesDic, _compressionLevel, (sender, args) => {
+                        _cancelToken?.ThrowIfCancellationRequested();
                         if (args.ProgressType == ArchiveProgressType.FinishFile) {
                             OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, args.CurrentArchiveName, null, args.CurrentFileName));
                         }
                         if (args.TreatmentException != null) {
-                            throw new ArchiveException($"Failed to pack into {args.CurrentArchiveName.PrettyQuote()} and relative archive path {args.CurrentFileName}.", args.TreatmentException);
+                            throw new ArchiveException($"Failed to pack into {args.CurrentArchiveName.PrettyQuote()} and relative archive path {args.CurrentFileName.PrettyQuote()}.", args.TreatmentException);
                         }
                     });
+                } catch (OperationCanceledException) {
+                    throw;
                 } catch (Exception e) {
                     throw new ArchiveException($"Failed to pack to {cabGroupedFiles.Key.PrettyQuote()}.", e);
                 }
@@ -77,7 +82,7 @@ namespace Oetools.Utilities.Archive.Cab {
         public event EventHandler<ArchiveProgressionEventArgs> OnProgress;
 
         /// <inheritdoc cref="IArchiver.ListFiles"/>
-        public List<IFileArchived> ListFiles(string archivePath) {
+        public IEnumerable<IFileArchived> ListFiles(string archivePath) {
             return new CabInfo(archivePath)
                 .GetFiles()
                 .Select(info => new CabFileArchived {
@@ -85,18 +90,36 @@ namespace Oetools.Utilities.Archive.Cab {
                     SizeInBytes = (ulong) info.Length,
                     LastWriteTime = info.LastWriteTime,
                     ArchivePath = archivePath
-                } as IFileArchived)
-                .ToList();
+                } as IFileArchived);
         }
 
         /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
-        public void ExtractFileSet(IEnumerable<IFileToExtract> files) {
-            throw new NotImplementedException();
+        public void ExtractFileSet(IEnumerable<IFileArchivedToExtract> filesToExtract) {
+            foreach (var cabGroupedFiles in filesToExtract.GroupBy(f => f.ArchivePath)) {
+                try {
+                    var cabInfo = new CabInfo(cabGroupedFiles.Key);
+                    var filesDic = cabGroupedFiles.ToDictionary(file => file.RelativePathInArchive, file => file.ExtractionPath);
+                    cabInfo.UnpackFileSet(filesDic, null, (sender, args) => {
+                        _cancelToken?.ThrowIfCancellationRequested();
+                        if (args.ProgressType == ArchiveProgressType.FinishFile) {
+                            OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, args.CurrentArchiveName, null, args.CurrentFileName));
+                        }
+                        if (args.TreatmentException != null) {
+                            throw new ArchiveException($"Failed to extract {args.CurrentFileName.PrettyQuote()} from {args.CurrentArchiveName.PrettyQuote()}.", args.TreatmentException);
+                        }
+                    });
+                } catch (OperationCanceledException) {
+                    throw;
+                } catch (Exception e) {
+                    throw new ArchiveException($"Failed to pack to {cabGroupedFiles.Key.PrettyQuote()}.", e);
+                }
+                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, cabGroupedFiles.Key, null, null));
+            }
         }
 
         /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
-        public void DeleteFileSet(IEnumerable<IFileToExtract> files) {
-            throw new NotImplementedException();
+        public void DeleteFileSet(IEnumerable<IFileArchivedToDelete> filesToDelete) {
+            // TODO : update when we have a custom .cab maker
         }
 
     }
