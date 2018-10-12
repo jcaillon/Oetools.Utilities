@@ -19,13 +19,10 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Prolib;
-using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Test.Archive.Prolib {
     

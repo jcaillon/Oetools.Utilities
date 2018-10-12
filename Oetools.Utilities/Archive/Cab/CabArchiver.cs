@@ -21,7 +21,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using Oetools.Utilities.Archive.Compression;
 using Oetools.Utilities.Archive.Compression.Cab;
 using Oetools.Utilities.Lib.Extension;

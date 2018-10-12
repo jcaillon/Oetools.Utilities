@@ -23,7 +23,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using System.Threading;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Lib.Extension;
 

@@ -22,6 +22,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Oetools.Utilities.Openedge.Exceptions;
 
 namespace Oetools.Utilities.Openedge {
         

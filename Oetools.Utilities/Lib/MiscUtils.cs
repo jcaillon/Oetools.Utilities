@@ -18,7 +18,9 @@
 // ========================================================================
 #endregion
 
+#if !WINDOWSONLYBUILD
 using System.Runtime.InteropServices;
+#endif
 
 namespace Oetools.Utilities.Lib {
     /// <summary>

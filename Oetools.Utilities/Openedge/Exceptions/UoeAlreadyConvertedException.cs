@@ -20,7 +20,7 @@
 
 using System;
 
-namespace Oetools.Utilities.Openedge {
+namespace Oetools.Utilities.Openedge.Exceptions {
     public class UoeAlreadyConvertedException : Exception {
         public UoeAlreadyConvertedException(string message) : base(message) { }
     }

@@ -18,14 +18,11 @@
 // ========================================================================
 #endregion
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using Oetools.Utilities.Archive;
-using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge;
 using Oetools.Utilities.Openedge.Database;
-using Oetools.Utilities.Test.Archive;
+using Oetools.Utilities.Openedge.Exceptions;
 
 namespace Oetools.Utilities.Test {
     public static class TestHelper {
@@ -33,7 +30,13 @@ namespace Oetools.Utilities.Test {
         private static readonly string TestFolder = Path.Combine(AppContext.BaseDirectory, "Tests");
 
         public static bool GetDlcPath(out string dlcPath) {
-            dlcPath = UoeUtilities.GetDlcPathFromEnv();
+            try {
+                dlcPath = UoeUtilities.GetDlcPathFromEnv();
+            } catch (UoeDlcNotFoundException) {
+                Console.WriteLine("Cancelling test, DLC environment variable not found!");
+                dlcPath = null;
+                return false;
+            }
             if (string.IsNullOrEmpty(dlcPath)) {
                 Console.WriteLine("Cancelling test, DLC environment variable not found!");
                 return false;

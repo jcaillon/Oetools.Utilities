@@ -25,6 +25,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Openedge.Exceptions;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Openedge {
@@ -150,7 +151,7 @@ namespace Oetools.Utilities.Openedge {
         /// </summary>
         /// <returns></returns>
         public static string GetDlcPathFromEnv() {
-            return Environment.GetEnvironmentVariable(UoeConstants.OeDlcEnvVar) ?? throw new Exception("Can't find the openedge installation directory (DLC).");
+            return Environment.GetEnvironmentVariable(UoeConstants.OeDlcEnvVar) ?? throw new UoeDlcNotFoundException($"Can't find the openedge installation directory ({UoeConstants.OeDlcEnvVar}).");
         }
 
         /// <summary>

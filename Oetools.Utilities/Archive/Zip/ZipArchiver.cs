@@ -22,7 +22,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Threading;
 using Oetools.Utilities.Lib.Extension;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
 

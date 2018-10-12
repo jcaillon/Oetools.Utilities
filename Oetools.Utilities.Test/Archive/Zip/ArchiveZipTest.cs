@@ -17,11 +17,9 @@
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System.Collections.Generic;
+
 using System.IO;
-using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Zip;
 
 namespace Oetools.Utilities.Test.Archive.Zip {
