@@ -1,7 +1,7 @@
-﻿#region header
+#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IFileArchived.cs) is part of Oetools.Utilities.
+// This file (ArchiveException.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,19 +17,16 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System;
 
 namespace Oetools.Utilities.Archive {
-    public interface IFileArchived : IFileArchivedBase {
-                
-        /// <summary>
-        /// File size in bytes inside the archive.
-        /// </summary>
-        ulong SizeInBytes { get; }
-        
-        /// <summary>
-        /// Last modified date of this file.
-        /// </summary>
-        DateTime LastWriteTime { get; }
+    
+    /// <summary>
+    /// Thrown on archiver exception.
+    /// </summary>
+    public class ArchiverException : Exception {
+        internal ArchiverException(string message) : base(message) { }
+        internal ArchiverException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

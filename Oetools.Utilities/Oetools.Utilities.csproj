@@ -88,4 +88,7 @@
   <ItemGroup Label="Resources">
     <EmbeddedResource Include="Resources\Openedge\*" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Noyacode.CabinetManager" Version="1.0.1" />
+  </ItemGroup>
 </Project>

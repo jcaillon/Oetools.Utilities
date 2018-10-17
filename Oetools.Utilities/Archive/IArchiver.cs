@@ -23,13 +23,16 @@ using System.Threading;
 
 namespace Oetools.Utilities.Archive {
 
+    /// <summary>
+    /// An archiver allows CRUD operation on an archive.
+    /// </summary>
     public interface IArchiver {
 
         /// <summary>
-        /// Sets the compression level to use when archiving.
+        /// Sets the compression level to use for the next <see cref="PackFileSet"/> process.
         /// </summary>
-        /// <param name="compressionLevel"></param>
-        void SetCompressionLevel(CompressionLvl compressionLevel);
+        /// <param name="archiveCompressionLevel"></param>
+        void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel);
 
         /// <summary>
         /// Sets a cancellation token that can be used to interrupt the process if needed.
@@ -37,46 +40,56 @@ namespace Oetools.Utilities.Archive {
         void SetCancellationToken(CancellationToken? cancelToken);
         
         /// <summary>
+        /// <para>
         /// Event published when the archiving process is progressing.
-        /// Either when a new file is archived successfully or when an archive is done.
+        /// </para>
         /// </summary>
-        event EventHandler<ArchiveProgressionEventArgs> OnProgress;
+        event EventHandler<ArchiverEventArgs> OnProgress;
         
         /// <summary>
-        /// Pack files into archives.
-        /// Non existing source files will cause an <see cref="ArchiveException"/>.
+        /// <para>
+        /// Pack (i.e. add or replace) files into archives.
+        /// Non existing source files will not throw an exception.
+        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
         /// Packing into an existing archive will update it.
-        /// Packing existing files with update them.
+        /// Packing existing files will update them.
+        /// </para>
         /// </summary>
         /// <param name="filesToPack"></param>
-        /// <exception cref="ArchiveException"></exception>
-        void PackFileSet(IEnumerable<IFileToArchive> filesToPack);
+        /// <exception cref="ArchiverException"></exception>
+        /// <exception cref="OperationCanceledException"></exception>
+        /// <returns>Total number of files actually packed.</returns>
+        int PackFileSet(IEnumerable<IFileToArchive> filesToPack);
 
         /// <summary>
         /// List all the files in an archive.
         /// </summary>
         /// <param name="archivePath"></param>
         /// <returns></returns>
-        /// <exception cref="ArchiveException"></exception>
-        IEnumerable<IFileArchived> ListFiles(string archivePath);
+        /// <exception cref="ArchiverException"></exception>
+        IEnumerable<IFileInArchive> ListFiles(string archivePath);
         
         /// <summary>
         /// Extracts the given files from archives.
+        /// Requesting the extraction from a non existing archive will not throw an exception.
         /// Requesting the extraction a file that does not exist in the archive will not throw an exception.
-        /// However, the <see cref="OnProgress"/> event will only be called on actually processed files.
+        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
         /// </summary>
         /// <param name="filesToExtract"></param>
-        /// <exception cref="ArchiveException"></exception>
-        void ExtractFileSet(IEnumerable<IFileArchivedToExtract> filesToExtract);
+        /// <exception cref="ArchiverException"></exception>
+        /// <returns>Total number of files actually extracted.</returns>
+        int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract);
         
         /// <summary>
         /// Deletes the given files from archives.
+        /// Requesting the deletion from a non existing archive will not throw an exception.
         /// Requesting the deletion a file that does not exist in the archive will not throw an exception.
-        /// However, the <see cref="OnProgress"/> event will only be called on actually processed files.
+        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
         /// </summary>
         /// <param name="filesToDelete"></param>
-        /// <exception cref="ArchiveException"></exception>
-        void DeleteFileSet(IEnumerable<IFileArchivedToDelete> filesToDelete);
+        /// <exception cref="ArchiverException"></exception>
+        /// <returns>Total number of files actually deleted.</returns>
+        int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete);
         
     }
 

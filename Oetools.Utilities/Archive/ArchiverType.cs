@@ -1,7 +1,7 @@
-﻿#region header
+#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ZipFileArchived.cs) is part of Oetools.Utilities.
+// This file (ArchiverType.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,13 +17,32 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System;
 
-namespace Oetools.Utilities.Archive.Zip {
-    internal class ZipFileArchived : IFileArchived {
-        public string ArchivePath { get; set; }
-        public string RelativePathInArchive { get; set; }
-        public ulong SizeInBytes { get; set; }
-        public DateTime LastWriteTime { get; set; }
+namespace Oetools.Utilities.Archive {
+    
+    /// <summary>
+    /// The different type of archiver.
+    /// </summary>
+    public enum ArchiverType {
+        
+        /// <summary>
+        /// CRUD operations for windows cabinet file format.
+        /// </summary>
+        Cab,
+        
+        /// <summary>
+        /// CRUD operations for zip files.
+        /// </summary>
+        Zip,
+        
+        /// <summary>
+        /// CRUD operations for pro-libraries files.
+        /// </summary>
+        Prolib,
+        
+        /// <summary>
+        /// CRUD operations for an ftp server.
+        /// </summary>
+        Ftp
     }
 }

@@ -17,32 +17,33 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System;
 using System.IO;
 using System.Threading;
 
 namespace Oetools.Utilities.Archive {
     
+    /// <summary>
+    /// Base archiver class.
+    /// </summary>
     public abstract class ArchiverBase {
         
         protected CancellationToken? _cancelToken;
 
-        public void SetCancellationToken(CancellationToken? cancelToken) {
+        /// <inheritdoc cref="IArchiver.SetCancellationToken"/>
+        public virtual void SetCancellationToken(CancellationToken? cancelToken) {
             _cancelToken = cancelToken;
         }
 
         /// <summary>
-        /// Creates the folder so that the given archive file can be created, returns the folder path
+        /// Creates the folder so that the given archive file can be created, returns the folder path.
         /// </summary>
         /// <param name="archivePath"></param>
         /// <exception cref="Exception"></exception>
         protected string CreateArchiveFolder(string archivePath) {
-            // check that the folder to the archive exists
             var archiveFolder = Path.GetDirectoryName(archivePath);
-            if (string.IsNullOrEmpty(archiveFolder)) {
-                throw new Exception($"Could not find the folder for {archivePath ?? "null"}");
-            }
-            if (!Directory.Exists(archiveFolder)) {
+            if (!string.IsNullOrEmpty(archiveFolder) && !Directory.Exists(archiveFolder)) {
                 Directory.CreateDirectory(archiveFolder);
             }
             return archiveFolder;

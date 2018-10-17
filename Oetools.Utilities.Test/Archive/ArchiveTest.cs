@@ -28,25 +28,28 @@ namespace Oetools.Utilities.Test.Archive {
     
     public class ArchiveTest {
 
-        private int _nbFileFinished;
+        private int _nbFileProcessed;
         private int _nbArchiveFinished;
         
-        protected void CreateArchive(IArchiver archiver, List<FileArchived> listFiles) {
+        protected void CreateArchive(IArchiver archiver, List<FileInArchive> listFiles) {
             archiver.OnProgress += ArchiverOnOnProgress;
             
-            _nbFileFinished = 0;
+            _nbFileProcessed = 0;
             _nbArchiveFinished = 0;
-            
-            foreach (var file in listFiles) {
-                File.WriteAllText(file.SourcePath, Path.GetFileName(file.SourcePath));
-            }
-            
+
             var modifiedList = listFiles.GetRange(1, listFiles.Count - 1);
-            archiver.PackFileSet(modifiedList);
+            
+            // try to add a non existing file
+            modifiedList.Add(new FileInArchive {
+                ArchivePath = listFiles.First().ArchivePath,
+                ExtractionPath = listFiles.First().ExtractionPath,
+                RelativePathInArchive = "random.name"
+            });
+            Assert.AreEqual(modifiedList.Count - 1, archiver.PackFileSet(modifiedList));
             
             // test the update of archives
             modifiedList = listFiles.GetRange(0, 1);
-            archiver.PackFileSet(modifiedList);
+            Assert.AreEqual(modifiedList.Count, archiver.PackFileSet(modifiedList));
  
             foreach (var archive in listFiles.GroupBy(f => f.ArchivePath)) {
                 if (Directory.Exists(Path.GetDirectoryName(archive.Key))) {
@@ -55,11 +58,11 @@ namespace Oetools.Utilities.Test.Archive {
             }
             
             archiver.OnProgress -= ArchiverOnOnProgress;
-            Assert.AreEqual(listFiles.Count, _nbFileFinished, "Problem in the progress event");
+            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
             Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count() + 1, _nbArchiveFinished, "Problem in the progress event, number of archives");
         }
 
-        protected void ListArchive(IArchiver archiver, List<FileArchived> listFiles) {
+        protected void ListArchive(IArchiver archiver, List<FileInArchive> listFiles) {
             foreach (var groupedTheoreticalFiles in listFiles.GroupBy(f => f.ArchivePath)) {
                 var actualFiles = archiver.ListFiles(groupedTheoreticalFiles.Key).ToList();
                 foreach (var theoreticalFile in groupedTheoreticalFiles) {
@@ -69,19 +72,19 @@ namespace Oetools.Utilities.Test.Archive {
             }
         }
 
-        protected void Extract(IArchiver archiver, List<FileArchived> listFiles) {
+        protected void Extract(IArchiver archiver, List<FileInArchive> listFiles) {
             archiver.OnProgress += ArchiverOnOnProgress;
-            _nbFileFinished = 0;
+            _nbFileProcessed = 0;
             _nbArchiveFinished = 0;
             
             // try to add a non existing file
             var modifiedList = listFiles.ToList();
-            modifiedList.Add(new FileArchived {
+            modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
                 ExtractionPath = listFiles.First().ExtractionPath,
                 RelativePathInArchive = "random.name"
             });
-            archiver.ExtractFileSet(modifiedList);
+            Assert.AreEqual(modifiedList.Count - 1, archiver.ExtractFileSet(modifiedList));
             
             foreach (var fileToExtract in listFiles) {
                 Assert.IsTrue(File.Exists(fileToExtract.ExtractionPath), $"Extracted file does not exist : {fileToExtract.ExtractionPath}");
@@ -89,23 +92,23 @@ namespace Oetools.Utilities.Test.Archive {
             }
             
             archiver.OnProgress -= ArchiverOnOnProgress;
-            Assert.AreEqual(listFiles.Count, _nbFileFinished, "Problem in the progress event");
+            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
             Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
         }
         
-        protected void DeleteFilesInArchive(IArchiver archiver, List<FileArchived> listFiles) {
+        protected void DeleteFilesInArchive(IArchiver archiver, List<FileInArchive> listFiles) {
             archiver.OnProgress += ArchiverOnOnProgress;
-            _nbFileFinished = 0;
+            _nbFileProcessed = 0;
             _nbArchiveFinished = 0;
 
             // try to add a non existing file
             var modifiedList = listFiles.ToList();
-            modifiedList.Add(new FileArchived {
+            modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
                 ExtractionPath = listFiles.First().ExtractionPath,
                 RelativePathInArchive = "random.name"
             });
-            archiver.DeleteFileSet(modifiedList);
+            Assert.AreEqual(modifiedList.Count - 1, archiver.DeleteFileSet(modifiedList));
             
             foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
                 var files = archiver.ListFiles(groupedFiles.Key);
@@ -113,45 +116,57 @@ namespace Oetools.Utilities.Test.Archive {
             }
             
             archiver.OnProgress -= ArchiverOnOnProgress;
-            Assert.AreEqual(listFiles.Count, _nbFileFinished, "Problem in the progress event");
+            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
             Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
         }
 
-        private void ArchiverOnOnProgress(object sender, ArchiveProgressionEventArgs e) {
-            if (e.ProgressionType == ArchiveProgressionType.FinishFile) {
-                _nbFileFinished++;
-            } else if (e.ProgressionType == ArchiveProgressionType.FinishArchive) {
+        private void ArchiverOnOnProgress(object sender, ArchiverEventArgs e) {
+            if (e.EventType == ArchiverEventType.FileProcessed) {
+                _nbFileProcessed++;
+            } else if (e.EventType == ArchiverEventType.ArchiveCompleted) {
                 _nbArchiveFinished++;
             }
         }
         
-        protected List<FileArchived> GetPackageTestFilesList(string testFolder, string archivePath) {
-            return new List<FileArchived> {
-                new FileArchived {
+        protected List<FileInArchive> GetPackageTestFilesList(string testFolder, string archivePath) {
+            var outputList = new List<FileInArchive> {
+                new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file 0.txt"),
                     ArchivePath = archivePath,
                     RelativePathInArchive = "file 0.txt",
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "file 0.txt")
                 },
-                new FileArchived {
+                new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file1.txt"),
                     ArchivePath = archivePath,
                     RelativePathInArchive = "file1.txt",
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "file1.txt")
                 },
-                new FileArchived {
+                new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file2.txt"),
                     ArchivePath = archivePath,
                     RelativePathInArchive = Path.Combine("subfolder1", "file2.txt"),
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "subfolder1", "file2.txt")
                 },
-                new FileArchived {
+                new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file3.txt"),
                     ArchivePath = archivePath,
                     RelativePathInArchive = Path.Combine("subfolder1", "bla bla", "file3.txt"),
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "subfolder1", "bla bla", "file3.txt")
                 }
             };
+            foreach (var file in outputList) {
+                File.WriteAllText(file.SourcePath, $"\"{Path.GetFileName(file.SourcePath)}\"");
+                if (File.Exists(file.ExtractionPath)) {
+                    File.Delete(file.ExtractionPath);
+                }
+            }
+            foreach (var cabGrouped in outputList.GroupBy(f => f.ArchivePath)) {
+                if (File.Exists(cabGrouped.Key)) {
+                    File.Delete(cabGrouped.Key);
+                }
+            }
+            return outputList;
         }
         
     }

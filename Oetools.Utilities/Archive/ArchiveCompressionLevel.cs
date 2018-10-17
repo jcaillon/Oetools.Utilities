@@ -18,7 +18,8 @@
 // ========================================================================
 #endregion
 namespace Oetools.Utilities.Archive {
-    public enum CompressionLvl {
+    public enum ArchiveCompressionLevel {
+        
         /// <summary>
         /// Do not compress files, only store.
         /// </summary>

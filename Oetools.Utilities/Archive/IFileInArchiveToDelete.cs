@@ -1,7 +1,7 @@
-﻿#region header
+#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ProlibFileArchived.cs) is part of Oetools.Utilities.
+// This file (IFileArchivedToDelete.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,15 +17,14 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System;
 
-namespace Oetools.Utilities.Archive.Prolib {
-    internal class ProlibFileArchived : IFileArchived {
-        public string ArchivePath { get; set; }
-        public string RelativePathInArchive { get; set; }
-        public ulong SizeInBytes { get; set; }
-        public string Type { get; set; }
-        public DateTime LastWriteTime { get; set; }
-        public DateTime DateAdded { get; set; }
+namespace Oetools.Utilities.Archive {
+    
+    /// <summary>
+    /// Describes a file existing in an archive that needs to be deleted.
+    /// </summary>
+    public interface IFileInArchiveToDelete : IFileArchivedBase {
+        
+        
     }
 }

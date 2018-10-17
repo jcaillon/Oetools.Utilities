@@ -34,27 +34,30 @@ namespace Oetools.Utilities.Archive.Zip {
         private CompressionLevel _compressionLevel = CompressionLevel.NoCompression;
        
         /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
-        public void SetCompressionLevel(CompressionLvl compressionLevel) {
-            switch (compressionLevel) {
-                case CompressionLvl.None:
+        public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) {
+            switch (archiveCompressionLevel) {
+                case ArchiveCompressionLevel.None:
                     _compressionLevel = CompressionLevel.NoCompression;
                     break;
-                case CompressionLvl.Fastest:
+                case ArchiveCompressionLevel.Fastest:
                     _compressionLevel = CompressionLevel.Fastest;
                     break;
-                case CompressionLvl.Optimal:
+                case ArchiveCompressionLevel.Optimal:
                     _compressionLevel = CompressionLevel.Optimal;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(compressionLevel), compressionLevel, null);
+                    throw new ArgumentOutOfRangeException(nameof(archiveCompressionLevel), archiveCompressionLevel, null);
             }
         }
 
         /// <inheritdoc cref="IArchiver.OnProgress"/>
-        public event EventHandler<ArchiveProgressionEventArgs> OnProgress;
+        public event EventHandler<ArchiverEventArgs> OnProgress;
         
         /// <inheritdoc cref="IArchiver.PackFileSet"/>
-        public void PackFileSet(IEnumerable<IFileToArchive> filesToPack) {
+        public int PackFileSet(IEnumerable<IFileToArchive> filesToPackIn) {
+            var filesToPack = filesToPackIn.ToList();
+            int totalFiles = filesToPack.Count;
+            int totalFilesDone = 0;
             foreach (var zipGroupedFiles in filesToPack.GroupBy(f => f.ArchivePath)) {
                 try {
                     CreateArchiveFolder(zipGroupedFiles.Key);
@@ -62,44 +65,54 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, zipMode)) {
                         foreach (var file in zipGroupedFiles) {
                             _cancelToken?.ThrowIfCancellationRequested();
+                            if (!File.Exists(file.SourcePath)) {
+                                continue;
+                            }
                             try {
                                 zip.CreateEntryFromFile(file.SourcePath, file.RelativePathInArchive, _compressionLevel);
                             } catch (Exception e) {
-                                throw new ArchiveException($"Failed to pack {file.SourcePath.PrettyQuote()} into {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {file.RelativePathInArchive}.", e);
+                                throw new ArchiverException($"Failed to pack {file.SourcePath.PrettyQuote()} into {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {file.RelativePathInArchive}.", e);
                             }
-                            OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, zipGroupedFiles.Key, file.SourcePath, file.RelativePathInArchive));
+                            totalFilesDone++;
+                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(zipGroupedFiles.Key, file.RelativePathInArchive));
+                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                         }
                     }
                 } catch (OperationCanceledException) {
                     throw;
                 } catch (Exception e) {
-                    throw new ArchiveException($"Failed to pack to {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                    throw new ArchiverException($"Failed to pack to {zipGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, zipGroupedFiles.Key, null, null));
+                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }
+
+            return totalFilesDone;
         }
 
         /// <inheritdoc cref="IArchiver.ListFiles"/>
-        public IEnumerable<IFileArchived> ListFiles(string archivePath) {
+        public IEnumerable<IFileInArchive> ListFiles(string archivePath) {
             if (!File.Exists(archivePath)) {
-                throw new ArchiveException($"The archive does not exist : {archivePath.PrettyQuote()}.");
+                return Enumerable.Empty<IFileInArchive>();
             }
             using (var archive = ZipFile.OpenRead(archivePath)) {
                 return archive.Entries
-                    .Select(entry => new ZipFileArchived {
+                    .Select(entry => new ZipFileInArchive {
                         RelativePathInArchive = entry.FullName,
                         SizeInBytes = (ulong) entry.Length,
                         LastWriteTime = entry.LastWriteTime.DateTime,
                         ArchivePath = archivePath
-                    } as IFileArchived);
+                    } as IFileInArchive);
             }
         }
 
         /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
-        public void ExtractFileSet(IEnumerable<IFileArchivedToExtract> filesToExtract) {
+        public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtractIn) {
+            var filesToExtract = filesToExtractIn.ToList();
+            int totalFiles = filesToExtract.Count;
+            int totalFilesDone = 0;
             foreach (var zipGroupedFiles in filesToExtract.GroupBy(f => f.ArchivePath)) {
                 if (!File.Exists(zipGroupedFiles.Key)) {
-                    throw new ArchiveException($"The archive does not exist : {zipGroupedFiles.Key.PrettyQuote()}.");
+                    continue;
                 }
                 try {
                     // create all necessary extraction folders
@@ -111,54 +124,65 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.OpenRead(zipGroupedFiles.Key)) {
                         foreach (var entry in zip.Entries) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => f.RelativePathInArchive.Equals(entry.FullName));
+                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.Equals(f.RelativePathInArchive, StringComparison.OrdinalIgnoreCase));
                             if (fileToExtract != null) {
                                 try {
                                     entry.ExtractToFile(fileToExtract.ExtractionPath, true);
                                 } catch (Exception e) {
-                                    throw new ArchiveException($"Failed to extract {fileToExtract.ExtractionPath.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {fileToExtract.RelativePathInArchive}.", e);
+                                    throw new ArchiverException($"Failed to extract {fileToExtract.ExtractionPath.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {fileToExtract.RelativePathInArchive}.", e);
                                 }
-                                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, zipGroupedFiles.Key, fileToExtract.ExtractionPath, fileToExtract.RelativePathInArchive));
+                                totalFilesDone++;
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(zipGroupedFiles.Key, fileToExtract.RelativePathInArchive));
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToExtract.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                             }
                         }
                     }
                 } catch (OperationCanceledException) {
                     throw;
                 } catch (Exception e) {
-                    throw new ArchiveException($"Failed to unpack files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                    throw new ArchiverException($"Failed to unpack files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, zipGroupedFiles.Key, null, null));
+                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }
+
+            return totalFilesDone;
         }
 
         /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
-        public void DeleteFileSet(IEnumerable<IFileArchivedToDelete> filesToDelete) {
+        public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDeleteIn) {            
+            var filesToDelete = filesToDeleteIn.ToList();
+            int totalFiles = filesToDelete.Count;
+            int totalFilesDone = 0;
             foreach (var zipGroupedFiles in filesToDelete.GroupBy(f => f.ArchivePath)) {
                 if (!File.Exists(zipGroupedFiles.Key)) {
-                    throw new ArchiveException($"The archive does not exist : {zipGroupedFiles.Key.PrettyQuote()}.");
+                    continue;
                 }
                 try {
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, ZipArchiveMode.Update)) {
                         foreach (var entry in zip.Entries.ToList()) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => f.RelativePathInArchive.Equals(entry.FullName));
+                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.Equals(f.RelativePathInArchive, StringComparison.OrdinalIgnoreCase));
                             if (fileToExtract != null) {
                                 try {
                                     entry.Delete();
                                 } catch (Exception e) {
-                                    throw new ArchiveException($"Failed to delete {fileToExtract.RelativePathInArchive.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                                    throw new ArchiverException($"Failed to delete {fileToExtract.RelativePathInArchive.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()}.", e);
                                 }
-                                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishFile, zipGroupedFiles.Key, null, fileToExtract.RelativePathInArchive));
+                                totalFilesDone++;
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(zipGroupedFiles.Key, fileToExtract.RelativePathInArchive));
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToExtract.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                             }
                         }
                     }
                 } catch (OperationCanceledException) {
                     throw;
                 } catch (Exception e) {
-                    throw new ArchiveException($"Failed to delete files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                    throw new ArchiverException($"Failed to delete files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, new ArchiveProgressionEventArgs(ArchiveProgressionType.FinishArchive, zipGroupedFiles.Key, null, null));
+                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }
+
+            return totalFilesDone;
         }
     }
 }

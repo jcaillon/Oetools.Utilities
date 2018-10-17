@@ -1,7 +1,7 @@
 ﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (FtpFileArchived.cs) is part of Oetools.Utilities.
+// This file (CabFileArchived.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,13 +18,19 @@
 // ========================================================================
 #endregion
 using System;
-using Oetools.Utilities.Archive;
 
-namespace Oetools.Utilities.Ftp.Archiver {
-    public class FtpFileArchived : IFileArchived {
+namespace Oetools.Utilities.Archive.Cab {
+    internal class FileInCab : IFileInArchive {
         public string ArchivePath { get; set; }
         public string RelativePathInArchive { get; set; }
         public ulong SizeInBytes { get; set; }
         public DateTime LastWriteTime { get; set; }
+
+        public FileInCab(string archivePath, string relativePathInArchive, ulong sizeInBytes, DateTime lastWriteTime) {
+            ArchivePath = archivePath;
+            RelativePathInArchive = relativePathInArchive;
+            SizeInBytes = sizeInBytes;
+            LastWriteTime = lastWriteTime;
+        }
     }
 }

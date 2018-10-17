@@ -20,6 +20,7 @@
 
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Oetools.Utilities.Archive.Cab;
 
 namespace Oetools.Utilities.Test.Archive.Cab {
     
@@ -44,8 +45,6 @@ namespace Oetools.Utilities.Test.Archive.Cab {
 
         [TestMethod]
         public void Test() {
-            // TODO : uncomment when it is functional
-            /*
             CabArchiver archiver = new CabArchiver();
             
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.cab"));
@@ -61,7 +60,7 @@ namespace Oetools.Utilities.Test.Archive.Cab {
             
             // delete files
             DeleteFilesInArchive(archiver, listFiles);
-            */
+            
         }
     }
 }

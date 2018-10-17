@@ -1,7 +1,7 @@
 ﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IFileToArchive.cs) is part of Oetools.Utilities.
+// This file (FtpFileArchived.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,16 +17,14 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-namespace Oetools.Utilities.Archive {
-    
-    /// <summary>
-    /// Represents an external file that needs to be packed (archived/added) into an archive.
-    /// </summary>
-    public interface IFileToArchive : IFileArchivedBase{
-        
-        /// <summary>
-        /// The source path of the file to archive.
-        /// </summary>
-        string SourcePath { get; }
+using System;
+using Oetools.Utilities.Archive;
+
+namespace Oetools.Utilities.Ftp.Archiver {
+    public class FtpFileInArchive : IFileInArchive {
+        public string ArchivePath { get; set; }
+        public string RelativePathInArchive { get; set; }
+        public ulong SizeInBytes { get; set; }
+        public DateTime LastWriteTime { get; set; }
     }
 }

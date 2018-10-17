@@ -1,7 +1,7 @@
 ﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (CabFileArchived.cs) is part of Oetools.Utilities.
+// This file (IFileArchived.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,11 +19,21 @@
 #endregion
 using System;
 
-namespace Oetools.Utilities.Archive.Cab {
-    internal class CabFileArchived : IFileArchived {
-        public string ArchivePath { get; set; }
-        public string RelativePathInArchive { get; set; }
-        public ulong SizeInBytes { get; set; }
-        public DateTime LastWriteTime { get; set; }
+namespace Oetools.Utilities.Archive {
+    
+    /// <summary>
+    /// Describes a file present in a archive.
+    /// </summary>
+    public interface IFileInArchive : IFileArchivedBase {
+                
+        /// <summary>
+        /// File size in bytes inside the archive.
+        /// </summary>
+        ulong SizeInBytes { get; }
+        
+        /// <summary>
+        /// Last modified date of this file.
+        /// </summary>
+        DateTime LastWriteTime { get; }
     }
 }

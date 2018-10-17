@@ -55,7 +55,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
             
             try {
                 archiver = new ProlibArchiver(dlcPath);
-            } catch (ArchiveException e) {
+            } catch (ArchiverException e) {
                 Console.WriteLine($"Cancelling test, prolib not found! : {e.Message}");
                 return;
             }
