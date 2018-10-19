@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
 
@@ -124,7 +125,7 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.OpenRead(zipGroupedFiles.Key)) {
                         foreach (var entry in zip.Entries) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.Equals(f.RelativePathInArchive, StringComparison.OrdinalIgnoreCase));
+                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.RelativePathInArchive));
                             if (fileToExtract != null) {
                                 try {
                                     entry.ExtractToFile(fileToExtract.ExtractionPath, true);
@@ -161,7 +162,7 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, ZipArchiveMode.Update)) {
                         foreach (var entry in zip.Entries.ToList()) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.Equals(f.RelativePathInArchive, StringComparison.OrdinalIgnoreCase));
+                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.RelativePathInArchive));
                             if (fileToExtract != null) {
                                 try {
                                     entry.Delete();

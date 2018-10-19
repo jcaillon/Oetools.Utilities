@@ -81,7 +81,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsNotNull(exec);
                 exec.StopOnCompilationError = true;
                 exec.MaxNumberOfProcesses = 20;
-                exec.FilesToCompile = new FileList<UoeFileToCompile> {
+                exec.FilesToCompile = new PathList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok1.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok2.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok3.p")),
@@ -119,7 +119,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             using (var exec = GetOeExecutionCompile(env) as UoeExecutionParallelCompile) {
                 Assert.IsNotNull(exec);
                 exec.MaxNumberOfProcesses = 8;
-                exec.FilesToCompile = new FileList<UoeFileToCompile> {
+                exec.FilesToCompile = new PathList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc1.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc2.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc3.p")),
@@ -163,7 +163,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             using (var exec = GetOeExecutionCompile(env) as UoeExecutionParallelCompile) {
                 Assert.IsNotNull(exec);
                 exec.MaxNumberOfProcesses = 8;
-                exec.FilesToCompile = new FileList<UoeFileToCompile>();
+                exec.FilesToCompile = new PathList<UoeFileToCompile>();
                 for (int i = 1; i <= 15; i++) {
                     exec.FilesToCompile.Add(new UoeFileToCompile(Path.Combine(TestFolder, $"test_nb_proc{i}.p")));
                 }

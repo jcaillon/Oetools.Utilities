@@ -109,12 +109,12 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// List of the files to compile / run / prolint
         /// </summary>
-        public FileList<UoeFileToCompile> FilesToCompile { get; set; }
+        public PathList<UoeFileToCompile> FilesToCompile { get; set; }
 
         /// <summary>
         /// List of the compiled files
         /// </summary>
-        public FileList<UoeCompiledFile> CompiledFiles { get; } = new FileList<UoeCompiledFile>();
+        public PathList<UoeCompiledFile> CompiledFiles { get; } = new PathList<UoeCompiledFile>();
 
         /// <summary>
         /// Total number of files to compile
@@ -192,7 +192,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 }
                 
                 // get the output directory that will be use to generate the .r (and listing debug-list...)
-                if (Path.GetExtension(file.FilePath ?? "").Equals(UoeConstants.ExtCls)) {
+                if (Path.GetExtension(file.Path ?? "").Equals(UoeConstants.ExtCls)) {
                     // for *.cls files, as many *.r files are generated, we need to compile in a temp directory
                     // we need to know which *.r files were generated for each input file
                     // so each file gets his own sub tempDir

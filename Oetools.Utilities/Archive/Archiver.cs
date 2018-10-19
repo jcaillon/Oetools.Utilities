@@ -54,7 +54,7 @@ namespace Oetools.Utilities.Archive {
         /// Get a new instance of a prolib archiver.
         /// </summary>
         /// <returns></returns>
-        public static IArchiver NewProlibArchiver(ArchiverType type, string dlcPath) {
+        public static IArchiver NewProlibArchiver(string dlcPath) {
             return new ProlibArchiver(dlcPath);
         }
         

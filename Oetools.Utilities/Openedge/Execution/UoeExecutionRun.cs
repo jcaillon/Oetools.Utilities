@@ -44,7 +44,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (string.IsNullOrEmpty(_filePathToRun)) {
                 throw new UoeExecutionParametersException("The path of the file to run is empty or null");
             }
-            FilesToCompile = new FileList<UoeFileToCompile> {
+            FilesToCompile = new PathList<UoeFileToCompile> {
                 new UoeFileToCompile(_filePathToRun)
             };
             base.CheckParameters();
@@ -54,7 +54,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected override void SetExecutionInfo() {
             base.SetExecutionInfo();
-            WorkingDirectory = WorkingDirectory ?? Path.GetDirectoryName(FilesToCompile.First().FilePath);
+            WorkingDirectory = WorkingDirectory ?? Path.GetDirectoryName(FilesToCompile.First().Path);
             
             SetPreprocessedVar("RunProgramMode", true.ToString());
             SetPreprocessedVar("RunFullClientLogPath", FullClientLogPath.ProPreProcStringify());

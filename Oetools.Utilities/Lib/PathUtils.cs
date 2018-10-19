@@ -33,8 +33,8 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     public static partial class Utils {
 
-        public static FileList<T> ToFileList<T>(this IEnumerable<T> list) where T : IFileListItem {
-            var output = new FileList<T>();
+        public static PathList<T> ToFileList<T>(this IEnumerable<T> list) where T : IPathListItem {
+            var output = new PathList<T>();
             output.TryAddRange(list);
             return output;
         }

@@ -30,27 +30,36 @@ namespace Oetools.Utilities.Lib {
     /// The point of this implementation is to quickly find out if a file exists in this list
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class FileList<T> : IEnumerable<T> where T : IFileListItem {
+    public class PathList<T> : IEnumerable<T> where T : IPathListItem {
         
         private Dictionary<string, T> _dic = new Dictionary<string, T>(Utils.IsRuntimeWindowsPlatform ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
                
-        public T this[string filePath] {
-            get => !string.IsNullOrEmpty(filePath) && _dic.ContainsKey(filePath) ? _dic[filePath] : default(T);
+        /// <summary>
+        /// Gets or sets the element with the given path.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public T this[string path] {
+            get => !string.IsNullOrEmpty(path) && _dic.ContainsKey(path) ? _dic[path] : default(T);
             set {
-                if (filePath == null) {
-                    throw new ArgumentNullException(nameof(filePath));
+                if (path == null) {
+                    throw new ArgumentNullException(nameof(path));
                 }
-                if (_dic.ContainsKey(filePath)) {
-                    _dic[filePath] = value;
+                if (_dic.ContainsKey(path)) {
+                    _dic[path] = value;
                 } else {
-                    _dic.Add(filePath, value);
+                    _dic.Add(path, value);
                 }
             }
         }
         
+        /// <summary>
+        /// Gets or sets an element using its <see cref="IPathListItem.Path"/> property.
+        /// </summary>
+        /// <param name="file"></param>
         public T this[T file] {
-            get => this[file?.FilePath];
-            set => this[file?.FilePath] = value;
+            get => this[file?.Path];
+            set => this[file?.Path] = value;
         }
         
         public IEnumerator<T> GetEnumerator() {
@@ -61,38 +70,50 @@ namespace Oetools.Utilities.Lib {
             return GetEnumerator();
         }
 
+        /// <summary>
+        /// Add an element using <see cref="IPathListItem.Path"/> as a unique key. Throws an exception if already exists.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <exception cref="ArgumentNullException"></exception>
         public void Add(T item) {
-            if (item?.FilePath == null) {
+            if (item?.Path == null) {
                 throw new ArgumentNullException(nameof(item));
             }
-            _dic.Add(item.FilePath, item);
+            _dic.Add(item.Path, item);
         }
 
         public void AddRange(IEnumerable<T> list) {
             if (list != null) {
-                foreach (var item in list.Where(item => item?.FilePath != null)) {
-                    _dic.Add(item.FilePath, item);
+                foreach (var item in list.Where(item => item?.Path != null)) {
+                    _dic.Add(item.Path, item);
                 }
             }
         }
 
+        
         public int TryAddRange(IEnumerable<T> list) {
             int nbAdded = 0;
             if (list != null) {
-                foreach (var item in list.Where(item => item?.FilePath != null && !_dic.ContainsKey(item.FilePath))) {
-                    _dic.Add(item.FilePath, item);
+                foreach (var item in list.Where(item => item?.Path != null && !_dic.ContainsKey(item.Path))) {
+                    _dic.Add(item.Path, item);
                     nbAdded++;
                 }
             }
             return nbAdded;
         }
 
+        /// <summary>
+        /// Add an element using <see cref="IPathListItem.Path"/> as a unique key. Does NOT throw an exception if already exists (does nothing).
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
         public bool TryAdd(T item) {
-            if (item?.FilePath == null) {
+            if (item?.Path == null) {
                 throw new ArgumentNullException(nameof(item));
             }
-            if (!_dic.ContainsKey(item.FilePath)) {
-                _dic.Add(item.FilePath, item);
+            if (!_dic.ContainsKey(item.Path)) {
+                _dic.Add(item.Path, item);
                 return true;
             }
             return false;
@@ -103,7 +124,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         public bool Contains(T item) {
-            return Contains(item?.FilePath);
+            return Contains(item?.Path);
         }
 
         public bool Contains(string path) {
@@ -114,13 +135,13 @@ namespace Oetools.Utilities.Lib {
             if (item == null) {
                 throw new ArgumentNullException(nameof(item));
             }
-            return _dic.Remove(item.FilePath);
+            return _dic.Remove(item.Path);
         }
 
         public int Count => _dic.Count;
         
-        public FileList<TResult> Select<TResult>(Func<T, TResult> selector) where TResult : IFileListItem {
-            var output = new FileList<TResult>();
+        public PathList<TResult> Select<TResult>(Func<T, TResult> selector) where TResult : IPathListItem {
+            var output = new PathList<TResult>();
             foreach (var item in this) {
                 output.Add(selector(item));
             }
@@ -132,14 +153,30 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         /// <param name="selector"></param>
         /// <returns></returns>
-        public FileList<T> CopyWhere(Func<T, bool> selector) {
-            var output = new FileList<T>();
+        public PathList<T> CopyWhere(Func<T, bool> selector) {
+            var output = new PathList<T>();
             foreach (var item in this) {
                 if (selector(item)) {
                     output.Add(item);
                 }
             }
             return output;
+        }
+
+        /// <summary>
+        /// Apply a transformation to each path (key). If the resulting new path is not existing, it will be added back to the list.
+        /// </summary>
+        /// <param name="pathTransformFunction"></param>
+        public void ApplyPathTransformation(Func<T, T> pathTransformFunction) {
+            foreach (var key in _dic.Keys.ToList()) {
+                var transformedItem = pathTransformFunction(_dic[key]);
+                if (!_dic.ContainsKey(transformedItem.Path)) {
+                    _dic.Add(transformedItem.Path, transformedItem);
+                    _dic.Remove(key);
+                } else if (!key.Equals(transformedItem.Path, Utils.IsRuntimeWindowsPlatform ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) {
+                    _dic.Remove(key);
+                }
+            }
         }
     }
 }

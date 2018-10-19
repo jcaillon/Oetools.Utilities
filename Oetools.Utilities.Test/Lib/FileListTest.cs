@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
@@ -44,7 +45,7 @@ namespace Oetools.Utilities.Test.Lib {
                 files.Add(Path.Combine("C:\\folder\\subfolder\\again\\even\\THIS FOLDER CHANGES\\subfolder\\to\\makeit\\super\\long\\and\\realistic", $"file{i}.ext"));
             }
 
-            var fileList = new FileList<UoeFileToCompile>();
+            var fileList = new PathList<UoeFileToCompile>();
             foreach (var file in files) {
                 fileList.Add(new UoeFileToCompile(file));
             }
@@ -74,7 +75,7 @@ namespace Oetools.Utilities.Test.Lib {
                 foreach (var file in files) {
                     string found = null;
                     if (dic.ContainsKey(file)) {
-                        found = dic[file].FilePath;
+                        found = dic[file].Path;
                     }
                     Assert.AreEqual(file, found);
                 }
@@ -96,26 +97,26 @@ namespace Oetools.Utilities.Test.Lib {
 
         [TestMethod]
         public void Full_test() {
-            var fileList = new FileList<UoeFileToCompile>();
+            var fileList = new PathList<UoeFileToCompile>();
             for (int i = 0; i < 1000; i++) {
                 fileList.Add(new UoeFileToCompile(i.ToString()));
             }
 
             var j = 0;
             foreach (var compile in fileList) {
-                Assert.AreEqual(j.ToString(), compile.FilePath);
+                Assert.AreEqual(j.ToString(), compile.Path);
                 j++;
             }
             
             Assert.AreEqual(1000, fileList.Count);
             
             for (int i = 0; i < 1000; i++) {
-                Assert.AreEqual(i.ToString(), fileList[i.ToString()].FilePath);
+                Assert.AreEqual(i.ToString(), fileList[i.ToString()].Path);
             }
             
             j = 0;
             foreach (var compile in fileList) {
-                Assert.AreEqual(j.ToString(), fileList[compile].FilePath);
+                Assert.AreEqual(j.ToString(), fileList[compile].Path);
                 j++;
             }
             
@@ -152,6 +153,37 @@ namespace Oetools.Utilities.Test.Lib {
             fileList.AddRange(tempList);
             
             Assert.AreEqual(1000, fileList.Count);
+        }
+
+        [TestMethod]
+        public void ApplyPathTransformation() {
+            var fileList = new PathList<UoeFileToCompile>();
+            for (int i = 0; i < 1000; i++) {
+                fileList.Add(new UoeFileToCompile(i.ToString()));
+            }
+            
+            Assert.AreEqual(1000, fileList.Count);
+            
+            Assert.IsTrue(fileList.ToList().Exists(f => f.Path.Equals("0")));
+            
+            fileList.ApplyPathTransformation(k => {
+                k.Path = $"fu{k.Path}";
+                return k;
+            });
+            
+            Assert.AreEqual(1000, fileList.Count, "wrong count");
+            
+            Assert.IsTrue(fileList.ToList().Exists(f => f.Path.Equals("fu0")), "can't find fu0");
+            
+            fileList.ApplyPathTransformation(k => {
+                k.Path = "no";
+                return k;
+            });
+            
+            Assert.AreEqual(1, fileList.Count, "should find only 1 because they all have the same key");
+            
+            Assert.IsTrue(fileList.ToList().Exists(f => f.Path.Equals("no")), "can't find no");
+            
         }
     }
 }

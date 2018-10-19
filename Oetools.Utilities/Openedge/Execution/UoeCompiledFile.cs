@@ -30,11 +30,11 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// <summary>
     ///     This class represents a file thas been compiled
     /// </summary>
-    public class UoeCompiledFile : IFileListItem {
+    public class UoeCompiledFile : IPathListItem {
         /// <summary>
         ///     The path to the source that has been compiled
         /// </summary>
-        public string FilePath { get; }
+        public string Path { get; }
 
         /// <summary>
         /// The path of the file that actually needs to be compiled
@@ -119,9 +119,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         ///     Constructor
         /// </summary>
         public UoeCompiledFile(UoeFileToCompile fileToCompile) {
-            FilePath = fileToCompile.FilePath;
+            Path = fileToCompile.Path;
             CompiledFilePath = fileToCompile.CompiledPath;
-            BaseFileName = Path.GetFileNameWithoutExtension(FilePath);
+            BaseFileName = System.IO.Path.GetFileNameWithoutExtension(Path);
         }
 
         private bool _compilationResultsRead;
@@ -205,7 +205,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         private void AddWarningIfFileDefinedButDoesNotExist(string path) {
             if (!string.IsNullOrEmpty(path) && !File.Exists(path)) {
                 (CompilationErrors ?? (CompilationErrors = new List<UoeCompilationProblem>())).Add(new UoeCompilationWarning {
-                    FilePath = FilePath,
+                    FilePath = Path,
                     Column = 1,
                     Line = 1,
                     ErrorNumber = 0,
@@ -222,11 +222,11 @@ namespace Oetools.Utilities.Openedge.Execution {
                         if (!Enum.TryParse(fields[2], true, out CompilationErrorLevel compilationErrorLevel))
                             compilationErrorLevel = CompilationErrorLevel.Error;
                         var problem = UoeCompilationProblem.New(compilationErrorLevel);
-                        problem.FilePath = fields[1].Equals(CompiledFilePath) ? FilePath : fields[1];
+                        problem.FilePath = fields[1].Equals(CompiledFilePath) ? Path : fields[1];
                         problem.Line = Math.Max(1, (int) fields[3].ConvertFromStr(typeof(int)));
                         problem.Column = Math.Max(1, (int) fields[4].ConvertFromStr(typeof(int)));
                         problem.ErrorNumber = Math.Max(0, (int) fields[5].ConvertFromStr(typeof(int)));
-                        problem.Message = fields[6].ProUnescapeString().Replace(CompiledFilePath, FilePath).Trim();
+                        problem.Message = fields[6].ProUnescapeString().Replace(CompiledFilePath, Path).Trim();
                         (CompilationErrors ?? (CompilationErrors = new List<UoeCompilationProblem>())).Add(problem);
                     }
                 }, Encoding.Default);
@@ -236,7 +236,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         private void CorrectRcodePathForClassFiles() {
             
             // this only concerns cls files
-            if (FilePath.EndsWith(UoeConstants.ExtCls, StringComparison.OrdinalIgnoreCase)) {
+            if (Path.EndsWith(UoeConstants.ExtCls, StringComparison.OrdinalIgnoreCase)) {
                 // Handle the case of .cls files, for which several .r code are compiled
                 // if the file we compiled implements/inherits from another class, there is more than 1 *.r file generated.
                 // Moreover, they are generated in their respective package folders
@@ -245,10 +245,10 @@ namespace Oetools.Utilities.Openedge.Execution {
                 foreach (var rCodeFilePath in Directory.EnumerateFiles(CompilationOutputDirectory, $"*{UoeConstants.ExtR}", SearchOption.AllDirectories)) {
                     // if this is actually the .cls file we want to compile, the .r file isn't necessary directly in the compilation dir like we expect,
                     // it can be in folders corresponding to the package of the class
-                    if (BaseFileName.Equals(Path.GetFileNameWithoutExtension(rCodeFilePath))) {
+                    if (BaseFileName.Equals(System.IO.Path.GetFileNameWithoutExtension(rCodeFilePath))) {
                         // correct .r path
                         CompilationRcodeFilePath = rCodeFilePath;
-                        ClassNamespacePath = Path.GetDirectoryName(rCodeFilePath)?.Replace(CompilationOutputDirectory, "").Trim('\\', '/');
+                        ClassNamespacePath = System.IO.Path.GetDirectoryName(rCodeFilePath)?.Replace(CompilationOutputDirectory, "").Trim('\\', '/');
                         break;
                     }
                 }

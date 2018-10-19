@@ -1,7 +1,7 @@
 ﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IFileListItem.cs) is part of Oetools.Utilities.
+// This file (IPathListItem.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,8 +19,7 @@
 #endregion
 
 namespace Oetools.Utilities.Lib {
-    public interface IFileListItem {
-        
-        string FilePath { get; }
+    public interface IPathListItem {
+        string Path { get; }
     }
 }

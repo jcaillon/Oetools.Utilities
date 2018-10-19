@@ -82,7 +82,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             var numberOfProcesses = Math.Min(MaxNumberOfProcesses, NumberOfFilesToCompile / MinimumNumberOfFilesPerProcess);
             numberOfProcesses = Math.Max(numberOfProcesses, 1);
 
-            var fileLists = new List<FileList<UoeFileToCompile>>();
+            var fileLists = new List<PathList<UoeFileToCompile>>();
             var currentProcess = 0;
             
             // foreach, sorted from the biggest (in size) to the smallest file
@@ -90,7 +90,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 
                 // create a new process when needed
                 if (currentProcess >= fileLists.Count) {
-                    fileLists.Add(new FileList<UoeFileToCompile>());
+                    fileLists.Add(new PathList<UoeFileToCompile>());
                 }
 
                 // assign the file to the current process

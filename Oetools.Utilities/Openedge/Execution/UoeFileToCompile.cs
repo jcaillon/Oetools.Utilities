@@ -25,21 +25,21 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// <summary>
     ///     This class represents a file that needs to be compiled
     /// </summary>
-    public class UoeFileToCompile : IFileListItem {
+    public class UoeFileToCompile : IPathListItem {
         
         private string _compilePath;
 
         /// <summary>
         /// The path to the source file
         /// </summary>
-        public string FilePath { get; set; }
+        public string Path { get; set; }
 
         /// <summary>
         /// The path of the file that actually needs to be compiled
         /// (can be different from sourcepath if we edited it without saving it for instance)
         /// </summary>
         public string CompiledPath {
-            get => _compilePath ?? FilePath;
+            get => _compilePath ?? Path;
             set => _compilePath = value;
         }
 
@@ -55,7 +55,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         public long FileSize { get; set; }
 
         public UoeFileToCompile(string sourceFilePath) {
-            FilePath = sourceFilePath;
+            Path = sourceFilePath;
         }
     }
 
