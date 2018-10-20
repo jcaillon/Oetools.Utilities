@@ -394,13 +394,15 @@ namespace Oetools.Utilities.Lib {
         /// <returns></returns>
         public static string GetLongestValidDirectory(string inputWildCardPath) {
             inputWildCardPath = inputWildCardPath.ToCleanPath();
-            var i = inputWildCardPath.Length;
-            string outputdirectory;
-            do {
-                outputdirectory = inputWildCardPath.Substring(0, i);
-                i--;
-            } while (!Directory.Exists(outputdirectory) && i > 0);
-            return i == 0 ? null : outputdirectory;
+            string outputDirectory = inputWildCardPath;
+            while (!Directory.Exists(outputDirectory)) {
+                var idxOfLastSep = outputDirectory.LastIndexOf(Path.DirectorySeparatorChar);
+                if (idxOfLastSep < 0) {
+                    return null;
+                }
+                outputDirectory = outputDirectory.Substring(0, idxOfLastSep);
+            }
+            return outputDirectory;
         }
         
         /// <summary>

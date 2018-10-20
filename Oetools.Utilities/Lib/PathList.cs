@@ -140,7 +140,13 @@ namespace Oetools.Utilities.Lib {
 
         public int Count => _dic.Count;
         
-        public PathList<TResult> Select<TResult>(Func<T, TResult> selector) where TResult : IPathListItem {
+        /// <summary>
+        /// Returns a new list with transformed items.
+        /// </summary>
+        /// <param name="selector"></param>
+        /// <typeparam name="TResult"></typeparam>
+        /// <returns></returns>
+        public PathList<TResult> CopySelect<TResult>(Func<T, TResult> selector) where TResult : IPathListItem {
             var output = new PathList<TResult>();
             foreach (var item in this) {
                 output.Add(selector(item));

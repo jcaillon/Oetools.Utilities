@@ -169,8 +169,12 @@ namespace Oetools.Utilities.Test.Lib {
         }
         
         [DataTestMethod]
-        [DataRow(@"C:\windows(bla|bla)\<pozdzek!>", @"C:\windows")]
-        [DataRow(@"C:\^$windows(bla|bla)\<pozdzek!>", @"C:\")]
+        [DataRow(@"C**", null)]
+        [DataRow(@"improbable_thing", null)]
+        [DataRow(@"C:\**", @"C:")]
+        [DataRow(@"C:\windows**", @"C:")]
+        [DataRow(@"C:\windows\<pozdzek!>", @"C:\windows")]
+        [DataRow(@"C:\windows(bla|bla)\<pozdzek!>", @"C:")]
         [DataRow(@"**", null)]
         public void GetLongestValidDirectory_Test(string input, string expected) {
             if (Utils.IsRuntimeWindowsPlatform) {
