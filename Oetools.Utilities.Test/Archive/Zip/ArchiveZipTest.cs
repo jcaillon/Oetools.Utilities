@@ -50,17 +50,7 @@ namespace Oetools.Utilities.Test.Archive.Zip {
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.zip"));
             listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2.zip")));
             
-            CreateArchive(archiver, listFiles);
-
-            // verify
-            ListArchive(archiver, listFiles);
-            
-            // extract
-            Extract(archiver, listFiles);
-            
-            // delete files
-            DeleteFilesInArchive(archiver, listFiles);
-
+            WholeTest(archiver, listFiles);
         }
     }
 }

@@ -30,7 +30,7 @@ namespace Oetools.Utilities.Archive.Zip {
     /// <summary>
     ///     Allows to pack files into zip
     /// </summary>
-    public class ZipArchiver : ArchiverBase, IArchiver {
+    internal class ZipArchiver : ArchiverBase, IArchiver {
 
         private CompressionLevel _compressionLevel = CompressionLevel.NoCompression;
        
@@ -86,7 +86,6 @@ namespace Oetools.Utilities.Archive.Zip {
                 }
                 OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }
-
             return totalFilesDone;
         }
 
@@ -97,7 +96,7 @@ namespace Oetools.Utilities.Archive.Zip {
             }
             using (var archive = ZipFile.OpenRead(archivePath)) {
                 return archive.Entries
-                    .Select(entry => new ZipFileInArchive {
+                    .Select(entry => new FileInZip {
                         RelativePathInArchive = entry.FullName,
                         SizeInBytes = (ulong) entry.Length,
                         LastWriteTime = entry.LastWriteTime.DateTime,
@@ -141,7 +140,7 @@ namespace Oetools.Utilities.Archive.Zip {
                 } catch (OperationCanceledException) {
                     throw;
                 } catch (Exception e) {
-                    throw new ArchiverException($"Failed to unpack files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                    throw new ArchiverException($"Failed to extract files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
                 }
                 OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }
@@ -179,6 +178,52 @@ namespace Oetools.Utilities.Archive.Zip {
                     throw;
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to delete files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                }
+                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
+            }
+
+            return totalFilesDone;
+        }
+        
+        /// <inheritdoc cref="IArchiver.MoveFileSet"/>
+        public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMoveIn) {
+            var filesToMove = filesToMoveIn.ToList();
+            int totalFiles = filesToMove.Count;
+            int totalFilesDone = 0;
+            
+            foreach (var zipGroupedFiles in filesToMove.GroupBy(f => f.ArchivePath)) {
+                if (!File.Exists(zipGroupedFiles.Key)) {
+                    continue;
+                }
+                var tempPath = Path.Combine(Path.GetDirectoryName(zipGroupedFiles.Key) ?? Path.GetTempPath(), $"~{Path.GetRandomFileName()}");
+                Utils.CreateDirectoryIfNeeded(tempPath, FileAttributes.Hidden);
+                try {
+                    using (var zip = ZipFile.Open(zipGroupedFiles.Key, ZipArchiveMode.Update)) {
+                        foreach (var entry in zip.Entries.ToList()) {
+                            _cancelToken?.ThrowIfCancellationRequested();
+                            var fileToMove = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.RelativePathInArchive));
+                            if (fileToMove != null) {
+                                try {
+                                    var exportPath = Path.Combine(tempPath, "temp");
+                                    entry.ExtractToFile(exportPath);
+                                    entry.Delete();
+                                    zip.CreateEntryFromFile(exportPath, fileToMove.NewRelativePathInArchive, _compressionLevel);
+                                    File.Delete(exportPath);
+                                } catch (Exception e) {
+                                    throw new ArchiverException($"Failed to move {fileToMove.RelativePathInArchive.PrettyQuote()} to {fileToMove.NewRelativePathInArchive.PrettyQuote()} in {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                                }
+                                totalFilesDone++;
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(zipGroupedFiles.Key, fileToMove.RelativePathInArchive));
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToMove.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
+                            }
+                        }
+                    }
+                } catch (OperationCanceledException) {
+                    throw;
+                } catch (Exception e) {
+                    throw new ArchiverException($"Failed to move files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                } finally {
+                    Directory.Delete(tempPath, true);
                 }
                 OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }

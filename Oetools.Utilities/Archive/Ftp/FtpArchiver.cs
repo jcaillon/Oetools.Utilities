@@ -17,16 +17,17 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using Oetools.Utilities.Archive;
+using Oetools.Utilities.Archive.Ftp.Core;
 using Oetools.Utilities.Lib.Extension;
 
-namespace Oetools.Utilities.Ftp.Archiver {
+namespace Oetools.Utilities.Archive.Ftp {
     
     public class FtpArchiver : ArchiverBase, IArchiver {
         
@@ -52,17 +53,20 @@ namespace Oetools.Utilities.Ftp.Archiver {
                         }
                         _cancelToken?.ThrowIfCancellationRequested();
                         try {
+                            var filesDone = totalFilesDone;
+                            void TransferCallback(FtpsClient sender, ETransferActions action, string local, string remote, ulong done, ulong? total, ref bool cancel) {
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round((filesDone + (double) done / (total ?? 0)) / totalFiles * 100, 2)));
+                            }
                             try {
-                                ftp.PutFile(file.SourcePath, file.RelativePathInArchive);
+                                ftp.PutFile(file.SourcePath, file.RelativePathInArchive, TransferCallback);
                             } catch (Exception) {
                                 // try to create the directory and then push the file again
                                 ftp.MakeDir(Path.GetDirectoryName(file.RelativePathInArchive) ?? "", true);
                                 ftp.SetCurrentDirectory("/");
-                                ftp.PutFile(file.SourcePath, file.RelativePathInArchive);
+                                ftp.PutFile(file.SourcePath, file.RelativePathInArchive, TransferCallback);
                             }
                             totalFilesDone++;
                             OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(ftpGroupedFiles.Key, file.RelativePathInArchive));
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                         } catch (Exception e) {
                             throw new ArchiverException($"Failed to send {file.SourcePath.PrettyQuote()} to {file.ArchivePath.PrettyQuote()} and distant path {file.RelativePathInArchive.PrettyQuote()}.", e);
                         }
@@ -111,7 +115,7 @@ namespace Oetools.Utilities.Ftp.Archiver {
                     if (file.IsDirectory) {
                         folderStack.Push(Path.Combine(folder, file.Name).Replace("\\", "/"));
                     } else {
-                        yield return new FtpFileInArchive {
+                        yield return new FileInFtp {
                             RelativePathInArchive = Path.Combine(folder, file.Name).Replace("\\", "/").TrimStart('/'),
                             LastWriteTime = file.CreationTime,
                             SizeInBytes = file.Size,
@@ -151,7 +155,11 @@ namespace Oetools.Utilities.Ftp.Archiver {
                         _cancelToken?.ThrowIfCancellationRequested();
                         try {
                             try {
-                                ftp.GetFile(file.RelativePathInArchive, file.ExtractionPath);
+                                var filesDone = totalFilesDone;
+                                void TransferCallback(FtpsClient sender, ETransferActions action, string local, string remote, ulong done, ulong? total, ref bool cancel) {
+                                    OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round((filesDone + (double) done / (total ?? 0)) / totalFiles * 100, 2)));
+                                }
+                                ftp.GetFile(file.RelativePathInArchive, file.ExtractionPath, TransferCallback);
                             } catch (FtpCommandException e) {
                                 if (e.ErrorCode == 550) {
                                     // path does not exist
@@ -161,7 +169,6 @@ namespace Oetools.Utilities.Ftp.Archiver {
                             }
                             totalFilesDone++;
                             OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(ftpGroupedFiles.Key, file.RelativePathInArchive));
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                         } catch (Exception e) {
                             throw new ArchiverException($"Failed to get {file.ExtractionPath.PrettyQuote()} from {file.ArchivePath.PrettyQuote()} and distant path {file.RelativePathInArchive.PrettyQuote()}.", e);
                         }
@@ -227,6 +234,60 @@ namespace Oetools.Utilities.Ftp.Archiver {
             return totalFilesDone;
         }
 
+        /// <inheritdoc cref="IArchiver.MoveFileSet"/>
+        public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMoveIn) {
+            var filesToMove = filesToMoveIn.ToList();
+            int totalFiles = filesToMove.Count;
+            int totalFilesDone = 0;
+            foreach (var ftpGroupedFiles in filesToMove.GroupBy(f => f.ArchivePath)) {
+                try {
+                    if (!ftpGroupedFiles.Key.ParseFtpAddress(out var uri, out var userName, out var passWord, out var host, out var port, out _)) {
+                        throw new ArchiverException($"The ftp uri is invalid, the typical format is ftp://user:pass@server:port/path. Input uri was : {uri.PrettyQuote()}.");
+                    }
+            
+                    _cancelToken?.ThrowIfCancellationRequested();
+                    
+                    var ftp = FtpsClient.Instance.Get(uri);
+                    ConnectOrReconnectFtp(ftp, userName, passWord, host, port);
+
+                    foreach (var file in ftpGroupedFiles) {
+                        _cancelToken?.ThrowIfCancellationRequested();
+                        try {
+                            try {
+                                // TODO : probably does not work if we want to change the file of directory
+                                ftp.RenameFile(file.RelativePathInArchive, file.NewRelativePathInArchive);
+                            } catch (FtpCommandException e) {
+                                if (e.ErrorCode == 550) {
+                                    // path does not exist
+                                    continue;
+                                } 
+                                if (e.ErrorCode == 553) {
+                                    // target already exists
+                                    ftp.DeleteFile(file.NewRelativePathInArchive);
+                                    ftp.RenameFile(file.RelativePathInArchive, file.NewRelativePathInArchive);
+                                } else {
+                                    throw;
+                                }
+                            }
+                            totalFilesDone++;
+                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(ftpGroupedFiles.Key, file.RelativePathInArchive));
+                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
+                        } catch (Exception e) {
+                            throw new ArchiverException($"Failed to move {file.RelativePathInArchive.PrettyQuote()} to {file.NewRelativePathInArchive.PrettyQuote()} in {file.ArchivePath.PrettyQuote()}.", e);
+                        }
+                    }
+                    
+                    FtpsClient.Instance.DisconnectFtp();
+                } catch (OperationCanceledException) {
+                    throw;
+                } catch (Exception e) {
+                    throw new ArchiverException($"Failed to move files from {ftpGroupedFiles.Key.PrettyQuote()}.", e);
+                }
+                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(ftpGroupedFiles.Key));
+            }
+            return totalFilesDone;
+        }
+        
         /// <summary>
         ///     Connects to a FTP server trying every methods
         /// </summary>

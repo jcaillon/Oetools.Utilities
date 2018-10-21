@@ -24,7 +24,7 @@ using FubarDev.FtpServer;
 using FubarDev.FtpServer.FileSystem.DotNet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Ftp.Archiver;
+using Oetools.Utilities.Archive.Ftp;
 
 namespace Oetools.Utilities.Test.Archive.Ftp {
     
@@ -83,16 +83,7 @@ namespace Oetools.Utilities.Test.Archive.Ftp {
 
                 var listFiles = GetPackageTestFilesList(TestFolder, ftpUri);
             
-                CreateArchive(archiver, listFiles);
-
-                // verify
-                ListArchive(archiver, listFiles);
-            
-                // extract
-                Extract(archiver, listFiles);
-            
-                // delete files
-                DeleteFilesInArchive(archiver, listFiles);
+                WholeTest(archiver, listFiles);
     
                 // Stop the FTP server
                 ftpServer.Stop();

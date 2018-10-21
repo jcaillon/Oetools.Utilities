@@ -18,9 +18,11 @@
 // ========================================================================
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 
@@ -30,14 +32,39 @@ namespace Oetools.Utilities.Test.Archive {
 
         private int _nbFileProcessed;
         private int _nbArchiveFinished;
+        private bool _hasReceivedGlobalProgression;
+        private CancellationTokenSource _cancelSource;
+
+        protected void WholeTest(IArchiver archiver, List<FileInArchive> listFiles) {
+            archiver.OnProgress += ArchiverOnOnProgress;
+            CreateArchive(archiver, listFiles);
+            MoveInArchives(archiver, listFiles);
+            ListArchive(archiver, listFiles);
+            Extract(archiver, listFiles);
+            DeleteFilesInArchive(archiver, listFiles);
+            archiver.OnProgress -= ArchiverOnOnProgress;
+        }
         
         protected void CreateArchive(IArchiver archiver, List<FileInArchive> listFiles) {
-            archiver.OnProgress += ArchiverOnOnProgress;
             
             _nbFileProcessed = 0;
             _nbArchiveFinished = 0;
 
             var modifiedList = listFiles.GetRange(1, listFiles.Count - 1);
+            
+            // Test the cancellation.
+            _cancelSource = new CancellationTokenSource();
+            archiver.SetCancellationToken(_cancelSource.Token);
+            var list = modifiedList;
+            Assert.ThrowsException<OperationCanceledException>(() => archiver.PackFileSet(list));
+            Assert.IsTrue(_nbArchiveFinished == 0, "Nothing was done.");
+            _cancelSource = null;
+            archiver.SetCancellationToken(null);
+            
+            CleanupArchives(listFiles);
+            
+            _nbFileProcessed = 0;
+            _nbArchiveFinished = 0;
             
             // try to add a non existing file
             modifiedList.Add(new FileInArchive {
@@ -45,6 +72,7 @@ namespace Oetools.Utilities.Test.Archive {
                 ExtractionPath = listFiles.First().ExtractionPath,
                 RelativePathInArchive = "random.name"
             });
+            
             Assert.AreEqual(modifiedList.Count - 1, archiver.PackFileSet(modifiedList));
             
             // test the update of archives
@@ -53,15 +81,65 @@ namespace Oetools.Utilities.Test.Archive {
  
             foreach (var archive in listFiles.GroupBy(f => f.ArchivePath)) {
                 if (Directory.Exists(Path.GetDirectoryName(archive.Key))) {
-                    Assert.IsTrue(File.Exists(archive.Key), $"The archive does not exist : {archive}");
+                    Assert.IsTrue(File.Exists(archive.Key) || Directory.Exists(archive.Key), $"The archive does not exist : {archive}");
                 }
             }
             
-            archiver.OnProgress -= ArchiverOnOnProgress;
-            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
-            Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count() + 1, _nbArchiveFinished, "Problem in the progress event, number of archives");
+            // check progress
+            Assert.IsTrue(_hasReceivedGlobalProgression, "Should have received a progress event.");
+            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event.");
+            Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count() + 1, _nbArchiveFinished, "Problem in the progress event, number of archives incorrect.");
+            
+            _nbFileProcessed = 0;
+            _nbArchiveFinished = 0;
+            
         }
+        
+        protected void MoveInArchives(IArchiver archiver, List<FileInArchive> listFiles) {
+            _nbFileProcessed = 0;
+            _nbArchiveFinished = 0;
+            
+            var modifiedList = listFiles.ToList();
+            modifiedList.Add(new FileInArchive {
+                ArchivePath = listFiles.First().ArchivePath,
+                ExtractionPath = listFiles.First().ExtractionPath,
+                RelativePathInArchive = "random.name"
+            });
+            
+            modifiedList.ForEach(f => f.NewRelativePathInArchive = $"{f.RelativePathInArchive}_move");
+            
+            // Test the cancellation.
+            _cancelSource = new CancellationTokenSource();
+            archiver.SetCancellationToken(_cancelSource.Token);
+            var list = modifiedList;
+            Assert.ThrowsException<OperationCanceledException>(() => archiver.MoveFileSet(list));
+            Assert.IsTrue(_nbArchiveFinished == 0, "Nothing was done.");
+            _cancelSource = null;
+            archiver.SetCancellationToken(null);
+            
+            CreateArchive(archiver, listFiles);
 
+            // try to move a non existing file
+            Assert.AreEqual(modifiedList.Count - 1, archiver.MoveFileSet(modifiedList));
+            
+            // check progress
+            Assert.IsTrue(_hasReceivedGlobalProgression, "Should have received a progress event.");
+            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
+            Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
+            
+            // move them back
+            modifiedList.ForEach(f => {
+                f.RelativePathInArchive = f.NewRelativePathInArchive;
+                f.NewRelativePathInArchive = f.NewRelativePathInArchive.Substring(0, f.NewRelativePathInArchive.Length - 5);
+            });
+            
+            Assert.AreEqual(modifiedList.Count - 1, archiver.MoveFileSet(modifiedList));
+            
+            modifiedList.ForEach(f => {
+                f.RelativePathInArchive = f.NewRelativePathInArchive;
+            });
+        }
+        
         protected void ListArchive(IArchiver archiver, List<FileInArchive> listFiles) {
             foreach (var groupedTheoreticalFiles in listFiles.GroupBy(f => f.ArchivePath)) {
                 var actualFiles = archiver.ListFiles(groupedTheoreticalFiles.Key).ToList();
@@ -73,17 +151,29 @@ namespace Oetools.Utilities.Test.Archive {
         }
 
         protected void Extract(IArchiver archiver, List<FileInArchive> listFiles) {
-            archiver.OnProgress += ArchiverOnOnProgress;
             _nbFileProcessed = 0;
             _nbArchiveFinished = 0;
-            
-            // try to add a non existing file
+
             var modifiedList = listFiles.ToList();
             modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
                 ExtractionPath = listFiles.First().ExtractionPath,
                 RelativePathInArchive = "random.name"
             });
+            
+            // Test the cancellation.
+            _cancelSource = new CancellationTokenSource();
+            archiver.SetCancellationToken(_cancelSource.Token);
+            var list = modifiedList;
+            Assert.ThrowsException<OperationCanceledException>(() => archiver.ExtractFileSet(list));
+            Assert.IsTrue(_nbArchiveFinished == 0, "Nothing was done.");
+            _cancelSource = null;
+            archiver.SetCancellationToken(null);
+            
+            CreateArchive(archiver, listFiles);
+            CleanupExtractedFiles(listFiles);
+            
+            // try to extract a non existing file
             Assert.AreEqual(modifiedList.Count - 1, archiver.ExtractFileSet(modifiedList));
             
             foreach (var fileToExtract in listFiles) {
@@ -91,23 +181,35 @@ namespace Oetools.Utilities.Test.Archive {
                 Assert.AreEqual(File.ReadAllText(fileToExtract.SourcePath), File.ReadAllText(fileToExtract.ExtractionPath), "Incoherent extracted file content");
             }
             
-            archiver.OnProgress -= ArchiverOnOnProgress;
+            // check progress
+            Assert.IsTrue(_hasReceivedGlobalProgression, "Should have received a progress event.");
             Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
             Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
         }
         
         protected void DeleteFilesInArchive(IArchiver archiver, List<FileInArchive> listFiles) {
-            archiver.OnProgress += ArchiverOnOnProgress;
             _nbFileProcessed = 0;
             _nbArchiveFinished = 0;
-
-            // try to add a non existing file
+            
             var modifiedList = listFiles.ToList();
             modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
                 ExtractionPath = listFiles.First().ExtractionPath,
                 RelativePathInArchive = "random.name"
             });
+            
+            // Test the cancellation.
+            _cancelSource = new CancellationTokenSource();
+            archiver.SetCancellationToken(_cancelSource.Token);
+            var list = modifiedList;
+            Assert.ThrowsException<OperationCanceledException>(() => archiver.DeleteFileSet(list));
+            Assert.IsTrue(_nbArchiveFinished == 0, "Nothing was done.");
+            _cancelSource = null;
+            archiver.SetCancellationToken(null);
+            
+            CreateArchive(archiver, listFiles);
+
+            // try to delete a non existing file
             Assert.AreEqual(modifiedList.Count - 1, archiver.DeleteFileSet(modifiedList));
             
             foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
@@ -115,20 +217,34 @@ namespace Oetools.Utilities.Test.Archive {
                 Assert.AreEqual(0, files.Count(), $"The archive is not empty : {groupedFiles.Key}");
             }
             
-            archiver.OnProgress -= ArchiverOnOnProgress;
+            // check progress
+            Assert.IsTrue(_hasReceivedGlobalProgression, "Should have received a progress event.");
             Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
             Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
         }
 
         private void ArchiverOnOnProgress(object sender, ArchiverEventArgs e) {
-            if (e.EventType == ArchiverEventType.FileProcessed) {
-                _nbFileProcessed++;
-            } else if (e.EventType == ArchiverEventType.ArchiveCompleted) {
-                _nbArchiveFinished++;
+            switch (e.EventType) {
+                case ArchiverEventType.GlobalProgression:
+                    if (e.PercentageDone < 0 || e.PercentageDone > 100) {
+                        throw new Exception($"Wrong value for percentage done : {e.PercentageDone}%.");
+                    }
+                    _hasReceivedGlobalProgression = true;
+                    _cancelSource?.Cancel();
+                    break;
+                case ArchiverEventType.FileProcessed:
+                    _nbFileProcessed++;
+                    break;
+                case ArchiverEventType.ArchiveCompleted:
+                    _nbArchiveFinished++;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
         
         protected List<FileInArchive> GetPackageTestFilesList(string testFolder, string archivePath) {
+            
             var outputList = new List<FileInArchive> {
                 new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file 0.txt"),
@@ -155,18 +271,40 @@ namespace Oetools.Utilities.Test.Archive {
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "subfolder1", "bla bla", "file3.txt")
                 }
             };
-            foreach (var file in outputList) {
-                File.WriteAllText(file.SourcePath, $"\"{Path.GetFileName(file.SourcePath)}\"");
+
+            CreateSourceFiles(outputList);
+            CleanupExtractedFiles(outputList);
+            CleanupArchives(outputList);
+            
+            return outputList;
+        }
+        
+        protected void CreateSourceFiles(List<FileInArchive> fileList) {
+            byte[] fileBuffer = Enumerable.Repeat((byte) 42, 1000).ToArray();
+            foreach (var file in fileList) {
+                // File.WriteAllText(file.SourcePath, $"\"{Path.GetFileName(file.SourcePath)}\"");
+                using (Stream sourceStream = File.OpenWrite(file.SourcePath)) {
+                    for (int i = 0; i < 2000; i++) {
+                        sourceStream.Write(fileBuffer, 0, fileBuffer.Length);
+                    }
+                }
+            }
+        }
+        
+        protected void CleanupExtractedFiles(List<FileInArchive> fileList) {
+            foreach (var file in fileList) {
                 if (File.Exists(file.ExtractionPath)) {
                     File.Delete(file.ExtractionPath);
                 }
             }
-            foreach (var cabGrouped in outputList.GroupBy(f => f.ArchivePath)) {
+        }
+        
+        protected void CleanupArchives(List<FileInArchive> fileList) {
+            foreach (var cabGrouped in fileList.GroupBy(f => f.ArchivePath)) {
                 if (File.Exists(cabGrouped.Key)) {
                     File.Delete(cabGrouped.Key);
                 }
             }
-            return outputList;
         }
         
     }

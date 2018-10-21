@@ -197,8 +197,8 @@ namespace Oetools.Utilities.Openedge.Execution {
                     // we need to know which *.r files were generated for each input file
                     // so each file gets his own sub tempDir
                     compiledFile.CompilationOutputDirectory = localSubTempDir;
-                } else if (!string.IsNullOrEmpty(file.PreferedTargetDirectory)) {
-                    compiledFile.CompilationOutputDirectory = file.PreferedTargetDirectory;
+                } else if (!string.IsNullOrEmpty(file.PreferredTargetDirectory)) {
+                    compiledFile.CompilationOutputDirectory = file.PreferredTargetDirectory;
                 } else {
                     compiledFile.CompilationOutputDirectory = localSubTempDir;
                 }

@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ArchiveCabTest.cs) is part of Oetools.Utilities.Test.
+// This file (ArchiveZipTest.cs) is part of Oetools.Utilities.Test.
 // 
 // Oetools.Utilities.Test is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,24 +18,26 @@
 // ========================================================================
 #endregion
 
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Archive.Cab;
+using Oetools.Utilities.Archive;
 
-namespace Oetools.Utilities.Test.Archive.Cab {
+namespace Oetools.Utilities.Test.Archive.FileSystem {
     
     [TestClass]
-    public class ArchiveCabTest : ArchiveTest {
-
+    public class FileSystemArchiverTest : ArchiveTest {
+        
         private static string _testFolder;
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ArchiveCabTest)));
+
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(FileSystemArchiverTest)));
 
         [ClassInitialize]
-        public static void Init(TestContext context) {           
+        public static void Init(TestContext context) {
             Cleanup();
             Directory.CreateDirectory(TestFolder);
         }
-        
+
         [ClassCleanup]
         public static void Cleanup() {
             if (Directory.Exists(TestFolder)) {
@@ -45,12 +47,13 @@ namespace Oetools.Utilities.Test.Archive.Cab {
 
         [TestMethod]
         public void Test() {
-            CabArchiver archiver = new CabArchiver();
-            
-            var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.cab"));
-            listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2.cab")));
-            
+            IArchiver archiver = Archiver.NewFileSystemArchiver();
+
+            var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1"));
+            listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2")));
+
             WholeTest(archiver, listFiles);
+
         }
     }
 }

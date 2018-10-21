@@ -38,9 +38,11 @@ namespace Oetools.Utilities.Archive {
         /// Published when a file has been processed, this can be used to determine which files are actually processed.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// This event does NOT mean the file is already stored in the archive.
         /// This is only to inform that the file has been processed and will be saved in the archive.
         /// Use the <see cref="GlobalProgression"/> to follow the actual writing.
+        /// </para>
         /// </remarks>
         FileProcessed,
 

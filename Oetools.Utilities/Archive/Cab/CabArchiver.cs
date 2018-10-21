@@ -34,7 +34,7 @@ namespace Oetools.Utilities.Archive.Cab {
 
         private readonly ICabManager _cabManager;
         
-        public CabArchiver() {
+        internal CabArchiver() {
             _cabManager = CabManager.New();
             _cabManager.OnProgress += CabManagerOnProgress;
         }
@@ -47,6 +47,19 @@ namespace Oetools.Utilities.Archive.Cab {
         public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) {
             // TODO : switch compression level when it is implemented in CabinetManager
             // does nothing for now because the compression is not implemented yet
+            switch (archiveCompressionLevel) {
+                case ArchiveCompressionLevel.None:
+                    _compressionLevel = CabCompressionLevel.None;
+                    break;
+                case ArchiveCompressionLevel.Fastest:
+                    _compressionLevel = CabCompressionLevel.None;
+                    break;
+                case ArchiveCompressionLevel.Optimal:
+                    _compressionLevel = CabCompressionLevel.None;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(archiveCompressionLevel), archiveCompressionLevel, null);
+            }
             _cabManager.SetCompressionLevel(_compressionLevel);
         }
 
@@ -60,6 +73,8 @@ namespace Oetools.Utilities.Archive.Cab {
         public int PackFileSet(IEnumerable<IFileToArchive> filesToPack) {
             try {
                 return _cabManager.PackFileSet(filesToPack.Select(f => CabFile.NewToPack(f.ArchivePath, f.RelativePathInArchive, f.SourcePath)));
+            } catch (OperationCanceledException) {
+                throw;
             } catch (Exception e) {
                 throw new ArchiverException(e.Message, e);
             }
@@ -72,6 +87,8 @@ namespace Oetools.Utilities.Archive.Cab {
         public IEnumerable<IFileInArchive> ListFiles(string archivePath) {
             try {
                 return _cabManager.ListFiles(archivePath).Select(f => new FileInCab(f.CabPath, f.RelativePathInCab, f.SizeInBytes, f.LastWriteTime));
+            } catch (OperationCanceledException) {
+                throw;
             } catch (Exception e) {
                 throw new ArchiverException(e.Message, e);
             }
@@ -81,6 +98,8 @@ namespace Oetools.Utilities.Archive.Cab {
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract) {
             try {
                 return _cabManager.ExtractFileSet(filesToExtract.Select(f => CabFile.NewToExtract(f.ArchivePath, f.RelativePathInArchive, f.ExtractionPath)));
+            } catch (OperationCanceledException) {
+                throw;
             } catch (Exception e) {
                 throw new ArchiverException(e.Message, e);
             }
@@ -90,11 +109,24 @@ namespace Oetools.Utilities.Archive.Cab {
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete) {
             try {
                 return _cabManager.DeleteFileSet(filesToDelete.Select(f => CabFile.NewToDelete(f.ArchivePath, f.RelativePathInArchive)));
+            } catch (OperationCanceledException) {
+                throw;
             } catch (Exception e) {
                 throw new ArchiverException(e.Message, e);
             }
         }
-        
+
+        /// <inheritdoc cref="IArchiver.MoveFileSet"/>
+        public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove) {
+            try {
+                return _cabManager.MoveFileSet(filesToMove.Select(f => CabFile.NewToMove(f.ArchivePath, f.RelativePathInArchive, f.NewRelativePathInArchive)));
+            } catch (OperationCanceledException) {
+                throw;
+            } catch (Exception e) {
+                throw new ArchiverException(e.Message, e);
+            }
+        }
+
         private void CabManagerOnProgress(object sender, ICabProgressionEventArgs e) {
             switch (e.EventType) {
                 case CabEventType.GlobalProgression:
@@ -109,12 +141,13 @@ namespace Oetools.Utilities.Archive.Cab {
             }
         }
         
-        private class CabFile : IFileInCabToDelete, IFileInCabToExtract, IFileToAddInCab {
+        private class CabFile : IFileInCabToDelete, IFileInCabToExtract, IFileToAddInCab, IFileInCabToMove {
             
             public string CabPath { get; private set; }
             public string RelativePathInCab { get; private set; }
             public string ExtractionPath { get; private set; }
             public string SourcePath { get; private set; }
+            public string NewRelativePathInCab { get; private set; }
 
             public static CabFile NewToPack(string cabPath, string relativePathInCab, string sourcePath) {
                 return new CabFile {
@@ -138,7 +171,15 @@ namespace Oetools.Utilities.Archive.Cab {
                     RelativePathInCab = relativePathInCab
                 };
             }
-            
+
+            public static CabFile NewToMove(string cabPath, string relativePathInCab, string newRelativePathInCab) {
+                return new CabFile {
+                    CabPath = cabPath,
+                    RelativePathInCab = relativePathInCab,
+                    NewRelativePathInCab = newRelativePathInCab
+                };
+            }
+
         }
 
     }

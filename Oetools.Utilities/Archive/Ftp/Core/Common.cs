@@ -17,10 +17,11 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System;
 using System.Security.Authentication;
 
-namespace Oetools.Utilities.Ftp {
+namespace Oetools.Utilities.Archive.Ftp.Core {
 
     /*
      *  Copyright 2008 Alessandro Pilotti

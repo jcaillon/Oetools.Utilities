@@ -1,7 +1,7 @@
 ﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (CabFileArchived.cs) is part of Oetools.Utilities.
+// This file (ZipFileArchived.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,20 +19,11 @@
 #endregion
 using System;
 
-namespace Oetools.Utilities.Archive.Cab {
-    
-    internal class FileInCab : IFileInArchive {
-        
+namespace Oetools.Utilities.Archive.Zip {
+    internal class FileInZip : IFileInArchive {
         public string ArchivePath { get; set; }
         public string RelativePathInArchive { get; set; }
         public ulong SizeInBytes { get; set; }
         public DateTime LastWriteTime { get; set; }
-
-        internal FileInCab(string archivePath, string relativePathInArchive, ulong sizeInBytes, DateTime lastWriteTime) {
-            ArchivePath = archivePath;
-            RelativePathInArchive = relativePathInArchive;
-            SizeInBytes = sizeInBytes;
-            LastWriteTime = lastWriteTime;
-        }
     }
 }

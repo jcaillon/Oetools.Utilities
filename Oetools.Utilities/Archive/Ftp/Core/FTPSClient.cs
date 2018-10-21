@@ -17,6 +17,7 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -32,7 +33,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using Oetools.Utilities.Lib;
 
-namespace Oetools.Utilities.Ftp {
+namespace Oetools.Utilities.Archive.Ftp.Core {
     /*
      *  Copyright 2008 Alessandro Pilotti
      *
@@ -134,7 +135,7 @@ namespace Oetools.Utilities.Ftp {
     }
 
     /// <summary>
-    ///     File pattern style used in <see cref="FtpsClient.GetFiles(string,string,string,Oetools.Utilities.Ftp.EPatternStyle,bool,Oetools.Utilities.Ftp.FileTransferCallback)" /> and  <see cref="FtpsClient.PutFiles(string,string,string,Oetools.Utilities.Ftp.EPatternStyle,bool,Oetools.Utilities.Ftp.FileTransferCallback)" />.
+    ///     File pattern style used in <see cref="FtpsClient.GetFiles(string,string,string,Oetools.Utilities.Archive.Ftp.Core.EPatternStyle,bool,Oetools.Utilities.Archive.Ftp.Core.FileTransferCallback)" /> and  <see cref="FtpsClient.PutFiles(string,string,string,Oetools.Utilities.Archive.Ftp.Core.EPatternStyle,bool,Oetools.Utilities.Archive.Ftp.Core.FileTransferCallback)" />.
     /// </summary>
     public enum EPatternStyle {
         /// <summary>
@@ -669,15 +670,9 @@ namespace Oetools.Utilities.Ftp {
             ulong totalBytes = 0;
             ulong? fileTransferSize = null;
 
-            if (transferCallback != null)
-                try {
-                    fileTransferSize = GetFileTransferSize(remoteFileName);
-                } catch (FtpCommandException ex) {
-                    // Give a more detailed description, insteand of, e.g.: "Could not get file size".
-                    if (ex.ErrorCode == 550)
-                        throw new FtpException("Could not get the requested remote file", ex);
-                    throw ex;
-                }
+            if (transferCallback != null) {
+                fileTransferSize = GetFileTransferSize(remoteFileName);
+            }
 
             using (Stream s = GetFile(remoteFileName)) {
                 using (var fs = new FileStream(localFileName, FileMode.Create, FileAccess.Write, FileShare.None)) {

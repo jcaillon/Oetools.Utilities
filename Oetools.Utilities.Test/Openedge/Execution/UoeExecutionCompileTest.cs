@@ -497,7 +497,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             using (var exec = GetOeExecutionCompile(env)) {
                 exec.FilesToCompile = new PathList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "preferedtarget.p")) {
-                        PreferedTargetDirectory = targetDir
+                        PreferredTargetDirectory = targetDir
                     }
                 };
                 exec.CompileWithDebugList = true;

@@ -20,9 +20,10 @@
 
 using System;
 using Oetools.Utilities.Archive.Cab;
+using Oetools.Utilities.Archive.Filesystem;
+using Oetools.Utilities.Archive.Ftp;
 using Oetools.Utilities.Archive.Prolib;
 using Oetools.Utilities.Archive.Zip;
-using Oetools.Utilities.Ftp.Archiver;
 
 namespace Oetools.Utilities.Archive {
     
@@ -56,6 +57,14 @@ namespace Oetools.Utilities.Archive {
         /// <returns></returns>
         public static IArchiver NewProlibArchiver(string dlcPath) {
             return new ProlibArchiver(dlcPath);
+        }
+
+        /// <summary>
+        /// Get a new instance of a file system archiver.
+        /// </summary>
+        /// <returns></returns>
+        public static IArchiver NewFileSystemArchiver() {
+            return new FileSystemArchiver();
         }
         
     }

@@ -17,9 +17,10 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System.Collections.Generic;
 
-namespace Oetools.Utilities.Ftp {
+namespace Oetools.Utilities.Archive.Ftp.Core {
     internal class FileTransfert {
         public int NbSimultaneousFiles { get; set; }
 

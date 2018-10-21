@@ -1,7 +1,7 @@
-﻿#region header
+#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (FtpFileArchived.cs) is part of Oetools.Utilities.
+// This file (FileInFs.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,11 +17,11 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System;
-using Oetools.Utilities.Archive;
 
-namespace Oetools.Utilities.Ftp.Archiver {
-    public class FtpFileInArchive : IFileInArchive {
+using System;
+
+namespace Oetools.Utilities.Archive.Filesystem {
+    public class FileInFilesystem : IFileInArchive {
         public string ArchivePath { get; set; }
         public string RelativePathInArchive { get; set; }
         public ulong SizeInBytes { get; set; }

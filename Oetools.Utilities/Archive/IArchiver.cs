@@ -24,7 +24,10 @@ using System.Threading;
 namespace Oetools.Utilities.Archive {
 
     /// <summary>
+    /// <para>
     /// An archiver allows CRUD operation on an archive.
+    /// An archive is simply a container for files, it can take many forms : a zip, a .cab, an ftp server and so on...
+    /// </para>
     /// </summary>
     public interface IArchiver {
 
@@ -62,7 +65,7 @@ namespace Oetools.Utilities.Archive {
         int PackFileSet(IEnumerable<IFileToArchive> filesToPack);
 
         /// <summary>
-        /// List all the files in an archive.
+        /// List all the files in an archive. Returns an empty enumerable if the archive does not exist.
         /// </summary>
         /// <param name="archivePath"></param>
         /// <returns></returns>
@@ -77,6 +80,7 @@ namespace Oetools.Utilities.Archive {
         /// </summary>
         /// <param name="filesToExtract"></param>
         /// <exception cref="ArchiverException"></exception>
+        /// <exception cref="OperationCanceledException"></exception>
         /// <returns>Total number of files actually extracted.</returns>
         int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract);
         
@@ -88,8 +92,23 @@ namespace Oetools.Utilities.Archive {
         /// </summary>
         /// <param name="filesToDelete"></param>
         /// <exception cref="ArchiverException"></exception>
+        /// <exception cref="OperationCanceledException"></exception>
         /// <returns>Total number of files actually deleted.</returns>
         int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete);
+        
+        /// <summary>
+        /// <para>
+        /// Moves the given files within archives.
+        /// Requesting the movement from a non existing archive will not throw an exception.
+        /// Requesting the movement a file that does not exist in the archive will not throw an exception.
+        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
+        /// </para>
+        /// </summary>
+        /// <param name="filesToMove"></param>
+        /// <exception cref="ArchiverException"></exception>
+        /// <exception cref="OperationCanceledException"></exception>
+        /// <returns>Total number of files actually deleted.</returns>
+        int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove);
         
     }
 
