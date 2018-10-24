@@ -42,7 +42,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected override void CheckParameters() {
             if (string.IsNullOrEmpty(_filePathToRun)) {
-                throw new UoeExecutionParametersException("The path of the file to run is empty or null");
+                throw new UoeExecutionParametersException("The path of the file to run is empty or null.");
             }
             FilesToCompile = new PathList<UoeFileToCompile> {
                 new UoeFileToCompile(_filePathToRun)

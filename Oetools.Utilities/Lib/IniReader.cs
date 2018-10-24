@@ -29,7 +29,7 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     public class IniReader {
         /// <summary>
-        ///     Dictonnary of sections, each containing a dictionnary of key/value
+        ///     Dictionary of sections, each containing a dictionary of key/value
         /// </summary>
         private Dictionary<string, Dictionary<string, string>> _ini = new Dictionary<string, Dictionary<string, string>>(StringComparer.InvariantCultureIgnoreCase);
 

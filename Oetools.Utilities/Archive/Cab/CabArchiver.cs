@@ -36,11 +36,6 @@ namespace Oetools.Utilities.Archive.Cab {
         
         internal CabArchiver() {
             _cabManager = CabManager.New();
-            _cabManager.OnProgress += CabManagerOnProgress;
-        }
-
-        ~CabArchiver() {
-            _cabManager.OnProgress -= CabManagerOnProgress;
         }
 
         /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
@@ -71,12 +66,15 @@ namespace Oetools.Utilities.Archive.Cab {
 
         /// <inheritdoc cref="IArchiver.PackFileSet"/>
         public int PackFileSet(IEnumerable<IFileToArchive> filesToPack) {
+            _cabManager.OnProgress += CabManagerOnProgress;
             try {
                 return _cabManager.PackFileSet(filesToPack.Select(f => CabFile.NewToPack(f.ArchivePath, f.RelativePathInArchive, f.SourcePath)));
             } catch (OperationCanceledException) {
                 throw;
             } catch (Exception e) {
                 throw new ArchiverException(e.Message, e);
+            } finally {
+                _cabManager.OnProgress -= CabManagerOnProgress;
             }
         }
 
@@ -85,45 +83,57 @@ namespace Oetools.Utilities.Archive.Cab {
 
         /// <inheritdoc cref="IArchiver.ListFiles"/>
         public IEnumerable<IFileInArchive> ListFiles(string archivePath) {
+            _cabManager.OnProgress += CabManagerOnProgress;
             try {
                 return _cabManager.ListFiles(archivePath).Select(f => new FileInCab(f.CabPath, f.RelativePathInCab, f.SizeInBytes, f.LastWriteTime));
             } catch (OperationCanceledException) {
                 throw;
             } catch (Exception e) {
                 throw new ArchiverException(e.Message, e);
+            } finally {
+                _cabManager.OnProgress -= CabManagerOnProgress;
             }
         }
 
         /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract) {
+            _cabManager.OnProgress += CabManagerOnProgress;
             try {
                 return _cabManager.ExtractFileSet(filesToExtract.Select(f => CabFile.NewToExtract(f.ArchivePath, f.RelativePathInArchive, f.ExtractionPath)));
             } catch (OperationCanceledException) {
                 throw;
             } catch (Exception e) {
                 throw new ArchiverException(e.Message, e);
+            } finally {
+                _cabManager.OnProgress -= CabManagerOnProgress;
             }
         }
 
         /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete) {
+            _cabManager.OnProgress += CabManagerOnProgress;
             try {
                 return _cabManager.DeleteFileSet(filesToDelete.Select(f => CabFile.NewToDelete(f.ArchivePath, f.RelativePathInArchive)));
             } catch (OperationCanceledException) {
                 throw;
             } catch (Exception e) {
                 throw new ArchiverException(e.Message, e);
+            } finally {
+                _cabManager.OnProgress -= CabManagerOnProgress;
             }
         }
 
         /// <inheritdoc cref="IArchiver.MoveFileSet"/>
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove) {
+            _cabManager.OnProgress += CabManagerOnProgress;
             try {
                 return _cabManager.MoveFileSet(filesToMove.Select(f => CabFile.NewToMove(f.ArchivePath, f.RelativePathInArchive, f.NewRelativePathInArchive)));
             } catch (OperationCanceledException) {
                 throw;
             } catch (Exception e) {
                 throw new ArchiverException(e.Message, e);
+            } finally {
+                _cabManager.OnProgress -= CabManagerOnProgress;
             }
         }
 

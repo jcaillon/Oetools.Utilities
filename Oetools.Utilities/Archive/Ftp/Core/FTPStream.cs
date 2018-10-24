@@ -44,7 +44,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
     /// <summary>
     ///     Incapsulates a Stream used during FTP get and put commands.
     /// </summary>
-    public class FtpStream : Stream {
+    internal class FtpStream : Stream {
         public enum EAllowedOperation {
             Read = 1,
             Write = 2

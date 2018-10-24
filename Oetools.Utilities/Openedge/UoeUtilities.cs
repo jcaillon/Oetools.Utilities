@@ -259,21 +259,21 @@ namespace Oetools.Utilities.Openedge {
                 outputPath = Path.Combine(dlcPath, "bin", useCharacterModeOfProgress ? "_progres.exe" : "prowin32.exe");
                 if (!File.Exists(outputPath)) {
                     if (useCharacterModeOfProgress) {
-                        throw new UoeExecutionParametersException($"Could not find the progress executable for character mode in {dlcPath}, check your DLC path or switch to graphical mode; the file searched was {outputPath}");
+                        throw new UoeExecutionParametersException($"Could not find the progress executable for character mode in {dlcPath}, check your DLC path or switch to graphical mode; the file searched was {outputPath}.");
                     }
 
                     outputPath = Path.Combine(dlcPath, "bin", "prowin.exe");
                 }
             } else {
                 if (!useCharacterModeOfProgress) {
-                    throw new UoeExecutionParametersException("Graphical mode unavailable on non windows platform, use the character mode of openedge (_progres)");
+                    throw new UoeExecutionParametersException("Graphical mode unavailable on non windows platform, use the character mode of openedge (_progres).");
                 }
 
                 outputPath = Path.Combine(dlcPath, "bin", "_progres");
             }
 
             if (!File.Exists(outputPath)) {
-                throw new UoeExecutionParametersException($"Could not find the progress executable in {dlcPath}, check your DLC path; the file searched was {outputPath}");
+                throw new UoeExecutionParametersException($"Could not find the progress executable in {dlcPath}, check your DLC path; the file searched was {outputPath}.");
             }
 
             return outputPath;

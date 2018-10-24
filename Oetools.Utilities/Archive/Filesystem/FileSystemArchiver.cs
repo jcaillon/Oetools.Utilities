@@ -30,7 +30,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
     /// <summary>
     /// In that case, a folder on the file system represents an archive.
     /// </summary>
-    public class FileSystemArchiver : ArchiverBase, IArchiver {
+    internal class FileSystemArchiver : ArchiverBase, IArchiver {
 
         /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
         public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) {

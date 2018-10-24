@@ -209,7 +209,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     Column = 1,
                     Line = 1,
                     ErrorNumber = 0,
-                    Message = $"{path} has not been generated"
+                    Message = $"{path} has not been generated."
                 });
             }
         }

@@ -26,8 +26,8 @@ using System.Linq;
 namespace Oetools.Utilities.Lib {
 
     /// <summary>
-    /// Class to handle a list of unique files
-    /// The point of this implementation is to quickly find out if a file exists in this list
+    /// Class to handle a list of unique paths.
+    /// The point of this implementation is to quickly find out if a path exists in this list.
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public class PathList<T> : IEnumerable<T> where T : IPathListItem {
@@ -56,10 +56,10 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Gets or sets an element using its <see cref="IPathListItem.Path"/> property.
         /// </summary>
-        /// <param name="file"></param>
-        public T this[T file] {
-            get => this[file?.Path];
-            set => this[file?.Path] = value;
+        /// <param name="item"></param>
+        public T this[T item] {
+            get => this[item?.Path];
+            set => this[item?.Path] = value;
         }
         
         public IEnumerator<T> GetEnumerator() {

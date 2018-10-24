@@ -57,7 +57,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
     ///     ((EsslSupportModeAttr)EsslSupportModeType.GetAttributes()).Value
     /// </summary>
     [Flags]
-    public enum EsslSupportMode {
+    internal enum EsslSupportMode {
         /// <summary>
         ///     No SSL/TLS support. Used for standard FTP connections.
         /// </summary>
@@ -125,7 +125,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
     /// <summary>
     ///     Possible actions occurring during a file transfer.
     /// </summary>
-    public enum ETransferActions {
+    internal enum ETransferActions {
         LocalDirectoryCreated,
         RemoteDirectoryCreated,
         FileUploaded,
@@ -137,7 +137,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
     /// <summary>
     ///     File pattern style used in <see cref="FtpsClient.GetFiles(string,string,string,Oetools.Utilities.Archive.Ftp.Core.EPatternStyle,bool,Oetools.Utilities.Archive.Ftp.Core.FileTransferCallback)" /> and  <see cref="FtpsClient.PutFiles(string,string,string,Oetools.Utilities.Archive.Ftp.Core.EPatternStyle,bool,Oetools.Utilities.Archive.Ftp.Core.FileTransferCallback)" />.
     /// </summary>
-    public enum EPatternStyle {
+    internal enum EPatternStyle {
         /// <summary>
         ///     Interpret as is.
         /// </summary>
@@ -158,7 +158,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
     /// <summary>
     ///     Trasfer mode used in connections
     /// </summary>
-    public enum EDataConnectionMode {
+    internal enum EDataConnectionMode {
         Active,
         Passive
     }
@@ -173,14 +173,14 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
     /// <param name="fileTransmittedBytes"></param>
     /// <param name="fileTransferSize"><c>null</c> if not available (e.g. the server does not support the SIZE command).</param>
     /// <param name="cancel"></param>
-    public delegate void FileTransferCallback(FtpsClient sender, ETransferActions action,
+    internal delegate void FileTransferCallback(FtpsClient sender, ETransferActions action,
         string localObjectName, string remoteObjectName,
         ulong fileTransmittedBytes, ulong? fileTransferSize,
         ref bool cancel);
 
-    public delegate void LogCommandEventHandler(object sender, LogCommandEventArgs args);
+    internal delegate void LogCommandEventHandler(object sender, LogCommandEventArgs args);
 
-    public delegate void LogServerReplyEventHandler(object sender, LogServerReplyEventArgs args);
+    internal delegate void LogServerReplyEventHandler(object sender, LogServerReplyEventArgs args);
 
     /// <summary>
     ///     Class used to connect to an FTP/FTPS server.
@@ -193,7 +193,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
     /// <remarks>
     ///     Requirements: MS Framework 2.0 and above or Mono 2.0 and above.
     /// </remarks>
-    public sealed partial class FtpsClient : IDisposable {
+    internal sealed partial class FtpsClient : IDisposable {
         private enum EProtCode {
             C,
             S,

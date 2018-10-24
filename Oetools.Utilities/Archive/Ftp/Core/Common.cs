@@ -41,17 +41,17 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
      *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA 
      */
 
-    public enum ETransferMode {
+    internal enum ETransferMode {
         Ascii,
         Binary
     }
 
-    public enum ETextEncoding {
+    internal enum ETextEncoding {
         Ascii,
         Utf8
     }
 
-    public class FtpReply {
+    internal class FtpReply {
         public int Code { get; set; }
 
         public string Message { get; set; }
@@ -61,7 +61,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
         }
     }
 
-    public class DirectoryListItem {
+    internal class DirectoryListItem {
         public ulong Size { get; set; }
 
         public string SymLinkTargetPath { get; set; }
@@ -84,7 +84,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
     /// <summary>
     ///     Encapsulates the SSL/TLS algorithms connection information.
     /// </summary>
-    public class SslInfo {
+    internal class SslInfo {
         public SslProtocols SslProtocol { get; set; }
 
         public CipherAlgorithmType CipherAlgorithm { get; set; }
@@ -107,7 +107,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
         }
     }
 
-    public class LogCommandEventArgs : EventArgs {
+    internal class LogCommandEventArgs : EventArgs {
         public string CommandText { get; private set; }
 
         public LogCommandEventArgs(string commandText) {
@@ -115,7 +115,7 @@ namespace Oetools.Utilities.Archive.Ftp.Core {
         }
     }
 
-    public class LogServerReplyEventArgs : EventArgs {
+    internal class LogServerReplyEventArgs : EventArgs {
         public FtpReply ServerReply { get; private set; }
 
         public LogServerReplyEventArgs(FtpReply serverReply) {

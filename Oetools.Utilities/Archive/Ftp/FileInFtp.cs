@@ -21,7 +21,7 @@
 using System;
 
 namespace Oetools.Utilities.Archive.Ftp {
-    public class FileInFtp : IFileInArchive {
+    internal class FileInFtp : IFileInArchive {
         public string ArchivePath { get; set; }
         public string RelativePathInArchive { get; set; }
         public ulong SizeInBytes { get; set; }

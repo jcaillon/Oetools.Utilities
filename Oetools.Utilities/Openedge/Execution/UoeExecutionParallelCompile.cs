@@ -61,17 +61,17 @@ namespace Oetools.Utilities.Openedge.Execution {
                     proc?.Dispose();
                 }
             } catch (Exception e) {
-                HandledExceptions.Add(new UoeExecutionException("Error when disposing of the compilation processes", e));
+                HandledExceptions.Add(new UoeExecutionException("Error when disposing of the compilation processes.", e));
             }
         }
 
         protected override void CheckParameters() {
             base.CheckParameters();
             if (MinimumNumberOfFilesPerProcess <= 0) {
-                throw new UoeExecutionParametersException($"Invalid parameter for {nameof(MinimumNumberOfFilesPerProcess)} = {MinimumNumberOfFilesPerProcess}, should be at least 1");
+                throw new UoeExecutionParametersException($"Invalid parameter for {nameof(MinimumNumberOfFilesPerProcess)} = {MinimumNumberOfFilesPerProcess}, should be at least 1.");
             }
             if (MaxNumberOfProcesses <= 0) {
-                throw new UoeExecutionParametersException($"Invalid parameter for {nameof(MaxNumberOfProcesses)} = {MaxNumberOfProcesses}, should be at least 1");
+                throw new UoeExecutionParametersException($"Invalid parameter for {nameof(MaxNumberOfProcesses)} = {MaxNumberOfProcesses}, should be at least 1.");
             }
         }
 
@@ -154,7 +154,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         proc.KillProcess();
                     }
                 } catch (Exception e) {
-                    HandledExceptions.Add(new UoeExecutionException("Error when killing compilation processes", e));
+                    HandledExceptions.Add(new UoeExecutionException("Error when killing compilation processes.", e));
                 } finally {
                     // wait for all the processes to actually exit correctly and publish their events
                     d = DateTime.Now;
@@ -205,7 +205,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     CompiledFiles.TryAddRange(compilation.CompiledFiles);
                 }        
             } catch (Exception e) {
-                HandledExceptions.Add(new UoeExecutionException("Error when checking the compilation results", e));
+                HandledExceptions.Add(new UoeExecutionException("Error when checking the compilation results.", e));
             } finally {
                 Monitor.Exit(_lock);
             }

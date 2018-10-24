@@ -191,7 +191,7 @@ namespace Oetools.Utilities.Lib {
                     }
                 }
             } catch (Exception e) {
-                throw new Exception($"Couldn\'t read the file {path.PrettyQuote()}", e);
+                throw new Exception($"Can not read the file {path.PrettyQuote()}.", e);
             }
         }
 
@@ -471,14 +471,14 @@ namespace Oetools.Utilities.Lib {
         /// <returns></returns>
         public static void ValidatePathWildCard(string pattern) {
             if (string.IsNullOrEmpty(pattern)) {
-                throw new Exception("The path is null or empty");
+                throw new Exception("The path is null or empty.");
             }
             foreach (char c in Path.GetInvalidPathChars()) {
                 if (c == '*' || c == '?' || c == '|') {
                     continue;
                 }
                 if (pattern.IndexOf(c) >= 0) {
-                    throw new Exception($"Illegal character path {c} at column {pattern.IndexOf(c)}");
+                    throw new Exception($"Illegal character path {c} at column {pattern.IndexOf(c)}.");
                 }
             }
             pattern.ValidatePlaceHolders("((", "))");

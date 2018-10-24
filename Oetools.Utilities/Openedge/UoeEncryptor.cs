@@ -83,13 +83,13 @@ namespace Oetools.Utilities.Openedge {
         public byte[] ConvertData(byte[] data, bool encode) {
             
             if (data == null || data.Length == 0) {
-                throw new UoeAlreadyConvertedException("The data is empty, no conversion needed");
+                throw new UoeAlreadyConvertedException("The data is empty, no conversion needed.");
             }
             
             var isEncoded = IsFirstByteFromEncryptedFile(data[0]);
             
             if (encode && isEncoded || !encode && !isEncoded) {
-                throw new UoeAlreadyConvertedException($"The data is already {(encode ? "encoded" : "decoded")}");
+                throw new UoeAlreadyConvertedException($"The data is already {(encode ? "encoded" : "decoded")}.");
             }
 
             var keyData = _keyData.ToArray();

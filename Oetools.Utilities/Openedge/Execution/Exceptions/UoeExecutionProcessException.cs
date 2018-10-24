@@ -37,6 +37,6 @@ namespace Oetools.Utilities.Openedge.Execution.Exceptions {
             ExitCode = exitCode;
         }
 
-        public override string Message => $"An error has occurred during the execution : {ExecutablePath} {Parameters}, in the directory : {WorkingDirectory}, exit code {ExitCode}{(!string.IsNullOrEmpty(BatchModeOutput) ? $", the output was {BatchModeOutput}" : "")}";
+        public override string Message => $"An error has occurred during the execution : {ExecutablePath} {Parameters}, in the directory : {WorkingDirectory}, exit code {ExitCode}{(!string.IsNullOrEmpty(BatchModeOutput) ? $", the output was {BatchModeOutput}" : "")}.";
     }
 }

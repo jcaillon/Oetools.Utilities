@@ -161,10 +161,10 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected override void CheckParameters() {
             base.CheckParameters();
             if (FilesToCompile == null || !FilesToCompile.Any()) {
-                throw new UoeExecutionParametersException("No files specified");
+                throw new UoeExecutionParametersException("No files specified.");
             }
             if ((CompileInAnalysisMode || AnalysisModeSimplifiedDatabaseReferences) && !Env.IsProVersionHigherOrEqualTo(new Version(10, 2, 0))) {
-                throw new UoeExecutionParametersException("The analysis mode (computes file and database references required to compile) is only available for openedge >= 10.2");
+                throw new UoeExecutionParametersException("The analysis mode (computes file and database references required to compile) is only available for openedge >= 10.2.");
             }
         }
 
@@ -180,7 +180,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             var count = 0;
             foreach (var file in FilesToCompile) {
                 if (!File.Exists(file.CompiledPath)) {
-                    throw new UoeExecutionParametersException($"Couldn\'t find the source file : {file.CompiledPath.PrettyQuote()}");
+                    throw new UoeExecutionParametersException($"Can not find the source file : {file.CompiledPath.PrettyQuote()}.");
                 }
 
                 var localSubTempDir = Path.Combine(_tempDir, count.ToString());
@@ -314,7 +314,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         }
                     }
                 } catch (Exception e) {
-                    HandledExceptions.Add(new UoeExecutionException("Error while reading the compilation results", e));
+                    HandledExceptions.Add(new UoeExecutionException("Error while reading the compilation results.", e));
                 }
             }
         }

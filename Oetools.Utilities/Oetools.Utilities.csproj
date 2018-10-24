@@ -91,4 +91,7 @@
   <ItemGroup>
     <PackageReference Include="Noyacode.CabinetManager" Version="1.0.4" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Archive\HttpServer" />
+  </ItemGroup>
 </Project>

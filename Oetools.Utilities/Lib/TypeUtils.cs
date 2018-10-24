@@ -140,7 +140,7 @@ namespace Oetools.Utilities.Lib {
                         if (sourceProperty.PropertyType.IsArray) {
                             var subtype = sourceProperty.PropertyType.GetElementType();
                             if (subtype == null) {
-                                throw new Exception($"Unknown elemeny type of array {sourceProperty.Name}");
+                                throw new Exception($"Unknown element type of array {sourceProperty.Name}.");
                             }
                             var array = Array.CreateInstance(subtype, listItem.Count);
                             targetProperty.SetValue(targetObj, array);

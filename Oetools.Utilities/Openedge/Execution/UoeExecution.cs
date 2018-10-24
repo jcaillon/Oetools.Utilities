@@ -184,7 +184,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     Utils.DeleteDirectoryIfExists(_tempDir, true);
                 }
             } catch (Exception e) {
-                HandledExceptions.Add(new UoeExecutionException("Error when disposing of the process", e));
+                HandledExceptions.Add(new UoeExecutionException("Error when disposing of the process.", e));
             }
         }
 
@@ -236,7 +236,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             var propath = $"{_tempDir},{(Env.ProPathList != null ? string.Join(",", Env.ProPathList) : "")}\n";
             if (propath.Length > UoeConstants.MaximumPropathLength) {
                 // TODO : find a better working directory that would shorten the propath
-                throw new UoeExecutionParametersException($"The propath used is too long (>{UoeConstants.MaximumPropathLength}) : {propath.PrettyQuote()}");
+                throw new UoeExecutionParametersException($"The propath used is too long (>{UoeConstants.MaximumPropathLength}) : {propath.PrettyQuote()}.");
             }
 
             File.WriteAllText(_propathFilePath, propath, Encoding.Default);
@@ -301,7 +301,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 try {
                     _process.Kill();
                 } catch (Exception e) {
-                    HandledExceptions.Add(new UoeExecutionException("Error when killing the process", e));
+                    HandledExceptions.Add(new UoeExecutionException("Error when killing the process.", e));
                 }
             }
         }
@@ -351,12 +351,12 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <exception cref="UoeExecutionException"></exception>
         protected virtual void CheckParameters() {
             if (_executed) {
-                throw new UoeExecutionException("This process has already been executed, you can't start it again");
+                throw new UoeExecutionException("This process has already been executed, you can't start it again.");
             }
             _executed = true;
             
             if (!Directory.Exists(Env.DlcDirectoryPath)) {
-                throw new UoeExecutionParametersException($"Couldn\'t start an execution, the DLC directory does not exist : {Env.DlcDirectoryPath.PrettyQuote()}");
+                throw new UoeExecutionParametersException($"Can not start an execution, the DLC directory does not exist : {Env.DlcDirectoryPath.PrettyQuote()}.");
             }
         }
         
@@ -394,7 +394,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             try {
                 GetProcessResults();
             } catch (Exception e) {
-                HandledExceptions.Add(new UoeExecutionException("Error when checking the process results", e));
+                HandledExceptions.Add(new UoeExecutionException("Error when checking the process results.", e));
             } finally {
                 PublishEndEvents();
             }
@@ -415,7 +415,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     }
                     return false;
                 }) is UoeExecutionOpenedgeException tooMuchConnectionOnDbException) {
-                    tooMuchConnectionOnDbException.ErrorMessage = $"{tooMuchConnectionOnDbException.ErrorMessage}; this message indicates that too many connections were done on a database, increase the maximum number of connections in the proserve command (or use proserve if the database is used in single user mode)";
+                    tooMuchConnectionOnDbException.ErrorMessage = $"{tooMuchConnectionOnDbException.ErrorMessage} This message indicates that too many connections were done on a database, increase the maximum number of connections in the proserve command (or use proserve if the database is used in single user mode).";
                 }
             }
 
@@ -485,14 +485,14 @@ namespace Oetools.Utilities.Openedge.Execution {
                     OnExecutionOk?.Invoke(this);
                 }
             } catch (Exception e) {
-                HandledExceptions.Add(new UoeExecutionException("Error in published events", e));
+                HandledExceptions.Add(new UoeExecutionException("Error in published events.", e));
             }
 
             // end of execution action
             try {
                 OnExecutionEnd?.Invoke(this);
             } catch (Exception e) {
-                HandledExceptions.Add(new UoeExecutionException("Error in published events end", e));
+                HandledExceptions.Add(new UoeExecutionException("Error in published events end.", e));
             }
             _eventPublished = true;
         }

@@ -129,7 +129,7 @@ namespace Oetools.Utilities.Lib.Extension {
                     idx = idxEnd;
                     if (idxEnd >= 0) {
                         if (startPosStack.Count == 0) {
-                            throw new Exception($"Invalid symbol {closePo} found at column {idx} (no corresponding {openPo})");
+                            throw new Exception($"Invalid symbol {closePo} found at column {idx} (no corresponding {openPo}).");
                         }
                         var lastStartPos = startPosStack.Pop();
                         if (replacementFunction != null) {
@@ -138,7 +138,7 @@ namespace Oetools.Utilities.Lib.Extension {
                             var variableValue = replacementFunction(variableName);
                             if (variableValue != null) {
                                 if (variableValue.IndexOf(openPo, 0, comparison) >= 0) {
-                                    throw new Exception($"The place holder value can't contain {openPo}");
+                                    throw new Exception($"The place holder value can't contain {openPo}.");
                                 }
                                 osb = osb.Remove(lastStartPos, idxEnd + closePo.Length - lastStartPos).Insert(lastStartPos, variableValue);
                                 idx = lastStartPos;
@@ -147,13 +147,13 @@ namespace Oetools.Utilities.Lib.Extension {
                     }
                 }
                 if (maxDepth > 0 && startPosStack.Count > maxDepth) {
-                    throw new Exception($"Max depth inclusion of {maxDepth} reached at column {idx}");
+                    throw new Exception($"Max depth inclusion of {maxDepth} reached at column {idx}.");
                 }
                 idx++;
             } while (idx > 0 && idx <= osb.Length - 1);
 
             if (startPosStack.Count != 0) {
-                throw new Exception($"Unbalanced number or {openPo} and {closePo})");
+                throw new Exception($"Unbalanced number or {openPo} and {closePo}).");
             }
             
             return osb;

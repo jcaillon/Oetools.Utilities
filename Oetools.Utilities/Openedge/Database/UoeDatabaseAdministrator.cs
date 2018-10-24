@@ -82,15 +82,15 @@ namespace Oetools.Utilities.Openedge.Database {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
             if (string.IsNullOrEmpty(dfFilePath)) {
-                throw new UoeDatabaseOperationException("The structure file path can't be null");
+                throw new UoeDatabaseOperationException("The structure file path can't be null.");
             }
 
             if (!File.Exists(dfFilePath)) {
-                throw new UoeDatabaseOperationException($"The structure file does not exist : {dfFilePath.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The structure file does not exist : {dfFilePath.PrettyQuote()}.");
             }
 
             if (GetBusyMode(targetDbPath) != DatabaseBusyMode.NotBusy) {
-                throw new UoeDatabaseOperationException("The database is currently busy, shut it down before this operation");
+                throw new UoeDatabaseOperationException("The database is currently busy, shut it down before this operation.");
             }
 
             Progres.WorkingDirectory = dbFolder;

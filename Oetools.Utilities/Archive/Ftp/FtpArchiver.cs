@@ -29,7 +29,7 @@ using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Archive.Ftp {
     
-    public class FtpArchiver : ArchiverBase, IArchiver {
+    internal class FtpArchiver : ArchiverBase, IArchiver {
         
         /// <inheritdoc cref="IArchiver.PackFileSet"/>
         public int PackFileSet(IEnumerable<IFileToArchive> filesToPackIn) {
@@ -254,7 +254,6 @@ namespace Oetools.Utilities.Archive.Ftp {
                         _cancelToken?.ThrowIfCancellationRequested();
                         try {
                             try {
-                                // TODO : probably does not work if we want to change the file of directory
                                 ftp.RenameFile(file.RelativePathInArchive, file.NewRelativePathInArchive);
                             } catch (FtpCommandException e) {
                                 if (e.ErrorCode == 550) {

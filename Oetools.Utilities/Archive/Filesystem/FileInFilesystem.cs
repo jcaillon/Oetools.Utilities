@@ -21,7 +21,7 @@
 using System;
 
 namespace Oetools.Utilities.Archive.Filesystem {
-    public class FileInFilesystem : IFileInArchive {
+    internal class FileInFilesystem : IFileInArchive {
         public string ArchivePath { get; set; }
         public string RelativePathInArchive { get; set; }
         public ulong SizeInBytes { get; set; }

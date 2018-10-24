@@ -1,7 +1,7 @@
-﻿#region header
+#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IPathListItem.cs) is part of Oetools.Utilities.
+// This file (ProLibraryException.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,12 +18,11 @@
 // ========================================================================
 #endregion
 
-namespace Oetools.Utilities.Lib {
-    
-    /// <summary>
-    /// An item in a <see cref="PathList{T}"/>.
-    /// </summary>
-    public interface IPathListItem {
-        string Path { get; }
+using System;
+
+namespace Oetools.Utilities.Openedge.Prolib {
+    public class ProLibraryException : Exception {
+        public ProLibraryException(string message) : base(message) { }
+        public ProLibraryException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

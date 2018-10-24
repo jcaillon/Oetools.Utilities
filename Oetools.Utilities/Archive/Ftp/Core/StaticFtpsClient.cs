@@ -21,7 +21,8 @@
 using System.Collections.Generic;
 
 namespace Oetools.Utilities.Archive.Ftp.Core {
-    public sealed partial class FtpsClient {
+    
+    internal sealed partial class FtpsClient {
         private static FtpsClients _instance;
 
         public static FtpsClients Instance {

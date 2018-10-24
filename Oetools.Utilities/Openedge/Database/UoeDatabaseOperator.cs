@@ -107,7 +107,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public UoeDatabaseOperator(string dlcPath) {
             DlcPath = dlcPath;
             if (string.IsNullOrEmpty(dlcPath) || !Directory.Exists(dlcPath)) {
-                throw new ArgumentException($"Invalid dlc path {dlcPath.PrettyQuote()}");
+                throw new ArgumentException($"Invalid dlc path {dlcPath.PrettyQuote()}.");
             }
         }
 
@@ -127,11 +127,11 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             if (string.IsNullOrEmpty(structureFilePath)) {
-                throw new UoeDatabaseOperationException("The structure file path can't be null");
+                throw new UoeDatabaseOperationException("The structure file path can't be null.");
             }
 
             if (!File.Exists(structureFilePath)) {
-                throw new UoeDatabaseOperationException($"The structure file does not exist : {structureFilePath.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The structure file does not exist : {structureFilePath.PrettyQuote()}.");
             }
 
             if (!Directory.Exists(dbFolder)) {
@@ -159,12 +159,12 @@ namespace Oetools.Utilities.Openedge.Database {
             GetDatabaseFolderAndName(sourceDbPath, out string sourceDbFolder, out string sourceDbPhysicalName);
 
             if (string.IsNullOrEmpty(sourceDbPath)) {
-                throw new UoeDatabaseOperationException("The source database can't be null");
+                throw new UoeDatabaseOperationException("The source database can't be null.");
             }
 
             sourceDbPath = Path.Combine(sourceDbFolder, $"{sourceDbPhysicalName}.db");
             if (!File.Exists(sourceDbPath)) {
-                throw new UoeDatabaseOperationException($"Could not find the procopy source database : {sourceDbPath.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"Could not find the procopy source database : {sourceDbPath.PrettyQuote()}.");
             }
             
             if (!Directory.Exists(dbFolder)) {
@@ -198,7 +198,7 @@ namespace Oetools.Utilities.Openedge.Database {
             if (!string.IsNullOrEmpty(codePage)) {
                 emptyDbFolder = Path.Combine(DlcPath, "prolang", codePage);
                 if (!Directory.Exists(emptyDbFolder)) {
-                    throw new UoeDatabaseOperationException($"Invalid codepage, the folder doesn't exist : {emptyDbFolder.PrettyQuote()}");
+                    throw new UoeDatabaseOperationException($"Invalid codepage, the folder doesn't exist : {emptyDbFolder.PrettyQuote()}.");
                 }
             } else {
                 emptyDbFolder = DlcPath;
@@ -207,7 +207,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var sourceDbPath = Path.Combine(emptyDbFolder, $"empty{(int) blockSize}");
 
             if (!File.Exists($"{sourceDbPath}.db")) {
-                throw new UoeDatabaseOperationException($"Could not find the procopy source database : {sourceDbPath.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"Could not find the procopy source database : {sourceDbPath.PrettyQuote()}.");
             }
             
             if (!Directory.Exists(dbFolder)) {
@@ -239,7 +239,7 @@ namespace Oetools.Utilities.Openedge.Database {
             try {
                 File.WriteAllText(stPath, "#\nb .\n#\nd \"Schema Area\":6,32;1 .\n#\nd \"Data Area\":7,256;1 .\n#\nd \"Index Area\":8,1;1 .", Encoding.ASCII);
             } catch (Exception e) {
-                throw new UoeDatabaseOperationException($"Could not write .st file to {stPath.PrettyQuote()}", e);
+                throw new UoeDatabaseOperationException($"Could not write .st file to {stPath.PrettyQuote()}.", e);
             }
 
             return stPath;
@@ -321,10 +321,10 @@ namespace Oetools.Utilities.Openedge.Database {
             // check if busy
             DatabaseBusyMode busyMode = GetBusyMode(targetDbPath);
             if (busyMode == DatabaseBusyMode.SingleUser) {
-                throw new UoeDatabaseOperationException("Database already used in single user mode");
+                throw new UoeDatabaseOperationException("Database already used in single user mode.");
             } 
             if (busyMode == DatabaseBusyMode.MultiUser) {
-                throw new UoeDatabaseOperationException("Database already used in multi user mode");
+                throw new UoeDatabaseOperationException("Database already used in multi user mode.");
             }
 
             if (!string.IsNullOrEmpty(hostname)) {
@@ -348,7 +348,7 @@ namespace Oetools.Utilities.Openedge.Database {
             });
 
             if (proc == null) {
-                throw new UoeDatabaseOperationException($"Failed to start {ProservePath} {options}");
+                throw new UoeDatabaseOperationException($"Failed to start {ProservePath} {options}.");
             }
             
             do {
@@ -356,7 +356,7 @@ namespace Oetools.Utilities.Openedge.Database {
             } while (busyMode != DatabaseBusyMode.MultiUser && !proc.HasExited);
 
             if (busyMode != DatabaseBusyMode.MultiUser) {
-                throw new UoeDatabaseOperationException($"Failed to serve the database, check the database log file {Path.Combine(dbFolder, $"{dbPhysicalName}.lg").PrettyQuote()}, options used : {options.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"Failed to serve the database, check the database log file {Path.Combine(dbFolder, $"{dbPhysicalName}.lg").PrettyQuote()}, options used : {options.PrettyQuote()}.");
             }
 
             return options;
@@ -418,7 +418,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var busyMode = GetBusyMode(targetDbPath);
             if (busyMode != DatabaseBusyMode.NotBusy) {
-                throw new UoeDatabaseOperationException($"The database is still in use : {busyMode}");
+                throw new UoeDatabaseOperationException($"The database is still in use : {busyMode}.");
             }
 
             foreach (var file in Directory.EnumerateFiles(dbFolder, $"{dbPhysicalName}*", SearchOption.TopDirectoryOnly)) {
@@ -439,7 +439,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
             
             if (string.IsNullOrEmpty(sourceDfPath) || !File.Exists(sourceDfPath)) {
-                throw new UoeDatabaseOperationException($"The file path for data definition file .df does not exist : {sourceDfPath.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The file path for data definition file .df does not exist : {sourceDfPath.PrettyQuote()}.");
             }
             
             // https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm/creating-a-structure-description-file.html
@@ -485,7 +485,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
             
             if (string.IsNullOrEmpty(stFilePath) || !File.Exists(stFilePath)) {
-                throw new UoeDatabaseOperationException($"Invalid file path for source .st : {stFilePath.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"Invalid file path for source .st : {stFilePath.PrettyQuote()}.");
             }
 
             var newContent = new Regex("^(?<firstpart>\\w\\s+(\"[^\"]+\"(:\\d+)?(,\\d+)?(;\\d+)?)?\\s+)(?<path>\\S+|\"[^\"]+\")(?<extendTypeSize>(\\s+\\w+\\s+\\d+)?\\s*)$", RegexOptions.Multiline)
@@ -610,16 +610,16 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public static void ValidateLogicalName(string logicalName) {
             if (string.IsNullOrEmpty(logicalName)) {
-                throw new UoeDatabaseOperationException("The logical name of the database is null or empty");
+                throw new UoeDatabaseOperationException("The logical name of the database is null or empty.");
             }
             if (logicalName.Length > DbLogicalNameMaxLength) {
-                throw new UoeDatabaseOperationException($"The logical name of the database is too long (>{DbLogicalNameMaxLength}) : {logicalName.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The logical name of the database is too long (>{DbLogicalNameMaxLength}) : {logicalName.PrettyQuote()}.");
             }
             if (logicalName.Any(c => !c.IsAsciiLetter() && !char.IsDigit(c) && c != '_' && c != '-')) {
-                throw new UoeDatabaseOperationException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters) : {logicalName.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters) : {logicalName.PrettyQuote()}.");
             }
             if (!logicalName[0].IsAsciiLetter()) {
-                throw new UoeDatabaseOperationException($"The logical name of a database should start with a english letter : {logicalName.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The logical name of a database should start with a english letter : {logicalName.PrettyQuote()}.");
             }
         }
         
@@ -667,11 +667,11 @@ namespace Oetools.Utilities.Openedge.Database {
         protected ProcessIo GetExecutable(string path) {
             if (!_processIos.ContainsKey(path)) {
                 if (string.IsNullOrEmpty(path)) {
-                    throw new ArgumentException("Path can't be null");
+                    throw new ArgumentException("Path can't be null.");
                 }
 
                 if (!File.Exists(path)) {
-                    throw new ArgumentException($"Invalid path {path.PrettyQuote()}");
+                    throw new ArgumentException($"Invalid path {path.PrettyQuote()}.");
                 }
 
                 _processIos.Add(path, new ProcessIo(path) {
@@ -686,13 +686,13 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <exception cref="UoeDatabaseOperationException"></exception>
         protected static void GetDatabaseFolderAndName(string dbPath, out string dbFolder, out string dbPhysicalName, bool needToExist = false) {
             if (string.IsNullOrEmpty(dbPath)) {
-                throw new UoeDatabaseOperationException("Invalid path, can't be null");
+                throw new UoeDatabaseOperationException("Invalid path, can't be null.");
             }
 
             dbFolder = Path.GetDirectoryName(dbPath);
 
             if (string.IsNullOrEmpty(dbFolder)) {
-                throw new UoeDatabaseOperationException("Database folder can't be null");
+                throw new UoeDatabaseOperationException("Database folder can't be null.");
             }
 
             if (!Directory.Exists(dbFolder)) {
@@ -706,16 +706,16 @@ namespace Oetools.Utilities.Openedge.Database {
             }
             
             if (dbPhysicalName.Any(c => !c.IsAsciiLetter() && !char.IsDigit(c) && c != '_' && c != '-')) {
-                throw new UoeDatabaseOperationException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters) : {dbPhysicalName.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters) : {dbPhysicalName.PrettyQuote()}.");
             }
             
             if (dbPhysicalName.Length > DbPhysicalNameMaxLength) {
-                throw new UoeDatabaseOperationException($"The physical name of the database is too long (>{DbPhysicalNameMaxLength}) : {dbPhysicalName.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The physical name of the database is too long (>{DbPhysicalNameMaxLength}) : {dbPhysicalName.PrettyQuote()}.");
             }
             
             // doesn't exist?
             if (needToExist && !File.Exists(Path.Combine(dbFolder, $"{dbPhysicalName}.db"))) {
-                throw new UoeDatabaseOperationException($"The target database doesn't exist, correct the target path : {dbPath.PrettyQuote()}");
+                throw new UoeDatabaseOperationException($"The target database doesn't exist, correct the target path : {dbPath.PrettyQuote()}.");
             }
         }
         

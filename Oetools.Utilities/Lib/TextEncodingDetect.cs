@@ -28,6 +28,7 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     /// <remarks>Credits go to: https://github.com/AutoIt/text-encoding-detect</remarks>
     public class TextEncodingDetect {
+        
         public enum EncodingEnum {
             None, // Unknown or binary
             Ansi, // 0-255
