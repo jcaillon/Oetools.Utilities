@@ -98,13 +98,22 @@ namespace Oetools.Utilities.Openedge.Database {
                 return File.Exists(outputPath) ? outputPath : null;
             }
         }
+        
+        /// <summary>
+        /// The encoding to use for I/O of the openedge executables.
+        /// </summary>
+        private Encoding Encoding { get; set; } = Encoding.Default;
 
         /// <summary>
         /// New database utility
         /// </summary>
         /// <param name="dlcPath"></param>
+        /// <param name="encoding"></param>
         /// <exception cref="ArgumentException"></exception>
-        public UoeDatabaseOperator(string dlcPath) {
+        public UoeDatabaseOperator(string dlcPath, Encoding encoding = null) {
+            if (encoding != null) {
+                Encoding = encoding;
+            }
             DlcPath = dlcPath;
             if (string.IsNullOrEmpty(dlcPath) || !Directory.Exists(dlcPath)) {
                 throw new ArgumentException($"Invalid dlc path {dlcPath.PrettyQuote()}.");
@@ -675,7 +684,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 }
 
                 _processIos.Add(path, new ProcessIo(path) {
-                    RedirectedOutputEncoding = Encoding.Default
+                    RedirectedOutputEncoding = Encoding
                 });
             }
 

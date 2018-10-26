@@ -20,7 +20,7 @@
 
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Openedge.Prolib;
+using Oetools.Utilities.Archive.Prolib.Core;
 
 namespace Oetools.Utilities.Test.Openedge.Prolib {
     

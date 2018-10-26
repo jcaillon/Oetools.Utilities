@@ -90,7 +90,7 @@ namespace Oetools.Utilities.Test.Openedge {
             Assert.IsTrue(list.ToList().Exists(s => s.Equals(Environment.GetEnvironmentVariable("TEMP"))));
         }
         
-        [TestMethod]
+        [DataTestMethod]
         [DataRow(@"OpenEdge Release 11.7 as of Mon Mar 27 10:21:54 EDT 2017", 11, 7, 0)]
         [DataRow(@"OpenEdge Release 9.1D05 as of Mon Mar 27 10:21:54 EDT 2017", 9, 1, 5)]
         [DataRow(@"OpenEdge Release 10.2B0801 as of Mon Mar 27 10:21:54 EDT 2017", 10, 2, 801)]
@@ -100,6 +100,41 @@ namespace Oetools.Utilities.Test.Openedge {
             var versionFilePath = Path.Combine(TestFolder, "version");
             File.WriteAllText(versionFilePath, version);
             Assert.AreEqual(new Version(major, minor, patch), UoeUtilities.GetProVersionFromDlc(TestFolder));
+        }
+        
+        [DataTestMethod]
+        [DataRow(@"1250", "Windows-1250", true)]
+        [DataRow(@"iso8859-1", "iso-8859-1", true)]
+        [DataRow(@"UTF-8", "UTF-8", true)]
+        [DataRow(@"derp", "", false)]
+        public void GetEncodingFromOpenedgeCodePage_Test(string codePage, string expectedEncoding, bool isOk) {
+            var output = UoeUtilities.GetEncodingFromOpenedgeCodePage(codePage, out var encoding);
+            Assert.AreEqual(isOk, output);
+            if (isOk) {
+                Assert.AreEqual(Encoding.GetEncoding(expectedEncoding), encoding);
+            }
+        }
+        
+        [DataTestMethod]
+        [DataRow("Windows-1250", @"1250")]
+        [DataRow("iso-8859-1", @"iso8859-1")]
+        [DataRow(@"UTF-8", "utf-8")]
+        public void GetOpenedgeCodePageFromEncoding_Test(string encoding, string codePage) {
+            Assert.AreEqual(UoeUtilities.GetOpenedgeCodePageFromEncoding(Encoding.GetEncoding(encoding)).ToLower(), codePage);
+        }
+        
+        [TestMethod]
+        public void GetGuiCodePageFromDlc_Test() {
+            var versionFilePath = Path.Combine(TestFolder, "startup.pf");
+            File.WriteAllText(versionFilePath, "#\n\n-cpinternal UTF-8\n-cpstream ISO8859-15\n-cpcoll Basic\n-cpcase French");
+            Assert.AreEqual("UTF-8", UoeUtilities.GetGuiCodePageFromDlc(TestFolder));
+        }
+        
+        [TestMethod]
+        public void GetIoCodePageFromDlc_Test() {
+            var versionFilePath = Path.Combine(TestFolder, "startup.pf");
+            File.WriteAllText(versionFilePath, "#\n\n-cpinternal UTF-8\n-cpstream ISO8859-15\n-cpcoll Basic\n-cpcase French");
+            Assert.AreEqual("ISO8859-15", UoeUtilities.GetIoCodePageFromDlc(TestFolder));
         }
         
         [TestMethod]

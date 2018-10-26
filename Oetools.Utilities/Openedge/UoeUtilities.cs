@@ -39,13 +39,13 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="filePath"></param>
         /// <param name="encoding"></param>
         /// <returns></returns>
-        public static HashSet<string> GetReferencedFilesFromFileIdLog(string filePath, Encoding encoding = null) {
+        public static HashSet<string> GetReferencedFilesFromFileIdLog(string filePath, Encoding encoding) {
             
             // we want to read this kind of line :
             // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID   Open E:\Common\CommonObj.i ID=33
             // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID   Open E:\Common space\CommonObji.cls ID=33
             var references = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            using (var reader = new UoeExportReader(filePath, encoding ?? Encoding.Default)) {
+            using (var reader = new UoeExportReader(filePath, encoding)) {
                 while (reader.MoveToNextRecordField()) {
                     if (reader.RecordFieldNumber != 5 || reader.RecordValue != "FILEID") {
                         continue;
@@ -85,9 +85,9 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="filePath"></param>
         /// <param name="encoding"></param>
         /// <returns></returns>
-        public static HashSet<string> GetDatabaseReferencesFromXrefFile(string filePath, Encoding encoding = null) {
+        public static HashSet<string> GetDatabaseReferencesFromXrefFile(string filePath, Encoding encoding) {
             var references = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            using (var reader = new UoeExportReader(filePath, encoding ?? Encoding.Default)) {
+            using (var reader = new UoeExportReader(filePath, encoding)) {
                 while (reader.MoveToNextRecordField()) {
                     if (reader.RecordFieldNumber != 3) {
                         continue;
@@ -245,6 +245,85 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="proVersion"></param>
         /// <returns></returns>
         public static bool CanProVersionUseNoSplashParameter(Version proVersion) => proVersion != null && proVersion.CompareTo(new Version(11, 6, 0)) >= 0;
+
+        /// <summary>
+        /// Returns a valid encoding from an openedge codepage name.
+        /// </summary>
+        /// <param name="codePage"></param>
+        /// <param name="encoding"></param>
+        /// <returns></returns>
+        public static bool GetEncodingFromOpenedgeCodePage(string codePage, out Encoding encoding) {
+            try {
+                if (char.IsDigit(codePage[0]) && codePage.Length == 4) {
+                    codePage = $"Windows-{codePage}";
+                } else if (codePage.StartsWith("iso", StringComparison.OrdinalIgnoreCase)) {
+                    codePage = $"ISO-{codePage.Substring(3).TrimStart('-')}";
+                }
+                encoding = Encoding.GetEncoding(codePage);
+                return true;
+            } catch (Exception) {
+                encoding = Encoding.Default;
+                return false;
+            }
+        }
+        /// <summary>
+        /// Returns the openedge name of an encoding.
+        /// </summary>
+        /// <param name="encoding"></param>
+        /// <returns></returns>
+        public static string GetOpenedgeCodePageFromEncoding(Encoding encoding) {
+            if (encoding == null) {
+                return "undefined";
+            }
+            var output = encoding.WebName;
+            if (output.StartsWith("windows-", StringComparison.OrdinalIgnoreCase)) {
+                output = output.Substring(8);
+            } else if (output.StartsWith("iso-", StringComparison.OrdinalIgnoreCase)) {
+                output = $"iso{output.Substring(4)}";
+            }
+            return output;
+        }
+        
+        /// <summary>
+        /// Returns the codepage used by a progress session for the graphical client.
+        /// </summary>
+        /// <param name="dlcPath"></param>
+        /// <returns></returns>
+        public static string GetGuiCodePageFromDlc(string dlcPath) {
+            var startupFilePath = Path.Combine(dlcPath, "startup.pf");
+            if (File.Exists(startupFilePath)) {
+                var matches = new Regex(@"-cpinternal ([\w-]+)(\s|$)").Matches(File.ReadAllText(startupFilePath));
+                if (matches.Count > 0) {
+                    return matches[0].Groups[1].Value;
+                }
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// Returns the codepage used by a progress session for all file/console I/O.
+        /// </summary>
+        /// <param name="dlcPath"></param>
+        /// <returns></returns>
+        public static string GetIoCodePageFromDlc(string dlcPath) {
+            var startupFilePath = Path.Combine(dlcPath, "startup.pf");
+            Match match = null;
+            if (File.Exists(startupFilePath)) {
+                var matches = new Regex(@"(-cpterm|-stream|-cpstream) ([\w-]+)(\s|$)").Matches(File.ReadAllText(startupFilePath));
+                
+                if (matches.Count == 1) {
+                    match = matches[0];
+                } else if (matches.Count == 2) {
+                    match = matches[0];
+                    foreach (Match match1 in matches) {
+                        if (match1.Groups[1].Success && match1.Groups[1].Value.Equals("-cpterm", StringComparison.OrdinalIgnoreCase)) {
+                            match = match1;
+                        }
+                    }
+                }
+            }
+            return match != null && match.Groups[2].Success ? match.Groups[2].Value : null;
+        }
 
         /// <summary>
         /// Returns the pro executable full path from the dlc path

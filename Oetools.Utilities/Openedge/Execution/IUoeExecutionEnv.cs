@@ -19,6 +19,7 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Openedge.Execution {
@@ -86,5 +87,10 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <param name="version"></param>
         /// <returns></returns>
         bool IsProVersionHigherOrEqualTo(Version version);
+        
+        /// <summary>
+        /// The encoding to use for i/o with openedge processes.
+        /// </summary>
+        Encoding IoEncoding { get; }
     }
 }

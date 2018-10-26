@@ -126,7 +126,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         private bool _compilationResultsRead;
         
-        public void ReadCompilationResults() {
+        public void ReadCompilationResults(IUoeExecutionEnv ienv) {
             if (_compilationResultsRead) {
                 return;
             }
@@ -142,11 +142,11 @@ namespace Oetools.Utilities.Openedge.Execution {
             CorrectRcodePathForClassFiles();
 
             // read compilation errors/warning for this file
-            ReadCompilationErrors();
+            ReadCompilationErrors(ienv);
 
             if (IsAnalysisMode) {
                 AddWarningIfFileDefinedButDoesNotExist(CompilationFileIdLogFilePath);
-                ComputeReferencedFiles();
+                ComputeReferencedFiles(ienv);
             }
 
             var rcodeExists = File.Exists(CompilationRcodeFilePath);
@@ -170,7 +170,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             // read from xref (we need the table CRC from the environment)
             if (ienv is UoeExecutionEnv env) {
                 if (File.Exists(CompilationXrefFilePath)) {
-                    foreach (var dbRef in UoeUtilities.GetDatabaseReferencesFromXrefFile(CompilationXrefFilePath)) {
+                    foreach (var dbRef in UoeUtilities.GetDatabaseReferencesFromXrefFile(CompilationXrefFilePath, ienv.IoEncoding)) {
                         if (env.TablesCrc.ContainsKey(dbRef)) {
                             RequiredDatabaseReferences.Add(new UoeDatabaseReferenceTable {
                                 QualifiedName = dbRef,
@@ -198,7 +198,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                             });
                         }
                     }
-                }, Encoding.Default);
+                }, ienv.IoEncoding);
             }
         }
 
@@ -214,7 +214,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        private void ReadCompilationErrors() {
+        private void ReadCompilationErrors(IUoeExecutionEnv env) {
             if (!string.IsNullOrEmpty(CompilationErrorsFilePath) && File.Exists(CompilationErrorsFilePath)) {
                 Utils.ForEachLine(CompilationErrorsFilePath, null, (i, line) => {
                     var fields = line.Split('\t');
@@ -229,7 +229,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         problem.Message = fields[6].ProUnescapeString().Replace(CompiledFilePath, Path).Trim();
                         (CompilationErrors ?? (CompilationErrors = new List<UoeCompilationProblem>())).Add(problem);
                     }
-                }, Encoding.Default);
+                }, env.IoEncoding);
             }
         }
 
@@ -258,14 +258,14 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Gets the files that were necessary to compile this file
         /// </summary>
-        private void ComputeReferencedFiles() {
+        private void ComputeReferencedFiles(IUoeExecutionEnv env) {
 
             if (string.IsNullOrEmpty(CompilationFileIdLogFilePath)) {
                 return;
             }
             
             if (File.Exists(CompilationFileIdLogFilePath)) {
-                RequiredFiles = UoeUtilities.GetReferencedFilesFromFileIdLog(CompilationFileIdLogFilePath, Encoding.Default);
+                RequiredFiles = UoeUtilities.GetReferencedFilesFromFileIdLog(CompilationFileIdLogFilePath, env.IoEncoding);
                 
                 RequiredFiles.RemoveWhere(f => 
                     f.PathEquals(CompiledFilePath) ||

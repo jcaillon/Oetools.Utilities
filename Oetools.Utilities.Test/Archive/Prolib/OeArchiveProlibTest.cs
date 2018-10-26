@@ -20,6 +20,7 @@
 
 using System;
 using System.IO;
+using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Prolib;
@@ -51,10 +52,10 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
                 return;
             }
 
-            ProlibArchiver archiver;
+            OeProlibArchiver archiver;
             
             try {
-                archiver = new ProlibArchiver(dlcPath);
+                archiver = new OeProlibArchiver(dlcPath, Encoding.Default);
             } catch (ArchiverException e) {
                 Console.WriteLine($"Cancelling test, prolib not found! : {e.Message}");
                 return;

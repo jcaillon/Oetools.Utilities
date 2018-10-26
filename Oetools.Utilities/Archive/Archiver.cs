@@ -43,28 +43,14 @@ namespace Oetools.Utilities.Archive {
                 case ArchiverType.Zip:
                     return new ZipArchiver();
                 case ArchiverType.Prolib:
-                    throw new ArgumentException($"Use the method {nameof(NewProlibArchiver)} to get a new prolib archiver.");
+                    return new ProlibArchiver();
                 case ArchiverType.Ftp:
                     return new FtpArchiver();
+                case ArchiverType.FileSystem:
+                    return new FileSystemArchiver();
                 default:
                     throw new ArgumentOutOfRangeException(nameof(type), type, null);
             }    
-        }
-
-        /// <summary>
-        /// Get a new instance of a prolib archiver.
-        /// </summary>
-        /// <returns></returns>
-        public static IArchiver NewProlibArchiver(string dlcPath) {
-            return new ProlibArchiver(dlcPath);
-        }
-
-        /// <summary>
-        /// Get a new instance of a file system archiver.
-        /// </summary>
-        /// <returns></returns>
-        public static IArchiver NewFileSystemArchiver() {
-            return new FileSystemArchiver();
         }
         
     }

@@ -112,13 +112,41 @@ namespace Oetools.Utilities.Test.Lib {
         [DataRow(@"", @"", DisplayName = "empty")]
         [DataRow(@"\//\\/server/", @"\\server")]
         [DataRow(@"/windows", @"C:\windows")]
-        [DataRow(@"d:/folder/file", @"d:\folder\file")]
-        [DataRow(@"d:/folder/\\\\\\\file", @"d:\folder\file")]
+        [DataRow(@"d:/folder/file   ", @"d:\folder\file")]
+        [DataRow(@"   d:/folder/\\\\\\\file", @"d:\folder\file")]
         public void ToCleanPath_Test(string pattern, string expect) {
             if (!Utils.IsRuntimeWindowsPlatform) {
                 return;
             }
             Assert.AreEqual(expect, pattern.ToCleanPath());
+        }
+        
+        [TestMethod]
+        [DataRow(null, null, DisplayName = "null")]
+        [DataRow(@"", @"", DisplayName = "empty")]
+        [DataRow(@"\//\\/server/", @"server")]
+        [DataRow(@"/windows", @"windows")]
+        [DataRow(@"d:/folder/\\\\\\\file   ", @"d:/folder/file")]
+        [DataRow(@"    /folder//cool/derp", @"folder/cool/derp")]
+        public void ToCleanRelativePathUnix_Test(string pattern, string expect) {
+            if (!Utils.IsRuntimeWindowsPlatform) {
+                return;
+            }
+            Assert.AreEqual(expect, pattern.ToCleanRelativePathUnix());
+        }
+        
+        [TestMethod]
+        [DataRow(null, null, DisplayName = "null")]
+        [DataRow(@"", @"", DisplayName = "empty")]
+        [DataRow(@"\//\\/server/", @"server")]
+        [DataRow(@"/windows", @"windows")]
+        [DataRow(@"d:/folder/\\\\\\\file   ", @"d:\folder\file")]
+        [DataRow(@"    /folder//cool/derp", @"folder\cool\derp")]
+        public void ToCleanRelativePathWin_Test(string pattern, string expect) {
+            if (!Utils.IsRuntimeWindowsPlatform) {
+                return;
+            }
+            Assert.AreEqual(expect, pattern.ToCleanRelativePathWin());
         }
         
         [TestMethod]

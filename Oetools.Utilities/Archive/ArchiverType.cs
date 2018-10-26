@@ -43,6 +43,11 @@ namespace Oetools.Utilities.Archive {
         /// <summary>
         /// CRUD operations for an ftp server.
         /// </summary>
-        Ftp
+        Ftp,
+        
+        /// <summary>
+        /// CRUD operations for a file system.
+        /// </summary>
+        FileSystem
     }
 }

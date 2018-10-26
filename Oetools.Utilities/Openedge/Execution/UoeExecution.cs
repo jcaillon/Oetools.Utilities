@@ -239,7 +239,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 throw new UoeExecutionParametersException($"The propath used is too long (>{UoeConstants.MaximumPropathLength}) : {propath.PrettyQuote()}.");
             }
 
-            File.WriteAllText(_propathFilePath, propath, Encoding.Default);
+            File.WriteAllText(_propathFilePath, propath, Env.IoEncoding);
 
             // Set info
             SetExecutionInfo();
@@ -260,7 +260,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             runnerProgram.AppendLine(ProgramProgressRun);
             AppendProgramToRun(runnerProgram);
-            File.WriteAllText(_runnerPath, runnerProgram.ToString(), Encoding.Default);
+            File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.IoEncoding);
 
             // Parameters
             _exeParameters = new StringBuilder($"-p {_runnerPath.CliQuoter()}");
@@ -280,7 +280,8 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             // start the process
             _process = new UoeProcessIo(Env.DlcDirectoryPath, ForceCharacterModeUse || Env.UseProgressCharacterMode && !RequiresGraphicalMode, Env.CanProVersionUseNoSplash) {
-                WorkingDirectory = _processStartDir
+                WorkingDirectory = _processStartDir,
+                RedirectedOutputEncoding = Env.IoEncoding
             };
             _process.OnProcessExit += ProcessOnExited;
             _process.ExecuteAsync(_exeParameters.ToString(), SilentExecution);
@@ -468,7 +469,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         };
                         output.Add(t);
                     }
-                }, Encoding.Default);
+                }, Env.IoEncoding);
             }
             return output;
         }

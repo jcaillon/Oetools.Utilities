@@ -1,4 +1,4 @@
-﻿#region header
+#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ProlibArchiver.cs) is part of Oetools.Utilities.
@@ -35,11 +35,14 @@ namespace Oetools.Utilities.Archive.Prolib {
     /// TODO : do not use a wrapper around prolib.exe, reverse eng. the .pl format
     /// look into https://github.com/jaime-olivares/zipstorer
     /// </summary>
-    internal class ProlibArchiver : ArchiverBase, IArchiver {
+    internal class OeProlibArchiver : ArchiverBase, IArchiver {
         
+        private readonly Encoding _encoding;
+
         private readonly string _prolibPath;        
         
-        internal ProlibArchiver(string dlcPath) {
+        internal OeProlibArchiver(string dlcPath, Encoding encoding) {
+            _encoding = encoding;
             _prolibPath = Path.Combine(dlcPath, "bin", Utils.IsRuntimeWindowsPlatform ? "prolib.exe" : "prolib");
             if (!File.Exists(_prolibPath)) {
                 throw new ArchiverException($"Could not find the prolib executable : {_prolibPath.PrettyQuote()}.");
@@ -121,7 +124,7 @@ namespace Oetools.Utilities.Archive.Prolib {
 
                             var pfPath = Path.Combine(uniqueTempFolder, $"{Path.GetFileName(plGroupedFiles.Key)}~{Path.GetRandomFileName()}.pf");
 
-                            File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
+                            File.WriteAllText(pfPath, pfContent.ToString(), _encoding);
 
                             if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
                                 throw new ArchiverException($"Failed to pack to {plGroupedFiles.Key.PrettyQuote()}.", new Exception(prolibExe.BatchOutput.ToString()));
@@ -253,7 +256,7 @@ namespace Oetools.Utilities.Archive.Prolib {
 
                         var pfPath = $"{plGroupedFiles.Key}~{Path.GetRandomFileName()}.pf";
 
-                        File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
+                        File.WriteAllText(pfPath, pfContent.ToString(), _encoding);
                     
                         // now we just need to add the content of temp folders into the .pl
                         if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
@@ -417,7 +420,7 @@ namespace Oetools.Utilities.Archive.Prolib {
     
                             var pfPath = Path.Combine(extractDirGroupedFiles.Key, $"{Path.GetFileName(plGroupedFiles.Key)}~{Path.GetRandomFileName()}.pf");
     
-                            File.WriteAllText(pfPath, pfContent.ToString(), Encoding.Default);
+                            File.WriteAllText(pfPath, pfContent.ToString(), _encoding);
     
                             if (!prolibExe.TryExecute($"{plGroupedFiles.Key.CliQuoter()} -pf {pfPath.CliQuoter()}")) {
                                 throw new ArchiverException($"Failed to extract from {plGroupedFiles.Key.PrettyQuote()}.", new Exception(prolibExe.BatchOutput.ToString()));

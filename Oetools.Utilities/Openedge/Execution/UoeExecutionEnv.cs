@@ -69,10 +69,10 @@ namespace Oetools.Utilities.Openedge.Execution {
 
                         // we need to copy the .ini but we must delete the PROPATH= part, as stupid as it sounds, if we leave a huge PROPATH 
                         // in this file, it increases the compilation time by a stupid amount... unbelievable i know, but trust me, it does...
-                        var fileContent = Utils.ReadAllText(_iniFilePath, Encoding.Default);
+                        var fileContent = Utils.ReadAllText(_iniFilePath, IoEncoding);
                         var regex = new Regex("^PROPATH=.*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
                         fileContent = regex.Replace(fileContent, @"PROPATH=");
-                        File.WriteAllText(_tempIniFilePath, fileContent, Encoding.Default);
+                        File.WriteAllText(_tempIniFilePath, fileContent, IoEncoding);
                     } else {
                         return _iniFilePath;
                     }
@@ -122,7 +122,31 @@ namespace Oetools.Utilities.Openedge.Execution {
         public virtual bool IsProVersionHigherOrEqualTo(Version version) {
             return ProVersion != null && version != null && ProVersion.CompareTo(version) >= 0;
         }
-        
+
+        public Encoding IoEncoding {
+            get {
+                if (_ioEncoding == null) {
+                    if (string.IsNullOrEmpty(CodePageName)) {
+                        _codePageName = Utils.IsRuntimeWindowsPlatform ? UoeUtilities.GetGuiCodePageFromDlc(DlcDirectoryPath) : UoeUtilities.GetIoCodePageFromDlc(DlcDirectoryPath);
+                    }
+                    UoeUtilities.GetEncodingFromOpenedgeCodePage(CodePageName, out _ioEncoding);
+                }
+                return _ioEncoding;
+            }
+            set => _ioEncoding = value;
+        }
+
+        /// <summary>
+        /// The code page to use for i/o with openedge processes. Defaults to the one read in $DLC/startup.pf.
+        /// </summary>
+        public string CodePageName {
+            get => _codePageName;
+            set {
+                _ioEncoding = null;
+                _codePageName = value;
+            }
+        }
+
         public virtual Dictionary<string, string> TablesCrc {
             get {
                 if (_tablesCrc == null) {
@@ -144,7 +168,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         private Dictionary<string, string> _tablesCrc;
         
         private HashSet<string> _sequences;
-        
+        private Encoding _ioEncoding;
+        private string _codePageName;
+
         private void InitDatabasesInfo() {
             using (var exec = new UoeExecutionDbExtractTableAndSequenceList(this)) {
                 exec.Start();

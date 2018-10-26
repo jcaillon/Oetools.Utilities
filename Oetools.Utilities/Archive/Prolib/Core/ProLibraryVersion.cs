@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ProLibraryFile.cs) is part of WinPL.
+// This file (ProLibraryType.cs) is part of WinPL.
 // 
 // WinPL is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,36 +18,31 @@
 // ========================================================================
 #endregion
 
-using System;
-
-namespace Oetools.Utilities.Openedge.Prolib {
-    public class ProLibraryFile {
+namespace Oetools.Utilities.Archive.Prolib.Core {
+    
+    /// <summary>
+    /// The prolib version.
+    /// </summary>
+    public enum ProLibraryVersion : byte {
         
         /// <summary>
-        /// Absolute file path outside of the .pl (if it exists)
+        /// Used for standard lib in openedge version lower than version 10.
         /// </summary>
-        public string AbsolutePath { get; set; }
+        V7Standard = 0x07,
         
         /// <summary>
-        /// Path inside the cab, including path separator characters and the file name
+        /// Used for memory mapped lib in openedge version lower than version 10.
         /// </summary>
-        public string RelativePath {
-            get => _relativePath;
-            set => _relativePath = value?.NormalizeRelativePath();
-        }
+        V8MemoryMapped = 0x08,
         
-        public DateTime LastWriteTime { get; set; }
+        /// <summary>
+        /// Used for standard lib in openedge version higher or equal than version 10.
+        /// </summary>
+        V11Standard = 0x0B,
         
-        public DateTime ArchivedTime { get; set; }
-        
-        public long Offset { get; set; }
-        
-        public uint Size { get; set; }
-
-        public byte RelativePathSize { get; set; }
-        
-        public ushort Crc { get; set; }
-
-        private string _relativePath;
+        /// <summary>
+        /// Used for memory mapped lib in openedge version higher or equal than version 10.
+        /// </summary>
+        V12MemoryMapped = 0x0C
     }
 }

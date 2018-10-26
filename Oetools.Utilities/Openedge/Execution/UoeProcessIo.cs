@@ -66,7 +66,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Choose the encoding for the standard/error output
         /// </summary>
         public override Encoding RedirectedOutputEncoding { get; set; } = Encoding.Default;
-
+       
         /// <summary>
         ///     Constructor
         /// </summary>

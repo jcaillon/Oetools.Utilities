@@ -47,7 +47,7 @@ namespace Oetools.Utilities.Test.Archive.FileSystem {
 
         [TestMethod]
         public void Test() {
-            IArchiver archiver = Archiver.NewFileSystemArchiver();
+            IArchiver archiver = Archiver.New(ArchiverType.FileSystem);
 
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1"));
             listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2")));

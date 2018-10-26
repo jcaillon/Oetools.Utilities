@@ -140,6 +140,34 @@ namespace Oetools.Utilities.Lib {
         }
         
         /// <summary>
+        /// Gets a messy path (can be valid or not) and returns a cleaned path, trimming ending dir sep char.
+        /// Uses windows style separator.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static string ToCleanRelativePathWin(this string path) {
+            if (string.IsNullOrEmpty(path)) {
+                return path;
+            }
+            var newPath = path.Trim().TrimStartDirectorySeparator().ToCleanPath();
+            return Path.DirectorySeparatorChar == '\\' ? newPath : newPath.Replace('/', '\\');
+        }
+        
+        /// <summary>
+        /// Gets a messy path (can be valid or not) and returns a cleaned path, trimming ending dir sep char.
+        /// Uses unix style separator.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static string ToCleanRelativePathUnix(this string path) {
+            if (string.IsNullOrEmpty(path)) {
+                return path;
+            }
+            var newPath = path.Trim().TrimStartDirectorySeparator().ToCleanPath();
+            return Path.DirectorySeparatorChar == '/' ? newPath : newPath.Replace('\\', '/');
+        }
+        
+        /// <summary>
         /// Gets a messy path (can be valid or not) and returns a cleaned path, trimming ending dir sep char
         /// TODO : also replace stuff like /./ or /../
         /// </summary>
@@ -149,6 +177,7 @@ namespace Oetools.Utilities.Lib {
             if (string.IsNullOrEmpty(path)) {
                 return path;
             }
+            path = path.Trim();
             string newPath = null;
             bool isWindows = IsRuntimeWindowsPlatform;
             bool startDoubleSlash = false;
