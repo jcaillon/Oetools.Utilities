@@ -126,7 +126,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         private bool _compilationResultsRead;
         
-        public void ReadCompilationResults(IUoeExecutionEnv ienv) {
+        public void ReadCompilationResults(Encoding enc) {
             if (_compilationResultsRead) {
                 return;
             }
@@ -142,11 +142,11 @@ namespace Oetools.Utilities.Openedge.Execution {
             CorrectRcodePathForClassFiles();
 
             // read compilation errors/warning for this file
-            ReadCompilationErrors(ienv);
+            ReadCompilationErrors(enc);
 
             if (IsAnalysisMode) {
                 AddWarningIfFileDefinedButDoesNotExist(CompilationFileIdLogFilePath);
-                ComputeReferencedFiles(ienv);
+                ComputeReferencedFiles(enc);
             }
 
             var rcodeExists = File.Exists(CompilationRcodeFilePath);
@@ -214,7 +214,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        private void ReadCompilationErrors(IUoeExecutionEnv env) {
+        private void ReadCompilationErrors(Encoding enc) {
             if (!string.IsNullOrEmpty(CompilationErrorsFilePath) && File.Exists(CompilationErrorsFilePath)) {
                 Utils.ForEachLine(CompilationErrorsFilePath, null, (i, line) => {
                     var fields = line.Split('\t');
@@ -229,7 +229,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         problem.Message = fields[6].ProUnescapeString().Replace(CompiledFilePath, Path).Trim();
                         (CompilationErrors ?? (CompilationErrors = new List<UoeCompilationProblem>())).Add(problem);
                     }
-                }, env.IoEncoding);
+                }, enc);
             }
         }
 
@@ -258,14 +258,14 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Gets the files that were necessary to compile this file
         /// </summary>
-        private void ComputeReferencedFiles(IUoeExecutionEnv env) {
+        private void ComputeReferencedFiles(Encoding enc) {
 
             if (string.IsNullOrEmpty(CompilationFileIdLogFilePath)) {
                 return;
             }
             
             if (File.Exists(CompilationFileIdLogFilePath)) {
-                RequiredFiles = UoeUtilities.GetReferencedFilesFromFileIdLog(CompilationFileIdLogFilePath, env.IoEncoding);
+                RequiredFiles = UoeUtilities.GetReferencedFilesFromFileIdLog(CompilationFileIdLogFilePath, enc);
                 
                 RequiredFiles.RemoveWhere(f => 
                     f.PathEquals(CompiledFilePath) ||

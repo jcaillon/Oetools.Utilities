@@ -102,7 +102,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// The encoding to use for I/O of the openedge executables.
         /// </summary>
-        private Encoding Encoding { get; set; } = Encoding.Default;
+        public Encoding Encoding { get; set; } = Encoding.Default;
 
         /// <summary>
         /// New database utility
@@ -461,7 +461,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var stContent = new StringBuilder("b .\n");
             stContent.Append("d \"Schema Area\" .\n");
             var areaAdded = new HashSet<string> { "Schema Area" };
-            foreach (Match areaName in new Regex("AREA \"([^\"]+)\"").Matches(File.ReadAllText(sourceDfPath, Encoding.ASCII))) {
+            foreach (Match areaName in new Regex("AREA \"([^\"]+)\"").Matches(File.ReadAllText(sourceDfPath, Encoding))) {
                 if (!areaAdded.Contains(areaName.Groups[1].Value)) {
                     stContent.Append($"d {areaName.Groups[1].Value.CliQuoter()} .\n");
                     areaAdded.Add(areaName.Groups[1].Value);
@@ -498,7 +498,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             var newContent = new Regex("^(?<firstpart>\\w\\s+(\"[^\"]+\"(:\\d+)?(,\\d+)?(;\\d+)?)?\\s+)(?<path>\\S+|\"[^\"]+\")(?<extendTypeSize>(\\s+\\w+\\s+\\d+)?\\s*)$", RegexOptions.Multiline)
-                .Replace(File.ReadAllText(stFilePath), match => {
+                .Replace(File.ReadAllText(stFilePath, Encoding), match => {
                     return $"{match.Groups["firstpart"]}.{match.Groups["extendTypeSize"]}";
                 });
             
@@ -506,7 +506,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 Directory.CreateDirectory(dbFolder);
             }
             
-            File.WriteAllText(stPath, newContent);
+            File.WriteAllText(stPath, newContent, Encoding);
 
             return stPath;
         }

@@ -43,7 +43,7 @@ namespace Oetools.Utilities.Openedge.Database {
             get {
                 if (_procedurePath == null) {
                     _procedurePath = Path.Combine(TempFolder, $"db_admin_{Path.GetRandomFileName()}.p");
-                    File.WriteAllText(ProcedurePath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"database_administrator.p"));
+                    File.WriteAllText(ProcedurePath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"database_administrator.p"), Encoding);
                 }
                 return _procedurePath;
             }
