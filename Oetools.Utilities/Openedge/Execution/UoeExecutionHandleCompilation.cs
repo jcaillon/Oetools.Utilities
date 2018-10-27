@@ -299,7 +299,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 try {
                     Parallel.ForEach(CompiledFiles, file => {
                         file.ReadCompilationResults(Env.IoEncoding);
-                        file.ComputeRequiredDatabaseReferences(AnalysisModeSimplifiedDatabaseReferences ? null : Env);
+                        file.ComputeRequiredDatabaseReferences(Env, AnalysisModeSimplifiedDatabaseReferences);
                     });
                     
                     // set UoeExecutionCompilationStoppedException exception
