@@ -29,18 +29,18 @@ using Oetools.Utilities.Openedge;
 
 namespace Oetools.Utilities.Archive.Prolib.Core {
     
-    public class ProLibrary : IDisposable {
+    internal class ProLibrary : IDisposable {
 
         private const string DefaultCodePageName = "undefined";
         private const byte MaxCodePageNameLength = 24;
         private const byte HeaderExtraNullBytes = 4;
         private const byte ProlibSignatureFirstByte = 0xD7;
         private const byte ReadFileEntry = 0xFF;
-        private const byte SkipFileEntry = 0xFE;
+        private const byte SkipUntilNextFileEntry = 0xFE;
+        private const short DataBufferSize = 1024;
         
-        public ProLibrary(string path, CancellationToken? cancelToken) {
-            _lookupTable = UoeEncryptor.GetConstantLookupTable();
-            Path = path;
+        public ProLibrary(string filePath, CancellationToken? cancelToken) {
+            FilePath = filePath;
             _cancelToken = cancelToken;
             OpenLib();
         }
@@ -53,17 +53,24 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         
         private readonly CancellationToken? _cancelToken;
         private string _encodingName;
-        private readonly ushort[] _lookupTable;
+        private string _filePathToWrite;
+        
+        public event EventHandler<ProLibrarySaveEventArgs> OnProgress;
 
         /// <summary>
-        /// The absolute path of this pro library.
+        /// The file path of this pro library.
         /// </summary>
-        public string Path { get; set; }
+        public string FilePath { get; set; }
+
+        /// <summary>
+        /// Temporary path to write to
+        /// </summary>
+        private string FilePathToWrite => _filePathToWrite ?? (_filePathToWrite = Path.Combine(Path.GetDirectoryName(FilePath) ?? "", $"~{Path.GetRandomFileName()}"));
 
         /// <summary>
         /// The pro library version.
         /// </summary>
-        public ProLibraryVersion Version { get; set; }
+        public ProLibraryVersion Version { get; set; } = ProLibraryVersion.V11Standard;
 
         /// <summary>
         /// The code page to use for the encoding the relative path of each file. Defaults to <see cref="DefaultCodePageName"/>.
@@ -82,7 +89,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <summary>
         /// Crc value for this library header.
         /// </summary>
-        public uint HeaderCrc { get; set; }
+        public ushort HeaderCrc { get; set; }
         
         /// <summary>
         /// The number of file entries. Can be different than the actual number of files( if there are empty files.
@@ -98,7 +105,13 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <summary>
         /// The list of files in this lib.
         /// </summary>
-        public List<ProLibraryFile> Files { get; } = new List<ProLibraryFile>();
+        public List<ProLibraryFileEntry> Files { get; } = new List<ProLibraryFileEntry>();        
+        
+        /// <summary>
+        /// The total header length.
+        /// </summary>
+        public int HeaderLength => 2 + MaxCodePageNameLength + 2 + 2 + (Is64Bits ? sizeof(long) : sizeof(uint)) + HeaderExtraNullBytes;
+
         
         /// <summary>
         /// Total files size.
@@ -121,20 +134,151 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <summary>
         /// Returns true if this prolib exists.
         /// </summary>
-        public bool Exists => File.Exists(Path);
+        public bool Exists => File.Exists(FilePath);
 
         public bool Is64Bits => Version >= ProLibraryVersion.V11Standard;
         
+        /// <summary>
+        /// Add a new external file to this cabinet file.
+        /// </summary>
+        /// <param name="sourcePath"></param>
+        /// <param name="relativePathInPl"></param>
+        /// <exception cref="ProLibraryException"></exception>
+        public void AddExternalFile(string sourcePath, string relativePathInPl) {
+            if (Files.Count + 1 > ushort.MaxValue) {
+                throw new ProLibraryException($"The prolib would exceed the maximum number of files in a single file: {ushort.MaxValue}.");
+            }
+            
+            // remove existing files with the same name
+            DeleteFile(relativePathInPl);
+
+            var fileInfo = new FileInfo(sourcePath);
+            var fileInfoLength = fileInfo.Length;
+            if (fileInfo.Length > uint.MaxValue) {
+                throw new ProLibraryException($"The file exceeds the maximum size of {uint.MaxValue} with a length of {fileInfoLength} bytes.");
+            }
+
+            Files.Add(new ProLibraryFileEntry(this) {
+                RelativePath = relativePathInPl,
+                FilePath = sourcePath,
+                Size = (uint) fileInfoLength,
+                LastWriteTime = fileInfo.LastWriteTime,
+                Type = relativePathInPl.EndsWith(UoeConstants.ExtR, StringComparison.OrdinalIgnoreCase) ? ProLibraryFileType.Rcode : ProLibraryFileType.Other
+            });
+        }
+        
+        /// <summary>
+        /// Extracts a file to an external path.
+        /// </summary>
+        /// <param name="relativePathInPl"></param>
+        /// <param name="extractionPath"></param>
+        /// <returns>true if the file was actually extracted, false if it does not exist</returns>
+        public bool ExtractToFile(string relativePathInPl, string extractionPath) {
+            var fileToExtract = Files.FirstOrDefault(file => file.RelativePath.Equals(relativePathInPl, StringComparison.OrdinalIgnoreCase));
+            if (fileToExtract == null) {
+                return false;
+            }
+                       
+            try {
+                long totalNumberOfBytes = fileToExtract.Size;
+                long totalNumberOfBytesDone = 0;
+                _reader.BaseStream.Position = fileToExtract.Offset;
+            
+                using (Stream targetStream = File.OpenWrite(extractionPath)) {
+                    var dataBlockBuffer = new byte[DataBufferSize];
+                    long bytesLeftToRead;
+                    int nbBytesRead;
+                
+                    while ((bytesLeftToRead = totalNumberOfBytes - totalNumberOfBytesDone) > 0 && 
+                        (nbBytesRead = _reader.Read(dataBlockBuffer, 0, (int) Math.Max(bytesLeftToRead, dataBlockBuffer.Length))) > 0) {
+                    
+                        totalNumberOfBytesDone += nbBytesRead;
+                        targetStream.Write(dataBlockBuffer, 0, nbBytesRead);
+                        OnProgress?.Invoke(this, ProLibrarySaveEventArgs.New(relativePathInPl, totalNumberOfBytesDone, totalNumberOfBytes));
+                        _cancelToken?.ThrowIfCancellationRequested();
+                    }
+                }
+            } catch(OperationCanceledException) {
+                if (File.Exists(extractionPath)) {
+                    File.Delete(extractionPath);
+                }
+                throw;
+            }
+
+            if (fileToExtract.LastWriteTime != null) {
+                File.SetLastWriteTime(extractionPath, (DateTime) fileToExtract.LastWriteTime);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Delete a file within this cabinet.
+        /// </summary>
+        /// <param name="relativePathInCab"></param>
+        /// <returns></returns>
+        public bool DeleteFile(string relativePathInCab) {
+            return Files.RemoveAll(f => f.RelativePath.Equals(relativePathInCab, StringComparison.OrdinalIgnoreCase)) > 0;
+        }
+
+        /// <summary>
+        /// Move (i.e. change the relative path) a file within this cabinet.
+        /// </summary>
+        /// <param name="relativePathInCab"></param>
+        /// <param name="newRelativePathInCab"></param>
+        /// <returns></returns>
+        public bool MoveFile(string relativePathInCab, string newRelativePathInCab) {
+            var fileToMove = Files.FirstOrDefault(file => file.RelativePath.Equals(relativePathInCab, StringComparison.OrdinalIgnoreCase));
+            if (fileToMove == null) {
+                return false;
+            }
+            fileToMove.RelativePath = newRelativePathInCab;
+            return true;
+        }
+        
+        /// <summary>
+        /// Save this instance of <see cref="ProLibrary"/> to <see cref="FilePath"/>.
+        /// </summary>
+        public void Save() {
+            var cabDirectory = Path.GetDirectoryName(FilePath);
+            if (!string.IsNullOrWhiteSpace(cabDirectory) && !Directory.Exists(cabDirectory)) {
+                Directory.CreateDirectory(cabDirectory);
+            }
+            try {
+                using (var writer = new BinaryWriter(File.OpenWrite(FilePathToWrite))) {
+                    if (Files.Count > 0) {
+                        // add the last dummy file
+                        Files.Add(new ProLibraryFileEntry(this));
+                        writer.Write(new byte[HeaderLength]);
+                        WriteData(writer);
+                        FirstFileEntryOffset = writer.BaseStream.Position;
+                        WriteFileEntries(writer);
+                    } else {
+                        FirstFileEntryOffset = 0;
+                    }
+                    WriteProlibStructure(writer);
+                }
+                _reader?.Dispose();
+                _cancelToken?.ThrowIfCancellationRequested();
+                File.Delete(FilePath);
+                File.Move(FilePathToWrite, FilePath);
+            } finally {
+                // get rid of the temp file
+                if (File.Exists(FilePathToWrite)) {
+                    File.Delete(FilePathToWrite);
+                }
+            }
+        }
+
         private void OpenLib() {
             Files.Clear();
             if (Exists) {
-                _reader = new BinaryReader(File.OpenRead(Path));
+                _reader = new BinaryReader(File.OpenRead(FilePath));
                 ReadProlibStructure(_reader);
             }
         }
         
         /// <summary>
-        /// Read data from <see cref="Path"/> to fill this <see cref="ProLibrary"/>.
+        /// Read data from <see cref="FilePath"/> to fill this <see cref="ProLibrary"/>.
         /// </summary>
         /// <param name="reader"></param>
         private void ReadProlibStructure(BinaryReader reader) {
@@ -155,12 +299,29 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             CodePageName = Encoding.ASCII.GetString((idx > 0 ? codePageNameData.Take(idx) : codePageNameData).ToArray());
             
             HeaderCrc = reader.ReadUInt16Be();
-
             NbOfEntries = reader.ReadUInt16Be();
-
             FirstFileEntryOffset = Is64Bits ? reader.ReadUInt64Be() : reader.ReadUInt32Be();
-
             
+            // check CRC
+            var computedHeaderCrc = GetHeaderCrc();
+            if (HeaderCrc != 0 && computedHeaderCrc != HeaderCrc) {
+                throw new ProLibraryException($"Bad header CRC, expected {HeaderCrc} but found {computedHeaderCrc}, the library might be corrupted.");
+            }
+
+            // read file entries
+            ReadFileEntries(reader);
+            if (NbOfEntries != Files.Count) {
+                throw new ProLibraryException($"Unexpected number of entries found, expected {NbOfEntries} but found {Files.Count}.");
+            }
+
+            // remove all "non" files
+            Files.RemoveAll(f => f.Type == ProLibraryFileType.FakeFile || f.RelativePathSize == 0);
+        }
+
+        private void ReadFileEntries(BinaryReader reader) {
+            if (FirstFileEntryOffset == 0) {
+                return;
+            }
             
             // start reading file entries
             if (FirstFileEntryOffset > FileSize) {
@@ -170,45 +331,124 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             reader.BaseStream.Position = FirstFileEntryOffset;
 
             do {
-                var fileEntry = new ProLibraryFile(this);
+                _cancelToken?.ThrowIfCancellationRequested();
+                
+                var fileEntry = new ProLibraryFileEntry(this);
                 var fileStatus = reader.ReadByte();
                 switch (fileStatus) {
                     case ReadFileEntry:
-                        fileEntry.RelativePathSize = reader.ReadByte();
-                        
-                        if (fileEntry.RelativePathSize == 0) {
-                            // skip file
-                            if (reader.BaseStream.Position + fileEntry.FileEntryLength >= FileSize) {
-                                throw new ProLibraryException($"Unexpected end of stream, file size is {FileSize} and we needed to position to {reader.BaseStream.Position + fileEntry.FileEntryLength}.");
-                            }
-                            reader.BaseStream.Position += fileEntry.FileEntryLength;
-                            break;
-                        }
-
+                        Files.Add(fileEntry);
                         fileEntry.ReadFileEntry(reader);
-                        
                         break;
-                    case SkipFileEntry:
-                        if (1 + reader.BaseStream.Position + fileEntry.FileEntryLength >= FileSize) {
-                            // we are done reading
-                            return;
-                        }
-                        reader.BaseStream.Position += 1 + fileEntry.FileEntryLength;
+                    case SkipUntilNextFileEntry:
+                        // skip bytes (usually null bytes) until the next file entry
+                        var foundNextFileEntry = false;
+                        do {
+                            var data = reader.ReadBytes(550);
+                            if (data.Length == 0) {
+                                // done reading
+                                return;
+                            }
+
+                            int i;
+                            for (i = 0; i < data.Length; i++) {
+                                if (data[i] == ReadFileEntry) {
+                                    foundNextFileEntry = true;
+                                    break;
+                                }
+                            }
+                            reader.BaseStream.Position = reader.BaseStream.Position - data.Length + i;
+                        } while (!foundNextFileEntry);
                         break;
+                    case 0:
+                        // done reading
+                        return;
                     default:
                         throw new ProLibraryException($"Unexpected byte found at position {reader.BaseStream.Position}.");
                 }
             } while (true);
         }
-        
-        private int ComputeCrc(int initialValue, ref byte[] data, int _param2, int _param3) {
-            int num1 = checked(_param2 + _param3 - 1);
-            while (_param2 <= num1) {
-                int index2 = (initialValue ^ data[_param2]) & byte.MaxValue;
-                initialValue = initialValue / 256 ^ _lookupTable[index2];
-                _param2++;
+
+        private void WriteProlibStructure(BinaryWriter writer) {
+            writer.Write(ProlibSignatureFirstByte);
+            writer.Write((byte) Version);
+            var codePageData = new byte[MaxCodePageNameLength];
+            Encoding.ASCII.GetBytes(CodePageName).CopyTo(codePageData, 0);
+            writer.Write(codePageData);
+            writer.WriteUInt16Be(GetHeaderCrc());
+            WriteHeaderAfterCrc(writer);
+        }
+
+        private void WriteData(BinaryWriter writer) {
+            
+            long totalNumberOfBytes = TotalSizeFromFiles;
+            long totalNumberOfBytesDone = 0;
+            
+            foreach (var file in Files) {
+                _cancelToken?.ThrowIfCancellationRequested();
+                var fileOffset = writer.BaseStream.Position;
+                
+                if (!string.IsNullOrEmpty(file.FilePath)) {
+                    if (!File.Exists(file.FilePath)) {
+                        throw new ProLibraryException($"Missing source file : {file.FilePath}.");
+                    }
+                    using (Stream sourceStream = File.OpenRead(file.FilePath)) {
+                        if (file.Size != sourceStream.Length) {
+                            throw new ProLibraryException($"The size of the source file has changed since it was added, previously {file.Size} bytes and now {sourceStream.Length} bytes.");
+                        }
+                        var dataBlockBuffer = new byte[DataBufferSize];
+                        int nbBytesRead;
+                        while ((nbBytesRead = sourceStream.Read(dataBlockBuffer, 0, dataBlockBuffer.Length)) > 0) {
+                            totalNumberOfBytesDone += nbBytesRead;
+                            writer.Write(dataBlockBuffer, 0, nbBytesRead);
+                            OnProgress?.Invoke(this, ProLibrarySaveEventArgs.New(file.RelativePath, totalNumberOfBytesDone, totalNumberOfBytes));
+                            _cancelToken?.ThrowIfCancellationRequested();
+                        }
+                    }
+                } else {                   
+                    var dataBlockBuffer = new byte[DataBufferSize];
+                    long bytesLeftToRead;
+                    int nbBytesRead;
+                
+                    while ((bytesLeftToRead = totalNumberOfBytes - totalNumberOfBytesDone) > 0 && 
+                        (nbBytesRead = _reader.Read(dataBlockBuffer, 0, (int) Math.Max(bytesLeftToRead, dataBlockBuffer.Length))) > 0) {
+                    
+                        totalNumberOfBytesDone += nbBytesRead;
+                        writer.Write(dataBlockBuffer, 0, nbBytesRead);
+                        OnProgress?.Invoke(this, ProLibrarySaveEventArgs.New(file.RelativePath, totalNumberOfBytesDone, totalNumberOfBytes));
+                        _cancelToken?.ThrowIfCancellationRequested();
+                    }
+                }
+
+                file.Offset = fileOffset;
             }
-            return initialValue;
+        }
+
+        private void WriteFileEntries(BinaryWriter writer) {
+            foreach (var file in Files) {
+                writer.Write(ReadFileEntry);
+                file.WriteFileEntry(writer);
+            }
+            writer.Write(SkipUntilNextFileEntry);
+        }
+        
+        private void WriteHeaderAfterCrc(BinaryWriter writer) {
+            writer.WriteUInt16Be(NbOfEntries);
+            if (Is64Bits) {
+                writer.WriteUInt64Be(FirstFileEntryOffset);
+            } else {
+                writer.WriteUInt32Be((uint) FirstFileEntryOffset);
+            }
+            writer.Write(new byte[HeaderExtraNullBytes]);
+        }
+        
+        private ushort GetHeaderCrc() {
+            using (var memStream = new MemoryStream()) {
+                using (var writer = new BinaryWriter(memStream)) {
+                    WriteHeaderAfterCrc(writer);
+                    return UoeHash.ComputeCrc(0, memStream.ToArray());
+                }
+            }
         }
         
     }

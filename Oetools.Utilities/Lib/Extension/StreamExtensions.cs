@@ -19,50 +19,12 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace Oetools.Utilities.Lib.Extension {
     
     public static class StreamExtensions {
         
-        /// <summary>
-        /// Read the next NULL terminated <see cref="string"/> of the given <paramref name="reader"/>.
-        /// </summary>
-        /// <param name="reader"></param>
-        /// <param name="encoding"></param>
-        /// <returns>Number of bytes read.</returns>
-        public static string ReadNullTerminatedString(this BinaryReader reader, Encoding encoding = null) {
-            encoding = encoding ?? Encoding.ASCII;
-            var bytes = new List<byte>();
-            do {
-                var readByte = reader.ReadByte();
-                if (readByte <= 0) {
-                    break;
-                }
-
-                bytes.Add(readByte);
-            } while (true);
-
-            return encoding.GetString(bytes.ToArray());
-        }
-
-        /// <summary>
-        /// Write the <see cref="string"/> as byte array in the stream using given encoding (default <see cref="Encoding.ASCII"/>) and ending the string with a NULL (0) byte.
-        /// </summary>
-        /// <param name="writer"></param>
-        /// <param name="val"></param>
-        /// <param name="encoding"></param>
-        /// <returns>Number of bytes written.</returns>
-        public static int WriteNullTerminatedString(this BinaryWriter writer, string val, Encoding encoding = null) {
-            encoding = encoding ?? Encoding.ASCII;
-            var bytes = encoding.GetBytes(val);
-            writer.Write(bytes, 0, bytes.Length);
-            writer.Write((byte) 0); // NULL ending string
-            return bytes.Length + 1;
-        }
-
         /// <summary>
         /// Returns a datetime by adding <paramref name="secondsFromDayZero"/> to 1970.
         /// </summary>
@@ -106,6 +68,36 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <returns></returns>
         public static long ReadUInt64Be(this BinaryReader reader) {
             return BitConverter.ToInt64(reader.ReadBytesRequired(sizeof(long)).ReverseIfLittleEndian(), 0);
+        }
+
+        /// <summary>
+        /// Write a ulong to the stream, using Big Endian byte order.
+        /// </summary>
+        /// <param name="writer"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static void WriteUInt16Be(this BinaryWriter writer, ushort value) {
+            writer.Write(BitConverter.GetBytes(value).ReverseIfLittleEndian());
+        }
+
+        /// <summary>
+        /// Write a uint to the stream, using Big Endian byte order.
+        /// </summary>
+        /// <param name="writer"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static void WriteUInt32Be(this BinaryWriter writer, uint value) {
+            writer.Write(BitConverter.GetBytes(value).ReverseIfLittleEndian());
+        }
+        
+        /// <summary>
+        /// Write a uint to the stream, using Big Endian byte order.
+        /// </summary>
+        /// <param name="writer"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static void WriteUInt64Be(this BinaryWriter writer, long value) {
+            writer.Write(BitConverter.GetBytes(value).ReverseIfLittleEndian());
         }
 
         /// <summary>

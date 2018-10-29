@@ -26,26 +26,54 @@ using System.Text;
 namespace Oetools.Utilities.Openedge {
 
     /// <summary>
-    /// Implementation (by pvginkel) of the wrongly named ENCODE function of openedge
+    /// Implementation (by pvginkel) of the wrongly named ENCODE function of openedge.
     /// </summary>
     public class UoeHash {
         
-        private static ushort[] _lookupTable;
+        private static ushort[] _crcTable;
+        
+        internal static ushort[] GetConstantCrcTable() {
+            var crcTable = new ushort[256];
+            for (int j = 0; j < crcTable.Length; j++) {
+                for (short k = 1, l = 0xC0; k < byte.MaxValue ; k <<= 1, l <<= 1) {
+                    if ((j & k) != 0) {
+                        crcTable[j] ^= (ushort) (0xC001 ^ l);
+                    }
+                }
+            }
+            return crcTable;
+        }
+
+        /// <summary>
+        /// Computes the CRC value of a byte array using the openedge crc table.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public static ushort ComputeCrc(int value, byte[] data) {
+            if (_crcTable == null) {
+                _crcTable = GetConstantCrcTable();
+            }
+            
+            foreach (var b in data) {
+                var crcTableIdx = (value ^ b) & byte.MaxValue;
+                value = value / 256 ^ _crcTable[crcTableIdx];
+            }
+            return (ushort) value;
+        }
         
         /// <summary>
-        /// Implementation of the wrongly named ENCODE function of openedge which is actually a hash function
+        /// Implementation of the wrongly named ENCODE function of openedge which is actually a hash function.
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException"></exception>
         public static string Hash(byte[] input) {
-            
             if (input == null) {
                 throw new ArgumentNullException(nameof(input));
             }
-
-            if (_lookupTable == null) {
-                _lookupTable = UoeEncryptor.GetConstantLookupTable();
+            if (_crcTable == null) {
+                _crcTable = GetConstantCrcTable();
             }
 
             byte[] scratch = new byte[16];
@@ -81,7 +109,7 @@ namespace Oetools.Utilities.Openedge {
 
         private static ushort Hash(byte[] scratch, ushort hash) {
             for (int i = 15; i >= 0; i--) {
-                hash = (ushort) (hash >> 8 ^ _lookupTable[hash & 0xff] ^ _lookupTable[scratch[i]]);
+                hash = (ushort) (hash >> 8 ^ _crcTable[hash & 0xff] ^ _crcTable[scratch[i]]);
             }
             return hash;
         }

@@ -24,14 +24,15 @@ using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Prolib;
+using Oetools.Utilities.Archive.Prolib.Core;
 
 namespace Oetools.Utilities.Test.Archive.Prolib {
     
     [TestClass]
-    public class OeArchiveProlibTest : ArchiveTest {
+    public class ArchiveProlibTest : ArchiveTest {
         
         private static string _testFolder;
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(OeArchiveProlibTest)));
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ArchiveProlibTest)));
 
         [ClassInitialize]
         public static void Init(TestContext context) {
@@ -48,23 +49,39 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
         
         [TestMethod]
         public void Test() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-
-            OeProlibArchiver archiver;
-            
-            try {
-                archiver = new OeProlibArchiver(dlcPath, Encoding.Default);
-            } catch (ArchiverException e) {
-                Console.WriteLine($"Cancelling test, prolib not found! : {e.Message}");
-                return;
-            }
+            IArchiver archiver = Archiver.New(ArchiverType.Prolib);
 
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.pl"));
             listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2.pl")));
             
             WholeTest(archiver, listFiles);
+        }
+        
+        [TestMethod]
+        public void TestCompareWithOeProlib() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            
+            OeProlibArchiver oeArchiver;
+            
+            try {
+                oeArchiver = new OeProlibArchiver(dlcPath, Encoding.Default);
+            } catch (ArchiverException e) {
+                Console.WriteLine($"Cancelling test, prolib not found! : {e.Message}");
+                return;
+            }
+            
+            IArchiver archiver = Archiver.New(ArchiverType.Prolib);
+
+            //var list = archiver.ListFiles(@"C:\Users\Julien\Desktop\pl\v11_2files.pl");
+
+            var prolib = new ProLibrary(@"C:\Users\Julien\Desktop\pl\v11_2files.pl", null);
+            prolib = new ProLibrary(@"C:\Users\Julien\Desktop\pl\v7_2files.pl", null);
+            var files = prolib.Files;
+            prolib = new ProLibrary(@"C:\Users\Julien\Desktop\pl\OpenEdge.Core.pl", null);
+            files = prolib.Files;
+
         }
         
     }

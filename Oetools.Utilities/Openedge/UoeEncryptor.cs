@@ -38,7 +38,7 @@ namespace Oetools.Utilities.Openedge {
         private const string DefaultXcodeKey = "Progress";
         private const short MaxKey = 15;
         
-        private readonly ushort[] _lookupTable;
+        private readonly ushort[] _crcTable;
         private readonly byte[] _keyData;
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Oetools.Utilities.Openedge {
         /// </summary>
         /// <param name="key">If null, will default to Progress</param>
         public UoeEncryptor(string key) {
-            _lookupTable = GetConstantLookupTable();
+            _crcTable = UoeHash.GetConstantCrcTable();
             _keyData = GetKeyData(key);
         }
 
@@ -106,26 +106,14 @@ namespace Oetools.Utilities.Openedge {
                 var base1 = (byte) (idx++ & MaxKey);
                 var keyValue = keyData[(base1 + keyData[MaxKey - base1]) & MaxKey];
                 convertedBytes[idx] = (byte)(data[i] ^ keyValue);
-                crcValue = (ushort) (_lookupTable[(encode ? data[i] : convertedBytes[idx]) & byte.MaxValue] ^ _lookupTable[crcValue & byte.MaxValue] ^ ((crcValue >> 8) & byte.MaxValue));
-                crcValue = (ushort) (_lookupTable[keyValue & byte.MaxValue] ^ _lookupTable[crcValue & byte.MaxValue] ^ ((crcValue >> 8) & byte.MaxValue));
+                crcValue = (ushort) (_crcTable[(encode ? data[i] : convertedBytes[idx]) & byte.MaxValue] ^ _crcTable[crcValue & byte.MaxValue] ^ ((crcValue >> 8) & byte.MaxValue));
+                crcValue = (ushort) (_crcTable[keyValue & byte.MaxValue] ^ _crcTable[crcValue & byte.MaxValue] ^ ((crcValue >> 8) & byte.MaxValue));
                 keyData[base1] = (byte) (crcValue & byte.MaxValue);
             }
             
             var output = new byte[encode ? idx + 1 : idx];
             Array.Copy(convertedBytes, encode ? 0 : 1, output, 0, output.Length);
             return output;
-        }
-        
-        internal static ushort[] GetConstantLookupTable() {
-            var constantsTable = new ushort[256];
-            for (int j = 0; j < constantsTable.Length; j++) {
-                for (short k = 1, l = 0xC0; k < byte.MaxValue ; k <<= 1, l <<= 1) {
-                    if ((j & k) != 0) {
-                        constantsTable[j] ^= (ushort) (0xC001 ^ l);
-                    }
-                }
-            }
-            return constantsTable;
         }
         
         private byte[] GetKeyData(string key) {
