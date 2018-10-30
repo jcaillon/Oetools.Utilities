@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ProLibraryException.cs) is part of Oetools.Utilities.
+// This file (IProlibArchiver.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,11 +18,19 @@
 // ========================================================================
 #endregion
 
-using System;
-
-namespace Oetools.Utilities.Archive.Prolib.Core {
-    internal class ProLibraryException : Exception {
-        public ProLibraryException(string message) : base(message) { }
-        public ProLibraryException(string message, Exception innerException) : base(message, innerException) { }
+namespace Oetools.Utilities.Archive.Prolib {
+    public interface IProlibArchiver {
+        
+        /// <summary>
+        /// Sets the prolib version to use when writing this prolib.
+        /// </summary>
+        /// <param name="version"></param>
+        void SetProlibVersion(ProlibVersion version);
+        
+        /// <summary>
+        /// Sets the code page to use for file path inside the prolib.
+        /// </summary>
+        /// <param name="codePage"></param>
+        void SetFilePathCodePage(string codePage);
     }
 }

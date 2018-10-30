@@ -1,7 +1,7 @@
-#region header
+﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ProLibraryException.cs) is part of Oetools.Utilities.
+// This file (Resources.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,11 +18,20 @@
 // ========================================================================
 #endregion
 
-using System;
+using System.IO;
+using System.Reflection;
 
-namespace Oetools.Utilities.Archive.Prolib.Core {
-    internal class ProLibraryException : Exception {
-        public ProLibraryException(string message) : base(message) { }
-        public ProLibraryException(string message, Exception innerException) : base(message, innerException) { }
+namespace Oetools.Utilities.Test.Resources {
+    internal static class Resources {
+        public static byte[] GetBytesFromResource(string resourcePath) {
+            using (Stream resFilestream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourcePath)) {
+                if (resFilestream == null) {
+                    return null;
+                }
+                var output = new byte[resFilestream.Length];
+                resFilestream.Read(output, 0, output.Length);
+                return output;
+            }
+        }
     }
 }

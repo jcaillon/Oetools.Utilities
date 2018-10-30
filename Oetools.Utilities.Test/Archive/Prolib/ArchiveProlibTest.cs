@@ -19,12 +19,14 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
-using Oetools.Utilities.Archive.Prolib;
 using Oetools.Utilities.Archive.Prolib.Core;
+using Oetools.Utilities.Openedge;
 
 namespace Oetools.Utilities.Test.Archive.Prolib {
     
@@ -58,13 +60,46 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
         }
         
         [TestMethod]
-        public void TestCompareWithOeProlib() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
+        public void ProlibraryTest() {
+            
+        }
+        
+        [TestMethod]
+        public void ReadAllKindsOfLib() {
+            CreateProlibResources();
+            var list = GetProlibResources();
+            
+            foreach (var prolibResource in list) {
+                using (var prolib = new ProLibrary(Path.Combine(TestFolder, prolibResource.FileName), null)) {
+                    Assert.AreEqual(prolibResource.ContainedFiles, string.Join(",", prolib.Files.Select(f => f.RelativePath)), $"Wrong file listing for {prolibResource.FileName}.");
+                    foreach (var libraryFileEntry in prolib.Files) {
+                        if (!File.Exists(Path.Combine(TestFolder, libraryFileEntry.RelativePath))) {
+                            prolib.ExtractToFile(libraryFileEntry.RelativePath, Path.Combine(TestFolder, libraryFileEntry.RelativePath));
+
+                        }
+                    }
+                }
             }
             
-            OeProlibArchiver oeArchiver;
+            Assert.IsTrue(File.ReadAllBytes(Path.Combine(TestFolder, "file")).SequenceEqual(new byte[] { 0xAA }), "file incorrect.");
+            Assert.IsTrue(File.ReadAllBytes(Path.Combine(TestFolder, "file2")).SequenceEqual(new byte[] { 0xAA, 0xAA }), "file2 incorrect.");
+            Assert.IsTrue(File.ReadAllBytes(Path.Combine(TestFolder, "file.r")).SequenceEqual(GetBytesFromResource("file.r")), "file.r incorrect.");
             
+            foreach (var prolibResource in list.Where(f => f.IsCompressed)) {
+                File.Copy(Path.Combine(TestFolder, prolibResource.FileName), Path.Combine(TestFolder, $"{prolibResource.FileName}_copy.pl"));
+                using (var prolib = new ProLibrary(Path.Combine(TestFolder, $"{prolibResource.FileName}_copy.pl"), null)) {
+                    prolib.Save();
+                    var data = new byte[new FileInfo(Path.Combine(TestFolder, prolibResource.FileName)).Length];
+                    File.ReadAllBytes(Path.Combine(TestFolder, $"{prolibResource.FileName}_copy.pl")).CopyTo(data, 0);
+
+                    Assert.IsTrue(data.SequenceEqual(File.ReadAllBytes(Path.Combine(TestFolder, prolibResource.FileName))), $"file not recreated the same way : {prolibResource.FileName}.");
+                }
+            }
+            
+            if (!TestHelper.GetDlcPath(out string dlcPath) || UoeUtilities.GetProVersionFromDlc(dlcPath).Major != 11) {
+                return;
+            }
+            OeProlibArchiver oeArchiver;
             try {
                 oeArchiver = new OeProlibArchiver(dlcPath, Encoding.Default);
             } catch (ArchiverException e) {
@@ -72,17 +107,75 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
                 return;
             }
             
-            IArchiver archiver = Archiver.New(ArchiverType.Prolib);
+            File.WriteAllBytes(Path.Combine(TestFolder, "file3"), new byte[]{ 0xAA, 0xAA, 0xAA });
+            File.WriteAllBytes(Path.Combine(TestFolder, "file4"), new byte[]{ 0xAA, 0xAA, 0xAA, 0xAA });
 
-            //var list = archiver.ListFiles(@"C:\Users\Julien\Desktop\pl\v11_2files.pl");
+            foreach (var prolibResource in list.Where(f => f.IsCompressed && f.Version == ProLibraryVersion.V11Standard)) {
+                var path = Path.Combine(TestFolder, $"{prolibResource.FileName}_copy.pl");
+                Assert.AreEqual(string.Join(",", prolibResource.ContainedFiles.Split(',').OrderBy(s => s)), string.Join(",", oeArchiver.ListFiles(path).Select(f => f.RelativePathInArchive).OrderBy(s => s)), $"Wrong file listing 2 for {prolibResource.FileName}.");
+                oeArchiver.PackFileSet(new List<IFileToArchive> {
+                    new FileInArchive {
+                        SourcePath = Path.Combine(TestFolder, "file3"), RelativePathInArchive = "sub/file3", ArchivePath = path
+                    }
+                });
+                oeArchiver.PackFileSet(new List<IFileToArchive> {
+                    new FileInArchive {
+                        SourcePath = Path.Combine(TestFolder, "file4"), RelativePathInArchive = "sub/file4", ArchivePath = path
+                    }
+                });
+                var fileCount = (string.IsNullOrEmpty(prolibResource.ContainedFiles) ? 0 : prolibResource.ContainedFiles.Split(',').Length) + 2;
 
-            var prolib = new ProLibrary(@"C:\Users\Julien\Desktop\pl\v11_2files.pl", null);
-            prolib = new ProLibrary(@"C:\Users\Julien\Desktop\pl\v7_2files.pl", null);
-            var files = prolib.Files;
-            prolib = new ProLibrary(@"C:\Users\Julien\Desktop\pl\OpenEdge.Core.pl", null);
-            files = prolib.Files;
-
+                using (var prolib = new ProLibrary(path, null)) {
+                    Assert.AreEqual(fileCount, prolib.Files.Count, $"Bad count for {prolibResource.FileName}.");
+                    prolib.Save();
+                }
+                Assert.AreEqual(fileCount, oeArchiver.ListFiles(path).Count());
+            }
         }
-        
+
+        private void CreateProlibResources() {
+            foreach (var item in GetProlibResources()) {
+                File.WriteAllBytes(Path.Combine(TestFolder, item.FileName), GetBytesFromResource(item.FileName));
+            }
+        }
+
+        private byte[] GetBytesFromResource(string name) {
+            return Resources.Resources.GetBytesFromResource($"{nameof(Oetools)}.{nameof(Utilities)}.{nameof(Test)}.{nameof(Resources)}.Prolib.{name}");
+        }
+
+        private List<ProlibResource> GetProlibResources() {
+            return new List<ProlibResource> {
+                new ProlibResource("v11.pl", "file", ProLibraryVersion.V11Standard, true),
+                new ProlibResource("v11add_delete.pl", "", ProLibraryVersion.V11Standard, false),
+                new ProlibResource("v11add_delete_add.pl", "file", ProLibraryVersion.V11Standard, false),
+                new ProlibResource("v11add_delete_compressed.pl", "", ProLibraryVersion.V11Standard, true),
+                new ProlibResource("v11_2bytes.pl", "file2", ProLibraryVersion.V11Standard, true),
+                new ProlibResource("v11_2files.pl", "file,file2", ProLibraryVersion.V11Standard, false),
+                new ProlibResource("v11_2files_compress.pl", "file,file2", ProLibraryVersion.V11Standard, true),
+                new ProlibResource("v11_rcode.pl", "file.r,file,file2", ProLibraryVersion.V11Standard, true),
+                new ProlibResource("v12memshared.pl", "file", ProLibraryVersion.V12MemoryMapped, true),
+                new ProlibResource("v7.pl", "file", ProLibraryVersion.V7Standard, true),
+                new ProlibResource("v7add_delete.pl", "", ProLibraryVersion.V7Standard, false),
+                new ProlibResource("v7add_delete_add.pl", "file", ProLibraryVersion.V7Standard, false),
+                new ProlibResource("v7_2bytes.pl", "file2", ProLibraryVersion.V7Standard, true),
+                new ProlibResource("v7_2files.pl", "file,file2", ProLibraryVersion.V7Standard, false),
+                new ProlibResource("v7_2files_compress.pl", "file,file2", ProLibraryVersion.V7Standard, true),
+                new ProlibResource("v7_rcode.pl", "file.r,file,file2", ProLibraryVersion.V7Standard, true),
+                new ProlibResource("v8memshared.pl", "file", ProLibraryVersion.V8MemoryMapped, true)
+            };
+        }
+
+        private class ProlibResource {
+            public string FileName { get; }
+            public string ContainedFiles { get; }
+            public ProLibraryVersion Version { get; }
+            public bool IsCompressed { get; }
+            public ProlibResource(string fileName, string containedFiles, ProLibraryVersion version, bool isCompressed) {
+                FileName = fileName;
+                ContainedFiles = containedFiles;
+                Version = version;
+                IsCompressed = isCompressed;
+            }
+        }
     }
 }

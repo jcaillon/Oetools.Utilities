@@ -24,7 +24,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
     
     internal class ProLibrarySaveEventArgs : EventArgs {
         
-        public string RelativePathInCab { get; private set; }
+        public string RelativePathInPl { get; private set; }
 
         public long TotalBytesDone { get; set; }
         
@@ -32,7 +32,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
 
         public static ProLibrarySaveEventArgs New(string relativePathInCab, long totalBytesDone, long totalBytesToProcess) {
             return new ProLibrarySaveEventArgs {
-                RelativePathInCab = relativePathInCab,
+                RelativePathInPl = relativePathInCab,
                 TotalBytesDone = totalBytesDone,
                 TotalBytesToProcess = totalBytesToProcess
             };

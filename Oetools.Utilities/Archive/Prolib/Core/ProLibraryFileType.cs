@@ -19,7 +19,7 @@
 #endregion
 
 namespace Oetools.Utilities.Archive.Prolib.Core {
-    public enum ProLibraryFileType : byte {
+    internal enum ProLibraryFileType : byte {
         Rcode = 0x0A,
         FakeFile = 0x64,
         Other = 0xFF

@@ -18,12 +18,16 @@
 // ========================================================================
 #endregion
 
-namespace Oetools.Utilities.Archive.Prolib.Core {
+namespace Oetools.Utilities.Archive.Prolib {
     
     /// <summary>
     /// The prolib version.
     /// </summary>
-    internal enum ProLibraryVersion : byte {
+    public enum ProlibVersion : byte {
+        /// <summary>
+        /// Do not change the version when the prolib exists or use the default version.
+        /// </summary>
+        Default = 0,
         
         /// <summary>
         /// Used for standard lib in openedge version lower than version 10.

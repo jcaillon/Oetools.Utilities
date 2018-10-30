@@ -26,10 +26,13 @@ using Oetools.Utilities.Openedge;
 
 namespace Oetools.Utilities.Archive.Prolib.Core {
     
+    /// <summary>
+    /// A file entry inside a prolib.
+    /// </summary>
     internal class ProLibraryFileEntry {
         
-        private const byte NumberOfNullsAfterFileEntryx32 = 8;
-        private const byte NumberOfNullsAfterFileEntryx64 = 24;
+        private const byte FileEntryExtraBytesLengthx32 = 8;
+        private const byte FileEntryExtraBytesLengthx64 = 24;
         
         private const uint FakeFileSizex32 = 0x13;
         private const uint FakeFileSizex64 = 0x27;
@@ -89,20 +92,26 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// The time stamp of this file (last write time).
         /// </summary>
         public DateTime? LastWriteTime { get; set; }
-        
-        public ProLibrary Parent { get; }
+
+        private byte[] FileEntryExtraBytes {
+            get => _fileEntryExtraBytes ?? new byte[NumberOfNullsAfterFileEntry];
+            set => _fileEntryExtraBytes = value;
+        }
+
+        private ProLibrary Parent { get; }
         
         /// <summary>
         /// Each file entry ends with a set number of null bytes (they seem useless), this gets the number of null bytes to add at the end of the file entry.
         /// </summary>
-        private byte NumberOfNullsAfterFileEntry => Parent.Is64Bits ? NumberOfNullsAfterFileEntryx64 : NumberOfNullsAfterFileEntryx32;
+        private byte NumberOfNullsAfterFileEntry => Parent.Is64Bits ? FileEntryExtraBytesLengthx64 : FileEntryExtraBytesLengthx32;
 
         /// <summary>
         /// Minus the initial FF.
         /// </summary>
-        public int FileEntryLength => 1 + RelativePathSize + 2 + (Parent.Is64Bits ? sizeof(long) : sizeof(uint)) + 1 + 4 + 4 + 4 + NumberOfNullsAfterFileEntry;
+        private int FileEntryLength => 1 + RelativePathSize + 2 + (Parent.Is64Bits ? sizeof(long) : sizeof(uint)) + 1 + 4 + 4 + 4 + NumberOfNullsAfterFileEntry;
 
         private string _relativePath;
+        private byte[] _fileEntryExtraBytes;
 
         public ProLibraryFileEntry(ProLibrary parent) {
             Parent = parent;
@@ -128,7 +137,8 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             Size = reader.ReadUInt32Be();
             PackTime = reader.ReadUInt32Be().GetDatetimeFromUint();
             LastWriteTime = reader.ReadUInt32Be().GetDatetimeFromUint();
-            reader.BaseStream.Position += NumberOfNullsAfterFileEntry;
+            FileEntryExtraBytes = reader.ReadBytes(NumberOfNullsAfterFileEntry);
+            
             if (reader.BaseStream.Position - initialOffset != FileEntryLength) {
                 throw new ProLibraryException($"Bad file entry, we expected a file entry length of {FileEntryLength} and got {reader.BaseStream.Position - initialOffset}.");
             }
@@ -138,6 +148,9 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             if (Crc != 0 && computedCrc != Crc) {
                 throw new ProLibraryException($"Bad file CRC, expected {Crc} but found {computedCrc} for file {RelativePath}, the library might be corrupted.");
             }
+            
+            // reset the extra bytes to have a clean file. For some reasons, prolib put non null bytes in there sometimes.
+            FileEntryExtraBytes = null;
         }
 
         public void WriteFileEntry(BinaryWriter writer) {
@@ -159,7 +172,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             writer.WriteUInt32Be(Size);
             writer.WriteUInt32Be(PackTime?.GetUintFromDateTime() ?? 0);
             writer.WriteUInt32Be(LastWriteTime?.GetUintFromDateTime() ?? 0);
-            writer.Write(new byte[NumberOfNullsAfterFileEntry]);
+            writer.Write(FileEntryExtraBytes);
         }
         
         private ushort GetFileCrc() {
