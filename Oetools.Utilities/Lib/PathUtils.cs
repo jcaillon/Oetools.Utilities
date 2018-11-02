@@ -82,7 +82,7 @@ namespace Oetools.Utilities.Lib {
             if (string.IsNullOrEmpty(path)) {
                 return path;
             }
-            return path[path.Length - 1] == Path.DirectorySeparatorChar || path[path.Length - 1] == Path.AltDirectorySeparatorChar ? path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) : path;
+            return path[path.Length - 1] == '\\' || path[path.Length - 1] == '/' ? path.TrimEnd('\\', '/') : path;
         }
         
         /// <summary>
@@ -92,7 +92,7 @@ namespace Oetools.Utilities.Lib {
             if (string.IsNullOrEmpty(path)) {
                 return path;
             }
-            return path[0] == Path.DirectorySeparatorChar || path[0] == Path.AltDirectorySeparatorChar ? path.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) : path;
+            return path[0] == '\\' || path[0] == '/' ? path.TrimStart('\\', '/') : path;
         }
 
         /// <summary>
