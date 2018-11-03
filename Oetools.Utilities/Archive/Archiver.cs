@@ -22,6 +22,7 @@ using System;
 using Oetools.Utilities.Archive.Cab;
 using Oetools.Utilities.Archive.Filesystem;
 using Oetools.Utilities.Archive.Ftp;
+using Oetools.Utilities.Archive.HttpFileServer;
 using Oetools.Utilities.Archive.Prolib;
 using Oetools.Utilities.Archive.Zip;
 
@@ -48,6 +49,8 @@ namespace Oetools.Utilities.Archive {
                     return new FtpArchiver();
                 case ArchiverType.FileSystem:
                     return new FileSystemArchiver();
+                case ArchiverType.HttpFileServer:
+                    return new HttpFileServerArchiver();
                 default:
                     throw new ArgumentOutOfRangeException(nameof(type), type, null);
             }    

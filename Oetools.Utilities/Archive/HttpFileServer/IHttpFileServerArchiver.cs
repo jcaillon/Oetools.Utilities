@@ -1,7 +1,7 @@
-#region header
+﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ArchiverType.cs) is part of Oetools.Utilities.
+// This file (IArchiver.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,41 +18,20 @@
 // ========================================================================
 #endregion
 
-namespace Oetools.Utilities.Archive {
-    
+namespace Oetools.Utilities.Archive.HttpFileServer {
+
     /// <summary>
-    /// The different type of archiver.
+    /// <para>
+    /// An archiver allows CRUD operation on a http file server.
+    /// </para>
     /// </summary>
-    public enum ArchiverType {
+    public interface IHttpFileServerArchiver : IArchiver {
+
         
-        /// <summary>
-        /// CRUD operations for windows cabinet file format.
-        /// </summary>
-        Cab,
+        void SetProxy(string url, string user, string password);
         
-        /// <summary>
-        /// CRUD operations for zip files.
-        /// </summary>
-        Zip,
+        void SetBasicAuthentication(string user, string password);
         
-        /// <summary>
-        /// CRUD operations for pro-libraries files.
-        /// </summary>
-        Prolib,
-        
-        /// <summary>
-        /// CRUD operations for an ftp server.
-        /// </summary>
-        Ftp,
-        
-        /// <summary>
-        /// CRUD operations for a file system.
-        /// </summary>
-        FileSystem,
-        
-        /// <summary>
-        /// CRUD operations for an HTTP file server.
-        /// </summary>
-        HttpFileServer
     }
+
 }

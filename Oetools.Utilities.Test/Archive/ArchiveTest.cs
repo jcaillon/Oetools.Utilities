@@ -44,6 +44,14 @@ namespace Oetools.Utilities.Test.Archive {
             DeleteFilesInArchive(archiver, listFiles);
             archiver.OnProgress -= ArchiverOnOnProgress;
         }
+
+        protected void PartialTestForHttpFileServer(IArchiver archiver, List<FileInArchive> listFiles) {
+            archiver.OnProgress += ArchiverOnOnProgress;
+            CreateArchive(archiver, listFiles);
+            Extract(archiver, listFiles);
+            DeleteFilesInArchive(archiver, listFiles);
+            archiver.OnProgress -= ArchiverOnOnProgress;
+        }
         
         protected void CreateArchive(IArchiver archiver, List<FileInArchive> listFiles) {
             

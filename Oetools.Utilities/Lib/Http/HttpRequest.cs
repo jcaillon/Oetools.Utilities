@@ -36,7 +36,7 @@ namespace Oetools.Utilities.Lib.Http {
     /// </summary>
     public class HttpRequest {
 
-        private const int DefaultBufferSize = 8 * 1024;
+        private const int DefaultBufferSize = 32 * 1024;
 
         private string _baseUrl;
 
@@ -64,8 +64,12 @@ namespace Oetools.Utilities.Lib.Http {
         }
 
         /// <summary>
-        /// 
+        /// Use an http proxy for your requests.
         /// </summary>
+        /// <remarks>
+        /// If you intend to use a locally served proxy, don't use 127.0.0.1 or localhost but use your machine name instead.
+        /// That is because .net framework is hardcoded to not sent req for localhost through the proxy.
+        /// </remarks>
         /// <param name="address">Can be null for a null proxy.</param>
         /// <param name="userName">domain\user. Can be null if no credentials are needed.</param>
         /// <param name="userPassword"></param>
@@ -390,6 +394,14 @@ namespace Oetools.Utilities.Lib.Http {
             return Execute(HttpRequestMethod.Put, relativePath, ModifyRequest, WriteToUpStream);
         }
 
+        /// <summary>
+        /// Deletes a file from a server.
+        /// </summary>
+        /// <param name="relativePath"></param>
+        /// <returns></returns>
+        public HttpResponse DeleteFile(string relativePath) {
+            return Execute(HttpRequestMethod.Delete, relativePath);
+        }
 
     }
 }
