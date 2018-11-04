@@ -44,6 +44,7 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
                 var receivedAuthent = request.Headers.GetHeaderValues("Authorization")?.FirstOrDefault();
                 if (!string.IsNullOrEmpty(_basicAuthent)) {
                     if (string.IsNullOrEmpty(receivedAuthent)) {
+                        // or HttpListener.AuthenticationSchemes
                         response.WithHeader("WWW-Authenticate", "Basic").WithCode(HttpStatusCode.Unauthorized).AsText("Authentication required.");
                         return;
                     }
@@ -67,7 +68,7 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
 
                 filePath = Path.Combine(_rootPath, filePath);
 
-                switch (request.HttpMethod) {
+                switch (request.HttpMethod.ToUpper()) {
                     case "PUT":
                         // curl -v -H "Expect:" -u admin:admin123 --upload-file myfile http://127.0.0.1:8084/repository/raw-hoster/remotefile.txt --proxy 127.0.0.1:8888
 
@@ -99,6 +100,7 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
                         break;
 
                     case "GET":
+                    case "HEAD":
                         // curl -v -u admin:admin123 -o mydownloadedfile http://127.0.0.1:8084/repository/raw-hoster/remotefile.txt --proxy 127.0.0.1:8888
 
                         if (!File.Exists(filePath)) {
@@ -108,13 +110,15 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
                                 response.ContentType = "application/octet-stream";
                                 response.ContentLength64 = stream.Length;
 
-                                byte[] buffer = new byte[BufferSize];
-                                int nbBytesRead;
-                                while ((nbBytesRead = stream.Read(buffer, 0, buffer.Length)) > 0) {
-                                    response.OutputStream.Write(buffer, 0, nbBytesRead);
-                                }
+                                if (request.HttpMethod.ToUpper().Equals("GET")) {
+                                    byte[] buffer = new byte[BufferSize];
+                                    int nbBytesRead;
+                                    while ((nbBytesRead = stream.Read(buffer, 0, buffer.Length)) > 0) {
+                                        response.OutputStream.Write(buffer, 0, nbBytesRead);
+                                    }
 
-                                response.OutputStream.Flush();
+                                    response.OutputStream.Flush();
+                                }
                             }
 
                             var lastTimeWrite = File.GetLastWriteTimeUtc(filePath);

@@ -18,8 +18,26 @@
 // ========================================================================
 #endregion
 
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 namespace Oetools.Utilities.Test.Lib.Http {
+    
+    [TestClass]
     public class HttpRequestTest {
+
+        [TestMethod]
+        public void Test() {
+
+//            var request = new HttpRequest("https://api.github.com/");
+//            
+//            request
+//                .UseAuthorizationHeader(HttpAuthorizationType.Basic, "M3BVc2VyOjkzZmViMmY5NGI4NGFhYjI5MzcwNTdlNjkxMzFiZDA1NWQyY2NiY2E=")
+//                .UseProxy("http://mylocalhost:8087", "jucai69d", "julien caillon");
+//            var resp = request.GetJson("repos/jcaillon/3P/releases?page=1&per_page=10", out List<ReleaseInfo> releaseInfo);
+
+
+
+        }
         
     }
 }

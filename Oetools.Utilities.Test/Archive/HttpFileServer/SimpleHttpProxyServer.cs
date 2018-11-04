@@ -29,7 +29,7 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
 
     internal class SimpleHttpProxyServer {
         
-        public int NbHandledRequests { get; private set; }
+        public int NbRequestsHandledOk { get; private set; }
         
         private const int BufferSize = 1024 * 8;
         
@@ -63,7 +63,34 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
                 httpRequest.Method = request.HttpMethod;
 
                 foreach (string header in request.Headers.AllKeys) {
-                    httpRequest.Headers[header] = request.Headers[header];
+                    switch (header.ToLower()) {
+                        case "content-length":
+                            int.TryParse(request.Headers[header], out int vInt);
+                            httpRequest.ContentLength = vInt;
+                            break;
+                        case "content-type":
+                            httpRequest.ContentType = request.Headers[header];
+                            break;
+                        case "keep-alive":
+                            bool.TryParse(request.Headers[header], out bool vBool);
+                            httpRequest.KeepAlive = vBool;
+                            break;
+                        case "accept":
+                            httpRequest.Accept = request.Headers[header];
+                            break;
+                        case "host":
+                            httpRequest.Host = request.Headers[header];
+                            break;
+                        case "user-agent":
+                            httpRequest.UserAgent = request.Headers[header];
+                            break;
+                        case "transfer-encoding":
+                        case "proxy-connection":
+                            break;
+                        default:
+                            httpRequest.Headers[header] = request.Headers[header];
+                            break;
+                    }
                 }
                 
                 //httpRequest.Proxy = new WebProxy("http://mylocalhost:8888") {
@@ -108,8 +135,8 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
             } catch (Exception e) {
                 response.WithCode(HttpStatusCode.InternalServerError).AsText(e.Message);
             } finally {
+                NbRequestsHandledOk++;
                 response.Close();
-                NbHandledRequests++;
             }
         }
     }

@@ -19,6 +19,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -37,7 +38,9 @@ namespace Oetools.Utilities.Lib.Http {
     public class HttpRequest {
 
         private const int DefaultBufferSize = 32 * 1024;
-
+        private const string AuthorizationHeader = "Authorization";
+        private const string ProxyAuthorizationHeader = "Proxy-Authorization";
+        
         private string _baseUrl;
 
         private int _bufferSize = DefaultBufferSize;
@@ -47,7 +50,7 @@ namespace Oetools.Utilities.Lib.Http {
 
         private IWebProxy _proxy = WebRequest.DefaultWebProxy;
         private NetworkCredential _basicCredential;
-        private string _authorizationHeader;
+        private Dictionary<string, string> _headersKeyValue = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private string _proxyAuthorizationHeader;
         private string _userAgent = $"{nameof(HttpRequest)}/{typeof(HttpRequest).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion}";
 
@@ -60,7 +63,7 @@ namespace Oetools.Utilities.Lib.Http {
         /// </summary>
         /// <param name="baseUrl"></param>
         public HttpRequest(string baseUrl) {
-            _baseUrl = baseUrl.TrimEndDirectorySeparator();
+            UseBaseUrl(baseUrl);
         }
 
         /// <summary>
@@ -74,9 +77,9 @@ namespace Oetools.Utilities.Lib.Http {
         /// <param name="userName">domain\user. Can be null if no credentials are needed.</param>
         /// <param name="userPassword"></param>
         /// <param name="bypassProxyOnLocal"></param>
-        /// <param name="sendProxyAuthorizationBeforeServerChallenge"></param>
-        public HttpRequest UseProxy(string address, string userName, string userPassword, bool bypassProxyOnLocal = false, bool sendProxyAuthorizationBeforeServerChallenge = true) {
-            _proxyAuthorizationHeader = !sendProxyAuthorizationBeforeServerChallenge ? null : $"{HttpAuthorizationType.Basic} {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{userPassword}"))}";
+        /// <param name="sendProxyAuthorizationBeforeServerChallenge">Send the proxy-authorization header before the 407 challenge from the proxy server.</param>
+        public HttpRequest UseProxy(string address, string userName = null, string userPassword = null, bool bypassProxyOnLocal = false, bool sendProxyAuthorizationBeforeServerChallenge = true) {
+            _proxyAuthorizationHeader = !sendProxyAuthorizationBeforeServerChallenge ? null : $"{HttpAuthorizationType.Basic} {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{userPassword}"))}";           
             _proxy = string.IsNullOrEmpty(address) ? null : new WebProxy(address) {
                 UseDefaultCredentials = false,
                 BypassProxyOnLocal = bypassProxyOnLocal,
@@ -92,12 +95,12 @@ namespace Oetools.Utilities.Lib.Http {
         /// <param name="credentials"></param>
         /// <returns></returns>
         public HttpRequest UseAuthorizationHeader(HttpAuthorizationType authorizationType, string credentials) {
-            _authorizationHeader = $"{authorizationType} {credentials}";
+            UseHeader(AuthorizationHeader, $"{authorizationType} {credentials}");
             return this;
         }
 
         /// <summary>
-        /// Sets a timeout for the http request. Defaults to infinite.
+        /// Sets a timeout for the http request. Defaults to infinite. You can also use <see cref="UseCancellationToken"/> for that purpose.
         /// </summary>
         /// <param name="timeOut"></param>
         /// <param name="readWriteTimeOut"></param>
@@ -119,7 +122,7 @@ namespace Oetools.Utilities.Lib.Http {
         }
 
         /// <summary>
-        /// Allows to use ssl3 for the handshake.
+        /// Allows to use the deprecated ssl3 protocol for https.
         /// </summary>
         /// <returns></returns>
         [Obsolete("SSL3 is obsolete.")]
@@ -134,7 +137,7 @@ namespace Oetools.Utilities.Lib.Http {
         /// <param name="baseUrl"></param>
         /// <returns></returns>
         public HttpRequest UseBaseUrl(string baseUrl) {
-            _baseUrl = baseUrl;
+            _baseUrl = baseUrl.TrimEndDirectorySeparator();
             return this;
         }
 
@@ -143,8 +146,44 @@ namespace Oetools.Utilities.Lib.Http {
         /// </summary>
         /// <param name="cancelToken"></param>
         /// <returns></returns>
-        public HttpRequest UseCancellationToken(CancellationToken cancelToken) {
+        public HttpRequest UseCancellationToken(CancellationToken? cancelToken) {
             _cancelToken = cancelToken;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets extra headers to use for the request
+        /// </summary>
+        /// <param name="headersKeyValue"></param>
+        /// <returns></returns>
+        public HttpRequest UseHeaders(Dictionary<string, string> headersKeyValue) {
+            foreach (var kpv in headersKeyValue) {
+                UseHeader(kpv.Key, kpv.Value);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Set header to use for the request.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public HttpRequest UseHeader(string key, string value) {
+            if (_headersKeyValue.ContainsKey(key)) {
+                _headersKeyValue[key] = value;
+            } else {
+                _headersKeyValue.Add(key, value);
+            }
+            return this;
+        }
+        
+        /// <summary>
+        /// Clear all the headers defined.
+        /// </summary>
+        /// <returns></returns>
+        public HttpRequest ClearAllHeaders() {
+            _headersKeyValue.Clear();
             return this;
         }
 
@@ -153,95 +192,14 @@ namespace Oetools.Utilities.Lib.Http {
         /// </summary>
         /// <param name="userName"></param>
         /// <param name="userPassword"></param>
-        /// <param name="sendAuthorizationBeforeServerChallenge"></param>
+        /// <param name="sendAuthorizationBeforeServerChallenge">Send the authorization header before receiving the 401 challenge from the server.</param>
         /// <returns></returns>
         public HttpRequest UseBasicAuthorizationHeader(string userName, string userPassword, bool sendAuthorizationBeforeServerChallenge = true) {
             _basicCredential = string.IsNullOrEmpty(userName) ? null : new NetworkCredential(userName, userPassword);
-            _authorizationHeader = !sendAuthorizationBeforeServerChallenge ? null : $"{HttpAuthorizationType.Basic} {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{userPassword}"))}";
+            if (sendAuthorizationBeforeServerChallenge) {
+                UseHeader(AuthorizationHeader, $"{HttpAuthorizationType.Basic} {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{userPassword}"))}");
+            }            
             return this;
-        }
-
-        private HttpWebRequest CreateRequest(HttpRequestMethod method, string relativePath) {
-            var httpRequest = WebRequest.CreateHttp($"{_baseUrl}/{WebUtility.UrlEncode(relativePath.TrimStartDirectorySeparator())}");
-            
-            httpRequest.ReadWriteTimeout = _readWriteTimeOut;
-            httpRequest.Timeout = _timeOut;
-            httpRequest.UserAgent = _userAgent;
-            httpRequest.PreAuthenticate = true;
-
-            if (_basicCredential != null) {
-                httpRequest.Credentials = _basicCredential;
-            }
-            if (!string.IsNullOrEmpty(_authorizationHeader)) {
-                httpRequest.Headers.Add("Authorization", _authorizationHeader);
-            }
-
-            if (_proxy != null) {
-                httpRequest.Proxy = _proxy;
-                if (!string.IsNullOrEmpty(_proxyAuthorizationHeader)) {
-                    httpRequest.Headers.Add("Proxy-Authorization", _proxyAuthorizationHeader);
-                }
-            }
-
-            httpRequest.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.NoCacheNoStore);
-            httpRequest.Accept = "*/*";
-            httpRequest.KeepAlive = true;
-
-            if (!_expectContinue) {
-                httpRequest.Expect = null;
-                httpRequest.ServicePoint.Expect100Continue = false;
-            }
-
-            httpRequest.Method = method.ToString().ToUpper(CultureInfo.InvariantCulture);
-            
-            return httpRequest;
-        }
-
-        private HttpResponse Execute(HttpRequestMethod method, string relativePath, Action<HttpWebRequest> modifyRequest = null, Action<Stream> writeToUpStream = null, Action<HttpWebResponse> handleResponse = null, Action<Stream> readDownStream = null) {
-            
-            var output = new HttpResponse();
-
-            try {
-                var httpRequest = CreateRequest(method, relativePath);
-
-                using (_cancelToken?.Register(() => {
-                    httpRequest.Abort();
-                })) {
-                    
-                    modifyRequest?.Invoke(httpRequest);
-
-                    // write to upstream
-                    if (writeToUpStream != null) {
-                        using (var upStream = httpRequest.GetRequestStream()) {
-                            writeToUpStream(upStream);
-                        }
-                    }
-
-                    // get response
-                    using (var httpWebResponse = (HttpWebResponse) httpRequest.GetResponse()) {
-                        output.StatusCode = httpWebResponse.StatusCode;
-                        output.StatusDescription = httpWebResponse.StatusDescription;
-                        handleResponse?.Invoke(httpWebResponse);
-
-                        // read downstream
-                        if (readDownStream != null) {
-                            using (var downStream = httpWebResponse.GetResponseStream()) {
-                                readDownStream(downStream);
-                            }
-                        }
-                    }
-                }
-            } catch (WebException e) {
-                if (e.Response is HttpWebResponse hwr) {
-                    output.StatusCode = hwr.StatusCode;
-                    output.StatusDescription = hwr.StatusDescription;
-                }
-                output.Exception = e;
-            } catch (Exception e) {
-                output.Exception = e;
-            }
-            
-            return output;
         }
 
         /// <summary>
@@ -273,7 +231,7 @@ namespace Oetools.Utilities.Lib.Http {
                 inputSerializer = new DataContractJsonSerializer(typeof(TInput));
                 outputSerializer = new DataContractJsonSerializer(typeof(TOutput));
             } catch (Exception e) {
-                throw new Exception("The input and/or output objects are not serializable. Use [DataContract] and [DataMember].", e);
+                throw new Exception("The input and/or output objects are not serializable. Use the attributes [DataContract] and [DataMember].", e);
             }
             
             void ModifyRequest(HttpWebRequest request) {
@@ -334,6 +292,7 @@ namespace Oetools.Utilities.Lib.Http {
         /// <param name="progress"></param>
         /// <returns></returns>
         public HttpResponse DownloadFile(string relativePath, string downloadFilePath, Action<HttpProgress> progress = null) {
+            
             var dir = Path.GetDirectoryName(downloadFilePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
@@ -359,6 +318,21 @@ namespace Oetools.Utilities.Lib.Http {
             }
 
             return Execute(HttpRequestMethod.Get, relativePath, null, null, HandleResponse, ReadDownStream);
+        }
+
+        /// <summary>
+        /// Retrieves the size of a file without downloading it. Requires the server to handle HEAD requests.
+        /// </summary>
+        /// <param name="relativePath"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public HttpResponse GetFileSize(string relativePath, out long size) {
+            long totalLength = 0;
+            void HandleResponse(HttpWebResponse response) {
+                totalLength = response.ContentLength;
+            }
+            size = totalLength;
+            return Execute(HttpRequestMethod.Head, relativePath, null, null, HandleResponse);
         }
 
         /// <summary>
@@ -401,6 +375,111 @@ namespace Oetools.Utilities.Lib.Http {
         /// <returns></returns>
         public HttpResponse DeleteFile(string relativePath) {
             return Execute(HttpRequestMethod.Delete, relativePath);
+        }
+        
+        protected HttpWebRequest CreateRequest(HttpRequestMethod method, string relativePath) {
+            var httpRequest = WebRequest.CreateHttp($"{_baseUrl}/{WebUtility.UrlEncode(relativePath.TrimStartDirectorySeparator())}");
+            
+            httpRequest.ReadWriteTimeout = _readWriteTimeOut;
+            httpRequest.Timeout = _timeOut;
+            httpRequest.UserAgent = _userAgent;
+            httpRequest.PreAuthenticate = true;
+
+            if (_basicCredential != null) {
+                httpRequest.Credentials = _basicCredential;
+            }
+
+            if (_proxy != null) {
+                httpRequest.Proxy = _proxy;
+                if (!string.IsNullOrEmpty(_proxyAuthorizationHeader)) {
+                    httpRequest.Headers.Add(ProxyAuthorizationHeader, _proxyAuthorizationHeader);
+                }
+            }
+            
+            httpRequest.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.NoCacheNoStore);
+            httpRequest.Accept = "*/*";
+            httpRequest.KeepAlive = true;
+
+            if (!_expectContinue) {
+                httpRequest.Expect = null;
+                httpRequest.ServicePoint.Expect100Continue = false;
+            }
+
+            foreach (var kpv in _headersKeyValue) {
+                switch (kpv.Key) {
+                    case "content-length":
+                        long.TryParse(kpv.Value, out long vLong);
+                        httpRequest.ContentLength = vLong;
+                        break;
+                    case "content-type":
+                        httpRequest.ContentType = kpv.Value;
+                        break;
+                    case "keep-alive":
+                        bool.TryParse(kpv.Value, out bool vBool);
+                        httpRequest.KeepAlive = vBool;
+                        break;
+                    default:
+                        httpRequest.Headers[kpv.Key] = kpv.Value;
+                        break;
+                }
+            }
+
+            httpRequest.Method = method.ToString().ToUpper(CultureInfo.InvariantCulture);
+            
+            return httpRequest;
+        }
+
+        protected HttpResponse Execute(HttpRequestMethod method, string relativePath, Action<HttpWebRequest> modifyRequest = null, Action<Stream> writeToUpStream = null, Action<HttpWebResponse> handleResponse = null, Action<Stream> readDownStream = null) {
+            
+            var output = new HttpResponse();
+
+            try {
+                var httpRequest = CreateRequest(method, relativePath);
+
+                using (_cancelToken?.Register(() => {
+                    httpRequest.Abort();
+                })) {
+                    
+                    modifyRequest?.Invoke(httpRequest);
+
+                    // write to upstream
+                    if (writeToUpStream != null) {
+                        using (var upStream = httpRequest.GetRequestStream()) {
+                            writeToUpStream(upStream);
+                        }
+                    }
+
+                    // get response
+                    using (var httpWebResponse = (HttpWebResponse) httpRequest.GetResponse()) {
+                        output.StatusCode = httpWebResponse.StatusCode;
+                        output.StatusDescription = httpWebResponse.StatusDescription;
+                        handleResponse?.Invoke(httpWebResponse);
+
+                        // read downstream
+                        if (readDownStream != null) {
+                            using (var downStream = httpWebResponse.GetResponseStream()) {
+                                readDownStream(downStream);
+                            }
+                        }
+                    }
+                }
+            } catch (OperationCanceledException e) {
+                output.Exception = e;
+            } catch (WebException e) {
+                if (e.Response is HttpWebResponse hwr) {
+                    output.StatusCode = hwr.StatusCode;
+                    output.StatusDescription = hwr.StatusDescription;
+                }
+                if (e.Status == WebExceptionStatus.RequestCanceled) {
+                    output.Exception = new OperationCanceledException();
+                } else {
+                    output.Exception = e;
+                }
+            } catch (Exception e) {
+                output.Exception = e;
+            }
+            
+            return output;
         }
 
     }

@@ -22,7 +22,7 @@ namespace Oetools.Utilities.Archive {
     /// <summary>
     /// Represents an external file that needs to be packed (archived/added) into an archive.
     /// </summary>
-    public interface IFileToArchive : IFileArchivedBase{
+    public interface IFileToArchive : IFileArchivedBase {
         
         /// <summary>
         /// The source path of the file to archive.

@@ -19,7 +19,7 @@
 #endregion
 
 namespace Oetools.Utilities.Archive.Prolib {
-    public interface IProlibArchiver {
+    public interface IProlibArchiver : IArchiver {
         
         /// <summary>
         /// Sets the prolib version to use when writing this prolib.

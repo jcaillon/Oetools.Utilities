@@ -18,6 +18,8 @@
 // ========================================================================
 #endregion
 
+using System.Collections.Generic;
+
 namespace Oetools.Utilities.Archive.HttpFileServer {
 
     /// <summary>
@@ -27,10 +29,26 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
     /// </summary>
     public interface IHttpFileServerArchiver : IArchiver {
 
+        /// <summary>
+        /// Use an http proxy for all the http requests of this archiver.
+        /// </summary>
+        /// <param name="proxyUrl">The url of the proxy. Format http://{host}:{port}/</param>
+        /// <param name="userName">Can be null. Format domain\username.</param>
+        /// <param name="userPassword"></param>
+        void SetProxy(string proxyUrl, string userName = null, string userPassword = null);
         
-        void SetProxy(string url, string user, string password);
+        /// <summary>
+        /// Use basic authentication for all the http requests of this archiver.
+        /// </summary>
+        /// <param name="userName">Format domain\username.</param>
+        /// <param name="userPassword"></param>
+        void SetBasicAuthentication(string userName, string userPassword);
         
-        void SetBasicAuthentication(string user, string password);
+        /// <summary>
+        /// Use custom headers for all the http requests of this archiver.
+        /// </summary>
+        /// <param name="headersKeyValue"></param>
+        void SetHeaders(Dictionary<string, string> headersKeyValue);
         
     }
 

@@ -30,7 +30,7 @@ namespace Oetools.Utilities.Archive.Prolib {
     /// <summary>
     /// In that case, a folder on the file system represents an archive.
     /// </summary>
-    internal class ProlibArchiver : ArchiverBase, IArchiver, IProlibArchiver {
+    internal class ProlibArchiver : ArchiverBase, IProlibArchiver {
 
         private string _codePage;
         private ProLibraryVersion _version;

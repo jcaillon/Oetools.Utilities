@@ -209,23 +209,26 @@ namespace Oetools.Utilities.Test.Lib.Http {
             if (String.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(name));
 
-            switch (name) {
+            switch (name.ToLower()) {
                 case "content-length":
-                    Int32.TryParse(value, out int vInt);
+                    int.TryParse(value, out int vInt);
                     response.ContentLength64 = vInt;
                     break;
                 case "content-type":
                     response.ContentType = value;
                     break;
                 case "keep-alive":
-                    Boolean.TryParse(value, out bool vBool);
+                    bool.TryParse(value, out bool vBool);
                     response.KeepAlive = vBool;
                     break;
                 case "transfer-encoding":
                     if (value.Contains("chunked"))
-                        throw new ArgumentException("Use 'SendChunked' property instead.", nameof(name));
+                        response.SendChunked = true;
                     else
                         response.Headers[name] = value;
+                    break;
+                case "www-authenticate":
+                    response.AddHeader(name, value);
                     break;
                 default:
                     response.Headers[name] = value;
@@ -234,5 +237,6 @@ namespace Oetools.Utilities.Test.Lib.Http {
 
             return response;
         }
+
     }
 }
