@@ -29,10 +29,6 @@ namespace Oetools.Utilities.Openedge.Execution {
     
     public class UoeExecutionEnv : IUoeExecutionEnv {
         
-        public UoeExecutionEnv() {
-            DlcDirectoryPath = UoeUtilities.GetDlcPathFromEnv();
-        }
-
         private string _iniFilePath;
         private string _tempIniFilePath;
         private bool? _canProVersionUseNoSplash;
@@ -42,7 +38,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         private Version _proVersion;
 
         public string DlcDirectoryPath {
-            get => _dlcDirectoryPath;
+            get => _dlcDirectoryPath ?? (_dlcDirectoryPath = UoeUtilities.GetDlcPathFromEnv());
             set {
                 _canProVersionUseNoSplash = null;
                 _proVersion = null;
