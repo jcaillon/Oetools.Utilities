@@ -40,7 +40,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         private const byte ProlibSignatureFirstByte = 0xD7;
         private const byte ReadFileEntry = 0xFF;
         private const byte SkipUntilNextFileEntry = 0xFE;
-        private const short DataBufferSize = 1024 * 8;
+        private const int DataBufferSize = 1024 * 1024;
         
         public ProLibrary(string filePath, CancellationToken? cancelToken) {
             FilePath = filePath;

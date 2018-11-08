@@ -104,8 +104,9 @@ END.
         [DataRow(@"DISPLAY ""ok"".", "", 0, "ok", false)]
         public void ProgressProcessIo_TestCharMode_Batch_ExitedEvent(string procContent, string parameters, int expectedExitCode, string expectedStandard, bool expectErrors) {
             _hasExited1 = false;
-            StartProc(procContent, false, true, parameters, expectedExitCode, expectedStandard, expectErrors, (sender, args) => _hasExited1 = true);
-            Assert.IsTrue(_hasExited1);
+            if (StartProc(procContent, false, true, parameters, expectedExitCode, expectedStandard, expectErrors, (sender, args) => _hasExited1 = true)) {
+                Assert.IsTrue(_hasExited1);
+            }
         }
         
         /// <summary>
@@ -148,9 +149,9 @@ END.
             process.Dispose();
         }
         
-        private void StartProc(string procContent, bool useCharMode, bool silent, string parameters, int expectedExitCode, string expectedStandard, bool expectErrors, EventHandler<EventArgs> exitedHandler) {
+        private bool StartProc(string procContent, bool useCharMode, bool silent, string parameters, int expectedExitCode, string expectedStandard, bool expectErrors, EventHandler<EventArgs> exitedHandler) {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
+                return false;
             }
 
             var proc = Path.Combine(TestFolder, "test.p");
@@ -173,6 +174,8 @@ END.
                 Debug.WriteLine(process.BatchOutput);
                 Assert.IsTrue(process.BatchOutput.Length > 1, process.BatchOutput.Length.ToString());
             }
+
+            return true;
         }
 
     }

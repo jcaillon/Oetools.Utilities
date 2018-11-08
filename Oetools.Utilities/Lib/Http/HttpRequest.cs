@@ -37,7 +37,7 @@ namespace Oetools.Utilities.Lib.Http {
     /// </summary>
     public class HttpRequest {
 
-        private const int DefaultBufferSize = 32 * 1024;
+        private const int DefaultBufferSize = 64 * 1024;
         private const string AuthorizationHeader = "Authorization";
         private const string ProxyAuthorizationHeader = "Proxy-Authorization";
         

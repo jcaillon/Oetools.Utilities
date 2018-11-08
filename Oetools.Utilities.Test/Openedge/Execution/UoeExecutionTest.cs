@@ -27,6 +27,7 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database;
+using Oetools.Utilities.Openedge.Exceptions;
 using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
@@ -54,12 +55,21 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         
         [TestMethod]
         public void OeExecution_Expect_Exception() {
-            Assert.ThrowsException<UoeExecutionParametersException>(() => {
-                using (var exec = new UoeExecutionCustomTest(new UoeExecutionEnv { DlcDirectoryPath = null})) {
-                    exec.Start();
-                    exec.WaitForExecutionEnd();
-                }
-            });
+            if (!GetEnvExecution(out UoeExecutionEnv _ )) {
+                Assert.ThrowsException<UoeDlcNotFoundException>(() => {
+                    using (var exec = new UoeExecutionCustomTest(new UoeExecutionEnv { DlcDirectoryPath = null})) {
+                        exec.Start();
+                        exec.WaitForExecutionEnd();
+                    }
+                });
+            } else {
+                Assert.ThrowsException<UoeExecutionParametersException>(() => {
+                    using (var exec = new UoeExecutionCustomTest(new UoeExecutionEnv { DlcDirectoryPath = null})) {
+                        exec.Start();
+                        exec.WaitForExecutionEnd();
+                    }
+                });
+            }
         }
         
         [TestMethod]

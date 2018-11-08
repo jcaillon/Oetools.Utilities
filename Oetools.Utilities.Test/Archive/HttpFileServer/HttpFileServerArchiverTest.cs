@@ -66,7 +66,6 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
             Assert.IsNotNull(archiver);
 
             var baseDir = Path.Combine(TestFolder, "http");
-
             
             archiver.SetProxy($"http://{host}:8085/", "jucai69d", "julien caillon");
             archiver.SetBasicAuthentication("admin", "admin123");

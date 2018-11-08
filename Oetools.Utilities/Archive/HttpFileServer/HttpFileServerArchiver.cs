@@ -115,9 +115,6 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                             }
                         }
                         break;
-                    case Action.Delete:
-                        totalSize = files.Count;
-                        break;
                 }
             } catch (Exception e) {
                 throw new ArchiverException($"Failed to assess the total file size to handle during {action.ToString().ToLower()}.", e);
@@ -164,7 +161,6 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                             case Action.Delete:
                                 response = HttpRequest.DeleteFile(fileRelativePath);
                                 requestOk = response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.NoContent;
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(serverGroupedFiles.Key, fileRelativePath, Math.Round(nbFilesProcessed / (double) totalSize * 100, 2)));
                                 if (response.StatusCode == HttpStatusCode.NotFound || response.Exception is WebException we1 && we1.Status == WebExceptionStatus.NameResolutionFailure) {
                                     // skip to next file
                                     continue;
@@ -183,6 +179,7 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
 
                         nbFilesProcessed++;
                         OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(serverGroupedFiles.Key, fileRelativePath));
+                        OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(serverGroupedFiles.Key, fileRelativePath, Math.Round(nbFilesProcessed / (double) files.Count * 100, 2)));
                     }
                 } catch (OperationCanceledException) {
                     throw;

@@ -31,6 +31,8 @@ namespace Oetools.Utilities.Archive.Filesystem {
     /// In that case, a folder on the file system represents an archive.
     /// </summary>
     internal class FileSystemArchiver : ArchiverBase, IArchiver {
+        
+        private const int BufferSize = 1024 * 1024;
 
         /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
         public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) {
@@ -42,14 +44,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
         
         /// <inheritdoc cref="IArchiver.PackFileSet"/>
         public int PackFileSet(IEnumerable<IFileToArchive> filesToPack) {
-            return DoForFiles(filesToPack.Select(f => 
-                new FsFile {
-                    ArchivePath = f.ArchivePath,
-                    RelativePathInArchive = f.RelativePathInArchive,
-                    Source = f.SourcePath,
-                    Target = Path.Combine(f.ArchivePath, f.RelativePathInArchive).ToCleanPath()
-                }
-            ).ToList(), ActionType.Copy);
+            return DoForFiles(filesToPack, ActionType.Pack);
         }
 
         /// <inheritdoc cref="IArchiver.ListFiles"/>
@@ -72,74 +67,76 @@ namespace Oetools.Utilities.Archive.Filesystem {
 
         /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract) {
-            return DoForFiles(filesToExtract.Select(f => 
-                new FsFile {
-                    ArchivePath = f.ArchivePath,
-                    RelativePathInArchive = f.RelativePathInArchive,
-                    Source = Path.Combine(f.ArchivePath, f.RelativePathInArchive).ToCleanPath(),
-                    Target = f.ExtractionPath
-                }
-            ).ToList(), ActionType.Copy);
+            return DoForFiles(filesToExtract, ActionType.Extract);
         }
 
         /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete) {
-            return DoForFiles(filesToDelete.Select(f => 
-                new FsFile {
-                    ArchivePath = f.ArchivePath,
-                    RelativePathInArchive = f.RelativePathInArchive,
-                    Source = Path.Combine(f.ArchivePath, f.RelativePathInArchive).ToCleanPath()
-                }
-            ).ToList(), ActionType.Delete);
+            return DoForFiles(filesToDelete, ActionType.Delete);
         }
 
         /// <inheritdoc cref="IArchiver.MoveFileSet"/>
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove) {
-            return DoForFiles(filesToMove.Select(f => 
-                new FsFile {
-                    ArchivePath = f.ArchivePath,
-                    RelativePathInArchive = f.RelativePathInArchive,
-                    Source = Path.Combine(f.ArchivePath, f.RelativePathInArchive).ToCleanPath(),
-                    Target = Path.Combine(f.ArchivePath, f.NewRelativePathInArchive).ToCleanPath(),
-                }
-            ).ToList(), ActionType.Move);
+            return DoForFiles(filesToMove, ActionType.Move);
         }
         
-        private int DoForFiles(List<FsFile> files, ActionType actionType) {
+        private int DoForFiles(IEnumerable<IFileArchivedBase> filesIn, ActionType action) {
+
+            var files = filesIn.ToList();
+            
             var totalFiles = files.Count;
             var totalFilesDone = 0;
 
             foreach (var archiveGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 try {
-                    if (actionType != ActionType.Delete) {
-                        // create all necessary target folders
-                        foreach (var dirGroupedFiles in archiveGroupedFiles.GroupBy(f => Path.GetDirectoryName(f.Target))) {
-                            if (!Directory.Exists(dirGroupedFiles.Key)) {
-                                Directory.CreateDirectory(dirGroupedFiles.Key);
-                            }
-                        }
-                    }
-
                     foreach (var file in archiveGroupedFiles) {
                         _cancelToken?.ThrowIfCancellationRequested();
-                        if (!File.Exists(file.Source)) {
+                        string source = (action == ActionType.Pack ? ((IFileToArchive) file).SourcePath : Path.Combine(file.ArchivePath, file.RelativePathInArchive)).ToCleanPath();
+                        string target = null;
+                        switch (action) {
+                            case ActionType.Pack:
+                                target = Path.Combine(file.ArchivePath, ((IFileToArchive) file).RelativePathInArchive).ToCleanPath();
+                                break;
+                            case ActionType.Extract:
+                                target = ((IFileInArchiveToExtract) file).ExtractionPath.ToCleanPath();
+                                break;
+                            case ActionType.Move:
+                                target = Path.Combine(file.ArchivePath, ((IFileInArchiveToMove) file).NewRelativePathInArchive).ToCleanPath();
+                                break;
+                        }
+                        
+                        // ignore non existing files
+                        if (string.IsNullOrEmpty(source) || !File.Exists(source)) {
                             continue;
                         }
+
+                        // create the necessary target folder
+                        string dir;
+                        if (!string.IsNullOrEmpty(target) && !string.IsNullOrEmpty(dir = Path.GetDirectoryName(target))) {
+                            if (!Directory.Exists(dir)) {
+                                Directory.CreateDirectory(dir);
+                            }
+                        }
+                        
                         try {
-                            switch (actionType) {
-                                case ActionType.Copy:
-                                    if (!file.Source.PathEquals(file.Target)) {
-                                        if (File.Exists(file.Target)) {
-                                            File.Delete(file.Target);
+                            switch (action) {
+                                case ActionType.Pack:
+                                case ActionType.Extract:
+                                    if (string.IsNullOrEmpty(target)) {
+                                        throw new NullReferenceException("Target should not be null.");
+                                    }
+                                    if (!source.PathEquals(target)) {
+                                        if (File.Exists(target)) {
+                                            File.Delete(target);
                                         }
                                         try {
-                                            var buffer = new byte[1024 * 1024];
-                                            using (var source = File.OpenRead(file.Source)) {
-                                                long fileLength = source.Length;
-                                                using (var dest = File.OpenWrite(file.Target)) {
+                                            var buffer = new byte[BufferSize];
+                                            using (var sourceFileStream = File.OpenRead(source)) {
+                                                long fileLength = sourceFileStream.Length;
+                                                using (var dest = File.OpenWrite(target)) {
                                                     long totalBytes = 0;
                                                     int currentBlockSize;
-                                                    while ((currentBlockSize = source.Read(buffer, 0, buffer.Length)) > 0) {
+                                                    while ((currentBlockSize = sourceFileStream.Read(buffer, 0, buffer.Length)) > 0) {
                                                         totalBytes += currentBlockSize;
                                                         dest.Write(buffer, 0, currentBlockSize);
                                                         OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(archiveGroupedFiles.Key, file.RelativePathInArchive, Math.Round((totalFilesDone + (double) totalBytes / fileLength) / totalFiles * 100, 2)));
@@ -149,31 +146,34 @@ namespace Oetools.Utilities.Archive.Filesystem {
                                             }
                                         } catch (OperationCanceledException) {
                                             // cleanup the potentially unfinished file copy
-                                            if (File.Exists(file.Target)) {
-                                                File.Delete(file.Target);
+                                            if (File.Exists(target)) {
+                                                File.Delete(target);
                                             }
                                             throw;
                                         }
                                     }
                                     break;
                                 case ActionType.Move:
-                                    if (!file.Source.PathEquals(file.Target)) {
-                                        if (File.Exists(file.Target)) {
-                                            File.Delete(file.Target);
+                                    if (string.IsNullOrEmpty(target)) {
+                                        throw new NullReferenceException("Target should not be null.");
+                                    }
+                                    if (!source.PathEquals(target)) {
+                                        if (File.Exists(target)) {
+                                            File.Delete(target);
                                         }
-                                        File.Move(file.Source, file.Target);
+                                        File.Move(source, target);
                                     }
                                     break;
                                 case ActionType.Delete:
-                                    File.Delete(file.Source);
+                                    File.Delete(source);
                                     break;
                                 default:
-                                    throw new ArgumentOutOfRangeException(nameof(actionType), actionType, null);
+                                    throw new ArgumentOutOfRangeException(nameof(action), action, null);
                             }
                         } catch (OperationCanceledException) {
                             throw;
                         } catch (Exception e) {
-                            throw new ArchiverException($"Failed to {actionType.ToString().ToLower()} {file.Source.PrettyQuote()}{(string.IsNullOrEmpty(file.Target) ? "" : $" in {file.Target.PrettyQuote()}")}.", e);
+                            throw new ArchiverException($"Failed to {action.ToString().ToLower()} {source.PrettyQuote()}{(string.IsNullOrEmpty(target) ? "" : $" in {target.PrettyQuote()}")}.", e);
                         }
                         
                         totalFilesDone++;
@@ -184,7 +184,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
                 } catch (OperationCanceledException) {
                     throw;
                 } catch (Exception e) {
-                    throw new ArchiverException($"Failed to {actionType.ToString().ToLower()} files{(string.IsNullOrEmpty(archiveGroupedFiles.Key) ? "" : $" in {archiveGroupedFiles.Key.PrettyQuote()}")}.", e);
+                    throw new ArchiverException($"Failed to {action.ToString().ToLower()} files{(string.IsNullOrEmpty(archiveGroupedFiles.Key) ? "" : $" in {archiveGroupedFiles.Key.PrettyQuote()}")}.", e);
                 }
 
                 OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(archiveGroupedFiles.Key));
@@ -193,15 +193,9 @@ namespace Oetools.Utilities.Archive.Filesystem {
             return totalFilesDone;
         }
 
-        private struct FsFile {
-            public string ArchivePath { get; set; }
-            public string RelativePathInArchive { get; set; }
-            public string Source { get; set; }
-            public string Target { get; set; }
-        }
-
         private enum ActionType {
-            Copy,
+            Pack,
+            Extract,
             Move,
             Delete
         }
