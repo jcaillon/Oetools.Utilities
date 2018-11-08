@@ -80,15 +80,13 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
             var cts = new CancellationTokenSource();
             var task1 = HttpServer.ListenAsync(8084, cts.Token, fileServer.OnHttpRequest, true);
             var task2 = HttpServer.ListenAsync(8085, cts.Token, proxyServer.OnHttpRequest, true);
-
-//            var req = new HttpRequest($"http://{host}:8084/server1");
-//            req.UseProxy($"http://{host}:8085/", "jucai69d", "julien caillon");
-//            req.UseBasicAuthorizationHeader("admin", "admin123");
-//            req.PutFile("derp", @"E:\Download\Vegan-Meal-Challenge-Recipe-Book.pdf");
-//            Task.WaitAll(task1, task2);
             
             PartialTestForHttpFileServer(archiver, listFiles);
-            
+
+            if (!host.Equals("127.0.0.1")) {
+                Assert.AreEqual(61, proxyServer.NbRequestsHandledOk);
+            }
+
             HttpServer.Stop(cts, task1, task2);
         }
     }

@@ -123,11 +123,13 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                 throw new ArchiverException($"Failed to assess the total file size to handle during {action.ToString().ToLower()}.", e);
             }
 
+            bool totalSizeNotFound = totalSize == 0;
+
             int nbFilesProcessed = 0;
             foreach (var serverGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 try {
                     HttpRequest.UseBaseUrl(serverGroupedFiles.Key);
-                    foreach (var file in files) {
+                    foreach (var file in serverGroupedFiles) {
                         bool requestOk;
                         HttpResponse response;
                         var fileRelativePath = WebUtility.UrlEncode(file.RelativePathInArchive.ToCleanRelativePathUnix());
@@ -139,16 +141,20 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                                     continue;
                                 }
                                 response = HttpRequest.PutFile(fileRelativePath, ((IFileToArchive) file).SourcePath, progress => {
-                                    totalSizeDone += progress.NumberOfBytesDone;
+                                    totalSizeDone += progress.NumberOfBytesDoneSinceLastProgress;
                                     OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(serverGroupedFiles.Key, fileRelativePath, Math.Round(totalSizeDone / (double) totalSize * 100, 2)));
                                 });
                                 requestOk = response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created;
                                 break;
                             case Action.Download:
                                 response = HttpRequest.DownloadFile(fileRelativePath, ((IFileInArchiveToExtract) file).ExtractionPath, progress => {
-                                    totalSizeDone += progress.NumberOfBytesDone;
+                                    if (totalSizeNotFound && progress.NumberOfBytesDoneSinceLastProgress == progress.NumberOfBytesDoneTotal) {
+                                        totalSize += progress.NumberOfBytesTotal;
+                                    }
+                                    totalSizeDone += progress.NumberOfBytesDoneSinceLastProgress;
                                     OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(serverGroupedFiles.Key, fileRelativePath, Math.Round(totalSizeDone / (double) totalSize * 100, 2)));
                                 });
+                                
                                 requestOk = response.StatusCode == HttpStatusCode.OK;
                                 if (response.StatusCode == HttpStatusCode.NotFound || response.Exception is WebException we && we.Status == WebExceptionStatus.NameResolutionFailure) {
                                     // skip to next file
@@ -156,8 +162,9 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                                 }
                                 break;
                             case Action.Delete:
-                                response = HttpRequest.DeleteFile(WebUtility.UrlEncode(fileRelativePath));
+                                response = HttpRequest.DeleteFile(fileRelativePath);
                                 requestOk = response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.NoContent;
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(serverGroupedFiles.Key, fileRelativePath, Math.Round(nbFilesProcessed / (double) totalSize * 100, 2)));
                                 if (response.StatusCode == HttpStatusCode.NotFound || response.Exception is WebException we1 && we1.Status == WebExceptionStatus.NameResolutionFailure) {
                                     // skip to next file
                                     continue;
@@ -180,7 +187,7 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                 } catch (OperationCanceledException) {
                     throw;
                 } catch (Exception e) {
-                    throw new ArchiverException($"Failed to {action.ToString().ToLower()} to {serverGroupedFiles.Key}.", e);
+                    throw new ArchiverException($"Failed to {action.ToString().ToLower()} at {serverGroupedFiles.Key}.", e);
                 }
                 OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(serverGroupedFiles.Key));
             }

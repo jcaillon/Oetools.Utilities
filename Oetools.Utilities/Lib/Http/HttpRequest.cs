@@ -311,7 +311,7 @@ namespace Oetools.Utilities.Lib.Http {
                     while ((nbBytesRead = downStream.Read(buffer, 0, buffer.Length)) > 0) {
                         fileStream.Write(buffer, 0, nbBytesRead);
                         totalDone += nbBytesRead;
-                        progress?.Invoke(new HttpProgress(false, totalLength, totalDone));
+                        progress?.Invoke(new HttpProgress(false, totalLength, totalDone, nbBytesRead));
                         _cancelToken?.ThrowIfCancellationRequested();
                     }
                 }
@@ -331,8 +331,9 @@ namespace Oetools.Utilities.Lib.Http {
             void HandleResponse(HttpWebResponse response) {
                 totalLength = response.ContentLength;
             }
+            var resp = Execute(HttpRequestMethod.Head, relativePath, null, null, HandleResponse);
             size = totalLength;
-            return Execute(HttpRequestMethod.Head, relativePath, null, null, HandleResponse);
+            return resp;
         }
 
         /// <summary>
@@ -347,7 +348,7 @@ namespace Oetools.Utilities.Lib.Http {
             
             void ModifyRequest(HttpWebRequest request) {
                 request.ContentType = "application/octet-stream";
-                request.ContentLength = totalLength;
+                //request.ContentLength = totalLength;
             }
 
             void WriteToUpStream(Stream upStream) {
@@ -359,7 +360,7 @@ namespace Oetools.Utilities.Lib.Http {
                         upStream.Write(buffer, 0, nbBytesRead);
                         upStream.Flush();
                         totalDone += nbBytesRead;
-                        progress?.Invoke(new HttpProgress(false, totalLength, totalDone));
+                        progress?.Invoke(new HttpProgress(false, totalLength, totalDone, nbBytesRead));
                         _cancelToken?.ThrowIfCancellationRequested();
                     }
                 }
@@ -382,7 +383,6 @@ namespace Oetools.Utilities.Lib.Http {
             
             httpRequest.ReadWriteTimeout = _readWriteTimeOut;
             httpRequest.Timeout = _timeOut;
-            httpRequest.UserAgent = _userAgent;
             httpRequest.PreAuthenticate = true;
 
             if (_basicCredential != null) {
@@ -395,8 +395,9 @@ namespace Oetools.Utilities.Lib.Http {
                     httpRequest.Headers.Add(ProxyAuthorizationHeader, _proxyAuthorizationHeader);
                 }
             }
-            
+
             httpRequest.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.NoCacheNoStore);
+            httpRequest.UserAgent = _userAgent;
             httpRequest.Accept = "*/*";
             httpRequest.KeepAlive = true;
 
@@ -407,10 +408,6 @@ namespace Oetools.Utilities.Lib.Http {
 
             foreach (var kpv in _headersKeyValue) {
                 switch (kpv.Key) {
-                    case "content-length":
-                        long.TryParse(kpv.Value, out long vLong);
-                        httpRequest.ContentLength = vLong;
-                        break;
                     case "content-type":
                         httpRequest.ContentType = kpv.Value;
                         break;
@@ -463,20 +460,16 @@ namespace Oetools.Utilities.Lib.Http {
                         }
                     }
                 }
-            } catch (OperationCanceledException e) {
+            } catch (Exception e) {
                 output.Exception = e;
-            } catch (WebException e) {
-                if (e.Response is HttpWebResponse hwr) {
+                if (e is WebException we &&  we.Response is HttpWebResponse hwr) {
                     output.StatusCode = hwr.StatusCode;
                     output.StatusDescription = hwr.StatusDescription;
                 }
-                if (e.Status == WebExceptionStatus.RequestCanceled) {
-                    output.Exception = new OperationCanceledException();
-                } else {
-                    output.Exception = e;
-                }
-            } catch (Exception e) {
-                output.Exception = e;
+            }
+            
+            if (!(output.Exception is OperationCanceledException) && (_cancelToken?.IsCancellationRequested ?? false)) {
+                output.Exception = new OperationCanceledException();
             }
             
             return output;

@@ -42,6 +42,7 @@ namespace Oetools.Utilities.Test.Archive {
             ListArchive(archiver, listFiles);
             Extract(archiver, listFiles);
             DeleteFilesInArchive(archiver, listFiles);
+            CheckForEmptyArchives(archiver, listFiles);
             archiver.OnProgress -= ArchiverOnOnProgress;
         }
 
@@ -220,15 +221,17 @@ namespace Oetools.Utilities.Test.Archive {
             // try to delete a non existing file
             Assert.AreEqual(modifiedList.Count - 1, archiver.DeleteFileSet(modifiedList));
             
-            foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
-                var files = archiver.ListFiles(groupedFiles.Key);
-                Assert.AreEqual(0, files.Count(), $"The archive is not empty : {groupedFiles.Key}");
-            }
-            
             // check progress
             Assert.IsTrue(_hasReceivedGlobalProgression, "Should have received a progress event.");
             Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
             Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
+        }
+
+        protected void CheckForEmptyArchives(IArchiver archiver, List<FileInArchive> listFiles) {
+            foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
+                var files = archiver.ListFiles(groupedFiles.Key);
+                Assert.AreEqual(0, files.Count(), $"The archive is not empty : {groupedFiles.Key}");
+            }
         }
 
         private void ArchiverOnOnProgress(object sender, ArchiverEventArgs e) {

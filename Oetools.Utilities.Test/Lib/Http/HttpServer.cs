@@ -94,16 +94,28 @@ namespace Oetools.Utilities.Test.Lib.Http {
                 using (token.Register(() => listener.Close())) {
                     bool shouldStop = false;
                     while (!shouldStop) {
+                        HttpListenerContext ctx = null;
                         try {
-                            var ctx = await listener.GetContextAsync();
+                            ctx = await listener.GetContextAsync();
                             await s.WaitAsync(token);
                             await Task.Factory.StartNew(() => onHttpRequest(ctx.Request, ctx.Response), token);
                             s.Release();
-                        } catch (Exception) {
-                            if (!token.IsCancellationRequested) {
-                                throw;
+                        } catch (HttpListenerException e) {
+                            if (e.ErrorCode != 64 && e.ErrorCode != 1229) {
+                                Console.WriteLine(e);
+                            }
+                        } catch (Exception e) {
+                            if (token.IsCancellationRequested) {
+                                break;
+                            }
+                            Console.WriteLine(e);
+                            try {
+                                ctx?.Response.WithCode(HttpStatusCode.InternalServerError).AsText(e.Message);
+                            } catch (Exception) {
+                                // do nothing
                             }
                         } finally {
+                            ctx?.Response.Close();
                             if (token.IsCancellationRequested) {
                                 shouldStop = true;
                             }

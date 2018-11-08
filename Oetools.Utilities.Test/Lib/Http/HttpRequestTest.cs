@@ -35,7 +35,11 @@ namespace Oetools.Utilities.Test.Lib.Http {
 //                .UseProxy("http://mylocalhost:8087", "jucai69d", "julien caillon");
 //            var resp = request.GetJson("repos/jcaillon/3P/releases?page=1&per_page=10", out List<ReleaseInfo> releaseInfo);
 
-
+//            var req = new HttpRequest($"http://{host}:8084/server1");
+//            req.UseProxy($"http://{host}:8085/", "jucai69d", "julien caillon");
+//            req.UseBasicAuthorizationHeader("admin", "admin123");
+//            req.PutFile("derp", @"E:\Download\Vegan-Meal-Challenge-Recipe-Book.pdf");
+//            Task.WaitAll(task1, task2);
 
         }
         

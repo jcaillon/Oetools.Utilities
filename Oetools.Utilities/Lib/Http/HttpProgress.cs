@@ -38,12 +38,18 @@ namespace Oetools.Utilities.Lib.Http {
         /// <summary>
         /// The nb of bytes already exchanged.
         /// </summary>
-        public long NumberOfBytesDone { get; }
+        public long NumberOfBytesDoneTotal { get; }
         
-        internal HttpProgress(bool isUpStream, long numberOfBytesTotal, long numberOfBytesDone) {
+        /// <summary>
+        /// The nb of bytes exchanged since the last progression event.
+        /// </summary>
+        public long NumberOfBytesDoneSinceLastProgress { get; }
+        
+        internal HttpProgress(bool isUpStream, long numberOfBytesTotal, long numberOfBytesDoneTotal, long numberOfBytesDoneSinceLastProgress) {
             IsUpStream = isUpStream;
             NumberOfBytesTotal = numberOfBytesTotal;
-            NumberOfBytesDone = numberOfBytesDone;
+            NumberOfBytesDoneTotal = numberOfBytesDoneTotal;
+            NumberOfBytesDoneSinceLastProgress = numberOfBytesDoneSinceLastProgress;
         }
     }
 }
