@@ -24,6 +24,10 @@ namespace Oetools.Utilities.Lib {
     /// An item in a <see cref="PathList{T}"/>.
     /// </summary>
     public interface IPathListItem {
+        
+        /// <summary>
+        /// Path.
+        /// </summary>
         string Path { get; }
     }
 }
