@@ -46,7 +46,7 @@ namespace Oetools.Utilities.Test.Archive {
             archiver.OnProgress -= ArchiverOnOnProgress;
         }
 
-        protected void PartialTestForHttpFileServer(IArchiver archiver, List<FileInArchive> listFiles) {
+        protected void PartialTestForHttpFileServer(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
             archiver.OnProgress += ArchiverOnOnProgress;
             CreateArchive(archiver, listFiles);
             Extract(archiver, listFiles);
@@ -54,7 +54,7 @@ namespace Oetools.Utilities.Test.Archive {
             archiver.OnProgress -= ArchiverOnOnProgress;
         }
         
-        protected void CreateArchive(IArchiver archiver, List<FileInArchive> listFiles) {
+        protected void CreateArchive(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
             
             _nbFileProcessed = 0;
             _nbArchiveFinished = 0;
@@ -65,7 +65,7 @@ namespace Oetools.Utilities.Test.Archive {
             _cancelSource = new CancellationTokenSource();
             archiver.SetCancellationToken(_cancelSource.Token);
             var list = modifiedList;
-            Assert.ThrowsException<OperationCanceledException>(() => archiver.PackFileSet(list));
+            Assert.ThrowsException<OperationCanceledException>(() => archiver.ArchiveFileSet(list));
             Assert.IsTrue(_nbArchiveFinished == 0, "Nothing was done.");
             _cancelSource = null;
             archiver.SetCancellationToken(null);
@@ -82,11 +82,11 @@ namespace Oetools.Utilities.Test.Archive {
                 RelativePathInArchive = "random.name"
             });
             
-            Assert.AreEqual(modifiedList.Count - 1, archiver.PackFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count - 1, archiver.ArchiveFileSet(modifiedList));
             
             // test the update of archives
             modifiedList = listFiles.GetRange(0, 1);
-            Assert.AreEqual(modifiedList.Count, archiver.PackFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count, archiver.ArchiveFileSet(modifiedList));
  
             foreach (var archive in listFiles.GroupBy(f => f.ArchivePath)) {
                 if (Directory.Exists(Path.GetDirectoryName(archive.Key))) {
@@ -159,7 +159,7 @@ namespace Oetools.Utilities.Test.Archive {
             }
         }
 
-        protected void Extract(IArchiver archiver, List<FileInArchive> listFiles) {
+        protected void Extract(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
             _nbFileProcessed = 0;
             _nbArchiveFinished = 0;
 
@@ -196,7 +196,7 @@ namespace Oetools.Utilities.Test.Archive {
             Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
         }
         
-        protected void DeleteFilesInArchive(IArchiver archiver, List<FileInArchive> listFiles) {
+        protected void DeleteFilesInArchive(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
             _nbFileProcessed = 0;
             _nbArchiveFinished = 0;
             

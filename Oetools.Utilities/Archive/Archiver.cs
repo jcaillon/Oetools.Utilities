@@ -34,27 +34,40 @@ namespace Oetools.Utilities.Archive {
     public class Archiver {
 
         /// <summary>
-        /// Get a new instance of an archiver.
+        /// et a new instance of an archiver.
         /// </summary>
         /// <returns></returns>
-        public static IArchiver New(ArchiverType type) {
-            switch (type) {
-                case ArchiverType.Cab:
-                    return new CabArchiver();
-                case ArchiverType.Zip:
-                    return new ZipArchiver();
-                case ArchiverType.Prolib:
-                    return new ProlibArchiver();
-                case ArchiverType.Ftp:
-                    return new FtpArchiver();
-                case ArchiverType.FileSystem:
-                    return new FileSystemArchiver();
-                case ArchiverType.HttpFileServer:
-                    return new HttpFileServerArchiver();
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
-            }    
-        }
+        public static IArchiver NewCabArchiver() => new CabArchiver();
+        
+        /// <summary>
+        /// et a new instance of an archiver.
+        /// </summary>
+        /// <returns></returns>
+        public static IArchiver NewZipArchiver() => new ZipArchiver();
+        
+        /// <summary>
+        /// et a new instance of an archiver.
+        /// </summary>
+        /// <returns></returns>
+        public static IProlibArchiver NewProlibArchiver() => new ProlibArchiver();
+        
+        /// <summary>
+        /// et a new instance of an archiver.
+        /// </summary>
+        /// <returns></returns>
+        public static IArchiver NewFtpArchiver() => new FtpArchiver();
+        
+        /// <summary>
+        /// et a new instance of an archiver.
+        /// </summary>
+        /// <returns></returns>
+        public static IArchiver NewFileSystemArchiver() => new FileSystemArchiver();
+        
+        /// <summary>
+        /// et a new instance of an archiver.
+        /// </summary>
+        /// <returns></returns>
+        public static IHttpFileServerArchiver NewHttpFileServerArchiver() => new HttpFileServerArchiver();
         
     }
 }

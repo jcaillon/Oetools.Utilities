@@ -61,8 +61,8 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
                 hostEntry = null;
             }
             var host = hostEntry == null ? "127.0.0.1" : "mylocalhost";
-            
-            var archiver = Archiver.New(ArchiverType.HttpFileServer) as IHttpFileServerArchiver;
+
+            var archiver = Archiver.NewHttpFileServerArchiver();
             Assert.IsNotNull(archiver);
 
             var baseDir = Path.Combine(TestFolder, "http");

@@ -27,7 +27,7 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
     /// An archiver allows CRUD operation on a http file server.
     /// </para>
     /// </summary>
-    public interface IHttpFileServerArchiver : IArchiver {
+    public interface IHttpFileServerArchiver : ISimpleArchiver {
 
         /// <summary>
         /// Use an http proxy for all the http requests of this archiver.

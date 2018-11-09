@@ -51,7 +51,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
         
         [TestMethod]
         public void Test() {
-            IArchiver archiver = Archiver.New(ArchiverType.Prolib);
+            IArchiver archiver = Archiver.NewProlibArchiver();
 
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.pl"));
             listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2.pl")));
@@ -113,12 +113,12 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
             foreach (var prolibResource in list.Where(f => f.IsCompressed && f.Version == ProLibraryVersion.V11Standard)) {
                 var path = Path.Combine(TestFolder, $"{prolibResource.FileName}_copy.pl");
                 Assert.AreEqual(string.Join(",", prolibResource.ContainedFiles.Split(',').OrderBy(s => s)), string.Join(",", oeArchiver.ListFiles(path).Select(f => f.RelativePathInArchive).OrderBy(s => s)), $"Wrong file listing 2 for {prolibResource.FileName}.");
-                oeArchiver.PackFileSet(new List<IFileToArchive> {
+                oeArchiver.ArchiveFileSet(new List<IFileToArchive> {
                     new FileInArchive {
                         SourcePath = Path.Combine(TestFolder, "file3"), RelativePathInArchive = "sub/file3", ArchivePath = path
                     }
                 });
-                oeArchiver.PackFileSet(new List<IFileToArchive> {
+                oeArchiver.ArchiveFileSet(new List<IFileToArchive> {
                     new FileInArchive {
                         SourcePath = Path.Combine(TestFolder, "file4"), RelativePathInArchive = "sub/file4", ArchivePath = path
                     }

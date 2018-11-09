@@ -42,8 +42,8 @@ namespace Oetools.Utilities.Archive.Filesystem {
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
-        /// <inheritdoc cref="IArchiver.PackFileSet"/>
-        public int PackFileSet(IEnumerable<IFileToArchive> filesToPack) {
+        /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
+        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPack) {
             return DoForFiles(filesToPack, ActionType.Pack);
         }
 

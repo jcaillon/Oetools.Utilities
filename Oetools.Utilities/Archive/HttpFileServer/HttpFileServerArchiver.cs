@@ -58,22 +58,12 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
             HttpRequest.UseCancellationToken(cancelToken);
         }
 
-        /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
-        public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) {
-            // not applicable
-        }
-
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
-        /// <inheritdoc cref="IArchiver.PackFileSet"/>
-        public int PackFileSet(IEnumerable<IFileToArchive> filesToPack) {
+        /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
+        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPack) {
             return DoAction(filesToPack.ToList(), Action.Upload);
-        }
-
-        /// <inheritdoc cref="IArchiver.ListFiles"/>
-        public IEnumerable<IFileInArchive> ListFiles(string archivePath) {
-            throw new NotImplementedException($"This method {nameof(ListFiles)} is invalid for {nameof(HttpFileServerArchiver)}.");
         }
 
         /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
@@ -84,11 +74,6 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
         /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete) {
             return DoAction(filesToDelete.ToList(), Action.Delete);
-        }
-
-        /// <inheritdoc cref="IArchiver.MoveFileSet"/>
-        public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove) {
-            throw new NotImplementedException($"This method {nameof(MoveFileSet)} is invalid for {nameof(HttpFileServerArchiver)}.");
         }
         
         private int DoAction(IEnumerable<IFileArchivedBase> filesIn, Action action) {

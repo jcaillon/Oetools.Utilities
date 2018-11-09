@@ -55,16 +55,9 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         
         [TestMethod]
         public void OeExecution_Expect_Exception() {
-            if (!GetEnvExecution(out UoeExecutionEnv _ )) {
-                Assert.ThrowsException<UoeDlcNotFoundException>(() => {
-                    using (var exec = new UoeExecutionCustomTest(new UoeExecutionEnv { DlcDirectoryPath = null})) {
-                        exec.Start();
-                        exec.WaitForExecutionEnd();
-                    }
-                });
-            } else {
+            if (GetEnvExecution(out UoeExecutionEnv _ )) {
                 Assert.ThrowsException<UoeExecutionParametersException>(() => {
-                    using (var exec = new UoeExecutionCustomTest(new UoeExecutionEnv { DlcDirectoryPath = null})) {
+                    using (var exec = new UoeExecutionCustomTest(new UoeExecutionEnv { DlcDirectoryPath = "" })) {
                         exec.Start();
                         exec.WaitForExecutionEnd();
                     }

@@ -29,41 +29,14 @@ namespace Oetools.Utilities.Archive {
     /// An archive is simply a container for files, it can take many forms : a zip, a .cab, an ftp server and so on...
     /// </para>
     /// </summary>
-    public interface IArchiver {
+    public interface IArchiver : ISimpleArchiver {
 
         /// <summary>
-        /// Sets the compression level to use for the next <see cref="PackFileSet"/> process.
+        /// Sets the compression level to use for the next <see cref="ISimpleArchiver.ArchiveFileSet"/> process.
         /// </summary>
         /// <param name="archiveCompressionLevel"></param>
         void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel);
-
-        /// <summary>
-        /// Sets a cancellation token that can be used to interrupt the process if needed.
-        /// </summary>
-        void SetCancellationToken(CancellationToken? cancelToken);
         
-        /// <summary>
-        /// <para>
-        /// Event published when the archiving process is progressing.
-        /// </para>
-        /// </summary>
-        event EventHandler<ArchiverEventArgs> OnProgress;
-        
-        /// <summary>
-        /// <para>
-        /// Pack (i.e. add or replace) files into archives.
-        /// Non existing source files will not throw an exception.
-        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
-        /// Packing into an existing archive will update it.
-        /// Packing existing files will update them.
-        /// </para>
-        /// </summary>
-        /// <param name="filesToPack"></param>
-        /// <exception cref="ArchiverException"></exception>
-        /// <exception cref="OperationCanceledException"></exception>
-        /// <returns>Total number of files actually packed.</returns>
-        int PackFileSet(IEnumerable<IFileToArchive> filesToPack);
-
         /// <summary>
         /// List all the files in an archive. Returns an empty enumerable if the archive does not exist.
         /// </summary>
@@ -73,35 +46,11 @@ namespace Oetools.Utilities.Archive {
         IEnumerable<IFileInArchive> ListFiles(string archivePath);
         
         /// <summary>
-        /// Extracts the given files from archives.
-        /// Requesting the extraction from a non existing archive will not throw an exception.
-        /// Requesting the extraction a file that does not exist in the archive will not throw an exception.
-        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
-        /// </summary>
-        /// <param name="filesToExtract"></param>
-        /// <exception cref="ArchiverException"></exception>
-        /// <exception cref="OperationCanceledException"></exception>
-        /// <returns>Total number of files actually extracted.</returns>
-        int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract);
-        
-        /// <summary>
-        /// Deletes the given files from archives.
-        /// Requesting the deletion from a non existing archive will not throw an exception.
-        /// Requesting the deletion a file that does not exist in the archive will not throw an exception.
-        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
-        /// </summary>
-        /// <param name="filesToDelete"></param>
-        /// <exception cref="ArchiverException"></exception>
-        /// <exception cref="OperationCanceledException"></exception>
-        /// <returns>Total number of files actually deleted.</returns>
-        int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete);
-        
-        /// <summary>
         /// <para>
         /// Moves the given files within archives.
         /// Requesting the movement from a non existing archive will not throw an exception.
         /// Requesting the movement a file that does not exist in the archive will not throw an exception.
-        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
+        /// You can inspect which files are processed with the <see cref="ISimpleArchiver.OnProgress"/> event.
         /// </para>
         /// </summary>
         /// <param name="filesToMove"></param>

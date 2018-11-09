@@ -64,8 +64,8 @@ namespace Oetools.Utilities.Archive.Cab {
             _cabManager.SetCancellationToken(_cancelToken);
         }
 
-        /// <inheritdoc cref="IArchiver.PackFileSet"/>
-        public int PackFileSet(IEnumerable<IFileToArchive> filesToPack) {
+        /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
+        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPack) {
             _cabManager.OnProgress += CabManagerOnProgress;
             try {
                 return _cabManager.PackFileSet(filesToPack.Select(f => CabFile.NewToPack(f.ArchivePath, f.RelativePathInArchive, f.SourcePath)));

@@ -203,10 +203,11 @@ namespace Oetools.Utilities.Openedge.Execution {
                     compiledFile.CompilationOutputDirectory = localSubTempDir;
                 }
 
+                Utils.CreateDirectoryIfNeeded(localSubTempDir);
                 Utils.CreateDirectoryIfNeeded(compiledFile.CompilationOutputDirectory);
 
                 compiledFile.CompilationRcodeFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{UoeConstants.ExtR}");
-                compiledFile.CompilationErrorsFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{UoeConstants.ExtCompileErrorsLog}");
+                compiledFile.CompilationErrorsFilePath = Path.Combine(localSubTempDir, $"{baseFileName}{UoeConstants.ExtCompileErrorsLog}");
                 if (CompileWithListing) {
                     compiledFile.CompilationListingFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{UoeConstants.ExtListing}");
                 }
@@ -227,7 +228,6 @@ namespace Oetools.Utilities.Openedge.Execution {
                 compiledFile.IsAnalysisMode = CompileInAnalysisMode;
                 
                 if (CompileInAnalysisMode) {
-                    Utils.CreateDirectoryIfNeeded(localSubTempDir);
                     compiledFile.CompilationFileIdLogFilePath = Path.Combine(localSubTempDir, $"{baseFileName}{UoeConstants.ExtFileIdLog}");
                     if (AnalysisModeSimplifiedDatabaseReferences) {
                         compiledFile.CompilationRcodeTableListFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{UoeConstants.ExtTableList}");

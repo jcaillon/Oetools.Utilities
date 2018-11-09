@@ -61,8 +61,8 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
 
-        /// <inheritdoc cref="IArchiver.PackFileSet"/>
-        public int PackFileSet(IEnumerable<IFileToArchive> filesToPackIn) {
+        /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
+        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPackIn) {
             var filesToPack = filesToPackIn.ToList();
             int totalFiles = filesToPack.Count;
             int totalFilesDone = 0;

@@ -62,8 +62,8 @@ namespace Oetools.Utilities.Archive.Prolib {
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
-        /// <inheritdoc cref="IArchiver.PackFileSet"/>
-        public int PackFileSet(IEnumerable<IFileToArchive> filesToPack) {
+        /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
+        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPack) {
             int nbFilesProcessed = 0;
             foreach (var plGroupedFiles in filesToPack.GroupBy(f => f.ArchivePath)) {
                 try {                
