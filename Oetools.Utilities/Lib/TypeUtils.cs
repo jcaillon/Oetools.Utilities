@@ -73,13 +73,54 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
+        /// Returns true if the constructor has a parameter-less constructor
+        /// </summary>
+        /// <param name="t"></param>
+        /// <returns></returns>
+        public static bool HasDefaultConstructor(this Type t) {
+            return t.IsValueType || t.GetConstructor(Type.EmptyTypes) != null;
+        }
+        
+        /// <summary>
         /// Returns a new object that have the same public property values
         /// </summary>
         /// <param name="obj"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public static T GetDeepCopy<T>(this T obj) {
-            return (T) DeepCopyPublicProperties(obj, typeof(T));
+        public static T GetDeepCopy<T>(this object obj) where T : class {
+            return obj.DeepCopy<T>(null);
+        }
+
+        /// <summary>
+        /// Returns a new object that have the same public property values
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static T GetDeepCopy<T>(this T obj) where T : class {
+            return obj.DeepCopy<T>(null);
+        }
+        
+        /// <summary>
+        /// Copies all the public properties of one object to another
+        /// </summary>
+        /// <remarks>
+        /// If a property is null in the source object, it won't affect the target object (i.e. either null if we created the
+        /// target object or the old target value if it had any)
+        /// </remarks>
+        /// <param name="sourceObj"></param>
+        /// <param name="targetObj"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public static T DeepCopy<T>(this object sourceObj, T targetObj) where T : class {
+            var targetType = typeof(T);
+            if (targetType.IsInterface) {
+                throw new Exception($"Can't deep copy an interface, need a implementation of type {targetType}.");
+            }
+            if (targetObj == null && !HasDefaultConstructor(targetType)) {
+                throw new Exception($"Can't deep copy to a new instance without a default constructor for type {targetType}.");
+            }
+            return (T) DeepCopyPublicProperties(sourceObj, targetType, targetObj);
         }
         
         /// <summary>
@@ -94,7 +135,7 @@ namespace Oetools.Utilities.Lib {
         /// <param name="targetObj"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public static object DeepCopyPublicProperties(object sourceObj, Type targetType, object targetObj = null) {
+        private static object DeepCopyPublicProperties(object sourceObj, Type targetType, object targetObj = null) {
             if (sourceObj == null) {
                 return null;
             }
@@ -104,7 +145,6 @@ namespace Oetools.Utilities.Lib {
             if (targetType == typeof(string)) {
                 return sourceObj;
             }
-
             if (targetObj == null) {
                 targetObj = Activator.CreateInstance(targetType);
             }

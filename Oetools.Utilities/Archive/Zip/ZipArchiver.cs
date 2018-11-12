@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using Oetools.Utilities.Archive.Prolib;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
@@ -30,11 +31,11 @@ namespace Oetools.Utilities.Archive.Zip {
     /// <summary>
     ///     Allows to pack files into zip
     /// </summary>
-    internal class ZipArchiver : ArchiverBase, IArchiver {
+    internal class ZipArchiver : ArchiverBase, IZipArchiver {
 
         private CompressionLevel _compressionLevel = CompressionLevel.NoCompression;
        
-        /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
+        /// <inheritdoc cref="IZipArchiver.SetCompressionLevel"/>
         public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) {
             switch (archiveCompressionLevel) {
                 case ArchiveCompressionLevel.None:
@@ -57,6 +58,7 @@ namespace Oetools.Utilities.Archive.Zip {
         /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPackIn) {
             var filesToPack = filesToPackIn.ToList();
+            filesToPack.ForEach(f => f.Processed = false);
             int totalFiles = filesToPack.Count;
             int totalFilesDone = 0;
             foreach (var zipGroupedFiles in filesToPack.GroupBy(f => f.ArchivePath)) {
@@ -75,7 +77,7 @@ namespace Oetools.Utilities.Archive.Zip {
                                 throw new ArchiverException($"Failed to pack {file.SourcePath.PrettyQuote()} into {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {file.RelativePathInArchive}.", e);
                             }
                             totalFilesDone++;
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(zipGroupedFiles.Key, file.RelativePathInArchive));
+                            file.Processed = true;
                             OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                         }
                     }
@@ -84,7 +86,6 @@ namespace Oetools.Utilities.Archive.Zip {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to pack to {zipGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }
             return totalFilesDone;
         }
@@ -108,6 +109,7 @@ namespace Oetools.Utilities.Archive.Zip {
         /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtractIn) {
             var filesToExtract = filesToExtractIn.ToList();
+            filesToExtract.ForEach(f => f.Processed = false);
             int totalFiles = filesToExtract.Count;
             int totalFilesDone = 0;
             foreach (var zipGroupedFiles in filesToExtract.GroupBy(f => f.ArchivePath)) {
@@ -132,7 +134,7 @@ namespace Oetools.Utilities.Archive.Zip {
                                     throw new ArchiverException($"Failed to extract {fileToExtract.ExtractionPath.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {fileToExtract.RelativePathInArchive}.", e);
                                 }
                                 totalFilesDone++;
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(zipGroupedFiles.Key, fileToExtract.RelativePathInArchive));
+                                fileToExtract.Processed = true;
                                 OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToExtract.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                             }
                         }
@@ -142,7 +144,6 @@ namespace Oetools.Utilities.Archive.Zip {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to extract files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }
 
             return totalFilesDone;
@@ -151,6 +152,7 @@ namespace Oetools.Utilities.Archive.Zip {
         /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDeleteIn) {            
             var filesToDelete = filesToDeleteIn.ToList();
+            filesToDelete.ForEach(f => f.Processed = false);
             int totalFiles = filesToDelete.Count;
             int totalFilesDone = 0;
             foreach (var zipGroupedFiles in filesToDelete.GroupBy(f => f.ArchivePath)) {
@@ -161,16 +163,16 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, ZipArchiveMode.Update)) {
                         foreach (var entry in zip.Entries.ToList()) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.RelativePathInArchive));
-                            if (fileToExtract != null) {
+                            var fileToDelete = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.RelativePathInArchive));
+                            if (fileToDelete != null) {
                                 try {
                                     entry.Delete();
                                 } catch (Exception e) {
-                                    throw new ArchiverException($"Failed to delete {fileToExtract.RelativePathInArchive.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                                    throw new ArchiverException($"Failed to delete {fileToDelete.RelativePathInArchive.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()}.", e);
                                 }
                                 totalFilesDone++;
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(zipGroupedFiles.Key, fileToExtract.RelativePathInArchive));
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToExtract.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
+                                fileToDelete.Processed = true;
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToDelete.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                             }
                         }
                     }
@@ -179,7 +181,6 @@ namespace Oetools.Utilities.Archive.Zip {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to delete files from {zipGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }
 
             return totalFilesDone;
@@ -188,6 +189,7 @@ namespace Oetools.Utilities.Archive.Zip {
         /// <inheritdoc cref="IArchiver.MoveFileSet"/>
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMoveIn) {
             var filesToMove = filesToMoveIn.ToList();
+            filesToMove.ForEach(f => f.Processed = false);
             int totalFiles = filesToMove.Count;
             int totalFilesDone = 0;
             
@@ -213,7 +215,7 @@ namespace Oetools.Utilities.Archive.Zip {
                                     throw new ArchiverException($"Failed to move {fileToMove.RelativePathInArchive.PrettyQuote()} to {fileToMove.NewRelativePathInArchive.PrettyQuote()} in {zipGroupedFiles.Key.PrettyQuote()}.", e);
                                 }
                                 totalFilesDone++;
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(zipGroupedFiles.Key, fileToMove.RelativePathInArchive));
+                                fileToMove.Processed = true;
                                 OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToMove.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                             }
                         }
@@ -225,7 +227,6 @@ namespace Oetools.Utilities.Archive.Zip {
                 } finally {
                     Directory.Delete(tempPath, true);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(zipGroupedFiles.Key));
             }
 
             return totalFilesDone;

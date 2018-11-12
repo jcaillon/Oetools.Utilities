@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IFileArchivedBase.cs) is part of Oetools.Utilities.
+// This file (IProlibArchiver.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,27 +18,13 @@
 // ========================================================================
 #endregion
 
-namespace Oetools.Utilities.Archive {
-    
-    /// <summary>
-    /// Basic file describer.
-    /// </summary>
-    public interface IFileArchivedBase {
+namespace Oetools.Utilities.Archive.Zip {
+    public interface IZipArchiver : IArchiver {
         
         /// <summary>
-        /// Path to the archive in which this file is archived.
+        /// Sets the compression level to use for the next <see cref="ISimpleArchiver.ArchiveFileSet"/> process.
         /// </summary>
-        string ArchivePath { get; }
-        
-        /// <summary>
-        /// Relative path of the file in the archive.
-        /// </summary>
-        string RelativePathInArchive { get; }
-        
-        /// <summary>
-        /// Boolean set after an archiver action which indicates if this file was actually processed.
-        /// </summary>
-        bool Processed { get; set; }
-        
+        /// <param name="archiveCompressionLevel"></param>
+        void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel);
     }
 }

@@ -34,11 +34,6 @@ namespace Oetools.Utilities.Archive.Filesystem {
         
         private const int BufferSize = 1024 * 1024;
 
-        /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
-        public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) {
-            // not applicable
-        }
-
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
@@ -83,6 +78,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
         private int DoForFiles(IEnumerable<IFileArchivedBase> filesIn, ActionType action) {
 
             var files = filesIn.ToList();
+            files.ForEach(f => f.Processed = false);
             
             var totalFiles = files.Count;
             var totalFilesDone = 0;
@@ -177,7 +173,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
                         }
                         
                         totalFilesDone++;
-                        OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(archiveGroupedFiles.Key, file.RelativePathInArchive));
+                        file.Processed = true;
                         OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(archiveGroupedFiles.Key, file.RelativePathInArchive, Math.Round((double) totalFilesDone / totalFiles * 100, 2)));
                     }
 
@@ -186,8 +182,6 @@ namespace Oetools.Utilities.Archive.Filesystem {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to {action.ToString().ToLower()} files{(string.IsNullOrEmpty(archiveGroupedFiles.Key) ? "" : $" in {archiveGroupedFiles.Key.PrettyQuote()}")}.", e);
                 }
-
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(archiveGroupedFiles.Key));
             }
 
             return totalFilesDone;

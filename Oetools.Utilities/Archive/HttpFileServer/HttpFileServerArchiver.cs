@@ -163,7 +163,7 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                         }
 
                         nbFilesProcessed++;
-                        OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(serverGroupedFiles.Key, fileRelativePath));
+                        file.Processed = true;
                         OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(serverGroupedFiles.Key, fileRelativePath, Math.Round(nbFilesProcessed / (double) files.Count * 100, 2)));
                     }
                 } catch (OperationCanceledException) {
@@ -171,7 +171,6 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to {action.ToString().ToLower()} at {serverGroupedFiles.Key}.", e);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(serverGroupedFiles.Key));
             }
             return nbFilesProcessed;
         }

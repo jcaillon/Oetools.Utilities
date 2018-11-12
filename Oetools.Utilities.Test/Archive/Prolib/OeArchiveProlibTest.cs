@@ -64,7 +64,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.pl"));
             listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2.pl")));
             
-            WholeTest(archiver, listFiles);
+            //WholeTest(archiver, listFiles);
         }
         
     }

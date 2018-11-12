@@ -23,6 +23,7 @@ namespace Oetools.Utilities.Archive.Prolib {
     internal class FileInProlib : IFileInArchive {
         public string ArchivePath { get; set; }
         public string RelativePathInArchive { get; set; }
+        public bool Processed { get; set; }
         public ulong SizeInBytes { get; set; }
         public bool IsRcode { get; set; }
         public DateTime LastWriteTime { get; set; }

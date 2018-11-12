@@ -73,7 +73,8 @@ namespace Oetools.Utilities.Test.Lib {
                 Prop1 = "original1",
                 Prop2 = "original2",
             };
-            Utils.DeepCopyPublicProperties(obj, obj7.GetType(), obj7);
+
+            obj.DeepCopy(obj7);
             
             Assert.AreEqual("string1", obj.Prop1);
             Assert.AreEqual("second2", obj.Prop2);
@@ -113,7 +114,7 @@ namespace Oetools.Utilities.Test.Lib {
                 Prop8 = 45,
                 Prop9 = null
             };
-            var copy = Utils.DeepCopyPublicProperties(instance, typeof(Obj5)) as Obj5;
+            var copy = instance.DeepCopy<Obj5>(null);
             Assert.IsNotNull(copy);
             copy.Prop8 = 8;
             Utils.ForEachPublicPropertyStringInObject(copy.GetType(), copy, (t, s) => {
@@ -156,7 +157,7 @@ namespace Oetools.Utilities.Test.Lib {
             Console.WriteLine("done in {0} ms", TestHelper.Time(() => {
                 var timerTest = new List<object>();
                 for (int i = 0; i < 1000; i++) {
-                    timerTest.Add(Utils.DeepCopyPublicProperties(instance, typeof(Obj5)));
+                    timerTest.Add(instance.DeepCopy<Obj5>(null));
                 }
             }).Milliseconds.ToString());
 
@@ -170,7 +171,7 @@ namespace Oetools.Utilities.Test.Lib {
                 Prop8 = 45
             };
 
-            Utils.DeepCopyPublicProperties(instance, typeof(Obj5), copy);
+            instance.DeepCopy(copy);
             Assert.AreEqual("nice1", copy.Prop2[0].Prop1);
             Assert.AreEqual(null, copy.Prop2[0].Prop2);
             Assert.AreEqual(null, copy.Prop2[1]);

@@ -24,6 +24,7 @@ namespace Oetools.Utilities.Archive.Ftp {
     internal class FileInFtp : IFileInArchive {
         public string ArchivePath { get; set; }
         public string RelativePathInArchive { get; set; }
+        public bool Processed { get; set; }
         public ulong SizeInBytes { get; set; }
         public DateTime LastWriteTime { get; set; }
     }

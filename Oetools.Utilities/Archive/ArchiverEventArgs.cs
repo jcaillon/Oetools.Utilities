@@ -22,9 +22,6 @@ namespace Oetools.Utilities.Archive {
     
     public class ArchiverEventArgs : IArchiverEventArgs {
         
-        /// <inheritdoc cref="IArchiverEventArgs.EventType"/>
-        public ArchiverEventType EventType { get; private set; }
-
         /// <inheritdoc cref="IArchiverEventArgs.ArchivePath"/>
         public string ArchivePath { get; private set; }
 
@@ -34,25 +31,9 @@ namespace Oetools.Utilities.Archive {
         /// <inheritdoc cref="IArchiverEventArgs.PercentageDone"/>
         public double PercentageDone { get; private set; }
         
-        internal static ArchiverEventArgs NewProcessedFile(string archivePath, string relativePathInArchive) {
-            return new ArchiverEventArgs {
-                ArchivePath = archivePath,
-                EventType = ArchiverEventType.FileProcessed,
-                RelativePathInArchive = relativePathInArchive
-            };
-        }
-        
-        internal static ArchiverEventArgs NewArchiveCompleted(string archivePath) {
-            return new ArchiverEventArgs {
-                ArchivePath = archivePath,
-                EventType = ArchiverEventType.ArchiveCompleted
-            };
-        }
-        
         internal static ArchiverEventArgs NewProgress(string archivePath, string currentRelativePathInArchive, double percentageDone) {
             return new ArchiverEventArgs {
                 ArchivePath = archivePath,
-                EventType = ArchiverEventType.GlobalProgression,
                 PercentageDone = percentageDone,
                 RelativePathInArchive = currentRelativePathInArchive
             };

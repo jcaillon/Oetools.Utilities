@@ -30,13 +30,7 @@ namespace Oetools.Utilities.Archive {
     /// </para>
     /// </summary>
     public interface IArchiver : ISimpleArchiver {
-
-        /// <summary>
-        /// Sets the compression level to use for the next <see cref="ISimpleArchiver.ArchiveFileSet"/> process.
-        /// </summary>
-        /// <param name="archiveCompressionLevel"></param>
-        void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel);
-        
+       
         /// <summary>
         /// List all the files in an archive. Returns an empty enumerable if the archive does not exist.
         /// </summary>

@@ -54,48 +54,12 @@ namespace Oetools.Utilities.Archive.Prolib {
             _codePage = codePage;
         }
 
-        /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
-        public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) {
-            // not applicable
-        }
-
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
         /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPack) {
-            int nbFilesProcessed = 0;
-            foreach (var plGroupedFiles in filesToPack.GroupBy(f => f.ArchivePath)) {
-                try {                
-                    using (var proLibrary = new ProLibrary(plGroupedFiles.Key, _cancelToken)) {
-                        if (_prolibVersion != ProlibVersion.Default) {
-                            proLibrary.Version = _version;
-                        }
-                        proLibrary.CodePageName = _codePage;
-                        proLibrary.OnProgress += OnProgressionEvent;
-                        try {
-                            foreach (var fileToArchive in plGroupedFiles) {
-                                if (!File.Exists(fileToArchive.SourcePath)) {
-                                    continue;
-                                }
-                                var fileRelativePath = fileToArchive.RelativePathInArchive.ToCleanRelativePathUnix();
-                                proLibrary.AddExternalFile(fileToArchive.SourcePath, fileRelativePath);
-                                nbFilesProcessed++;
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(plGroupedFiles.Key, fileRelativePath));
-                            }
-                            proLibrary.Save();
-                        } finally {
-                            proLibrary.OnProgress -= OnProgressionEvent;
-                        }
-                    }
-                } catch (OperationCanceledException) {
-                    throw;
-                } catch (Exception e) {
-                    throw new ArchiverException($"Failed to pack to {plGroupedFiles.Key}.", e);
-                }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(plGroupedFiles.Key));
-            }
-            return nbFilesProcessed;
+            return DoAction(filesToPack, Action.Archive);
         }
 
         /// <inheritdoc cref="IArchiver.ListFiles"/>
@@ -118,87 +82,43 @@ namespace Oetools.Utilities.Archive.Prolib {
 
         /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract) {
-            int nbFilesProcessed = 0;
-            foreach (var plGroupedFiles in filesToExtract.GroupBy(f => f.ArchivePath)) {
-                if (!File.Exists(plGroupedFiles.Key)) {
-                    continue;
-                }
-                try {      
-                    // create all necessary extraction folders
-                    foreach (var extractDirGroupedFiles in plGroupedFiles.GroupBy(f => Path.GetDirectoryName(f.ExtractionPath))) {
-                        if (!Directory.Exists(extractDirGroupedFiles.Key) && !string.IsNullOrWhiteSpace(extractDirGroupedFiles.Key)) {
-                            Directory.CreateDirectory(extractDirGroupedFiles.Key);
-                        }
-                    }
-                    using (var proLibrary = new ProLibrary(plGroupedFiles.Key, _cancelToken)) {
-                        proLibrary.OnProgress += OnProgressionEvent;
-                        try {
-                            foreach (var fileInArchiveToExtract in plGroupedFiles) {
-                                var fileRelativePath = fileInArchiveToExtract.RelativePathInArchive.ToCleanRelativePathUnix();
-                                if (proLibrary.ExtractToFile(fileRelativePath, fileInArchiveToExtract.ExtractionPath)) {
-                                    nbFilesProcessed++;
-                                    OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(plGroupedFiles.Key, fileRelativePath));
-                                }
-                            }
-                        } finally {
-                            proLibrary.OnProgress -= OnProgressionEvent;
-                        }
-                    }
-                } catch (OperationCanceledException) {
-                    throw;
-                } catch (Exception e) {
-                    throw new ArchiverException($"Failed to extract files from {plGroupedFiles.Key}.", e);
-                }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(plGroupedFiles.Key));
-            }
-            return nbFilesProcessed;
+            return DoAction(filesToExtract, Action.Extract);
         }
 
         /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete) {
-            int nbFilesProcessed = 0;
-            foreach (var plGroupedFiles in filesToDelete.GroupBy(f => f.ArchivePath)) {
-                if (!File.Exists(plGroupedFiles.Key)) {
-                    continue;
-                }
-                try {                
-                    using (var proLibrary = new ProLibrary(plGroupedFiles.Key, _cancelToken)) {
-                        if (_prolibVersion != ProlibVersion.Default) {
-                            proLibrary.Version = _version;
-                        }
-                        proLibrary.CodePageName = _codePage;
-                        proLibrary.OnProgress += OnProgressionEvent;
-                        try {
-                            foreach (var fileToAddInCab in plGroupedFiles) {
-                                var fileRelativePath = fileToAddInCab.RelativePathInArchive.ToCleanRelativePathUnix();
-                                if (proLibrary.DeleteFile(fileRelativePath)) {
-                                    nbFilesProcessed++;
-                                    OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(plGroupedFiles.Key, fileRelativePath));
-                                }
-                            }
-                            proLibrary.Save();
-                        } finally {
-                            proLibrary.OnProgress -= OnProgressionEvent;
-                        }
-                    }
-                } catch (OperationCanceledException) {
-                    throw;
-                } catch (Exception e) {
-                    throw new ArchiverException($"Failed to delete files from {plGroupedFiles.Key}.", e);
-                }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(plGroupedFiles.Key));
-            }
-            return nbFilesProcessed;
+            return DoAction(filesToDelete, Action.Delete);
         }
 
         /// <inheritdoc cref="IArchiver.MoveFileSet"/>
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove) {
+            return DoAction(filesToMove, Action.Move);
+        }
+        
+        private void OnProgressionEvent(object sender, ProLibrarySaveEventArgs e) {
+            if (sender is ProLibrary library) {
+                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(library.FilePath, e.RelativePathInPl, Math.Round(e.TotalBytesDone / (double) e.TotalBytesToProcess * 100, 2)));
+            }
+        }
+        
+        private int DoAction(IEnumerable<IFileArchivedBase> filesIn, Action action) {
+            var files = filesIn.ToList();
+            files.ForEach(f => f.Processed = false);
+            
             int nbFilesProcessed = 0;
-            foreach (var plGroupedFiles in filesToMove.GroupBy(f => f.ArchivePath)) {
-                if (!File.Exists(plGroupedFiles.Key)) {
+            foreach (var plGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
+                if (action != Action.Archive && !File.Exists(plGroupedFiles.Key)) {
                     continue;
                 }
-                try {                
+                try {
+                    if (action == Action.Extract) {
+                        // create all necessary extraction folders
+                        foreach (var extractDirGroupedFiles in plGroupedFiles.GroupBy(f => Path.GetDirectoryName(((IFileInArchiveToExtract) f).ExtractionPath))) {
+                            if (!Directory.Exists(extractDirGroupedFiles.Key) && !string.IsNullOrWhiteSpace(extractDirGroupedFiles.Key)) {
+                                Directory.CreateDirectory(extractDirGroupedFiles.Key);
+                            }
+                        }
+                    }
                     using (var proLibrary = new ProLibrary(plGroupedFiles.Key, _cancelToken)) {
                         if (_prolibVersion != ProlibVersion.Default) {
                             proLibrary.Version = _version;
@@ -206,14 +126,42 @@ namespace Oetools.Utilities.Archive.Prolib {
                         proLibrary.CodePageName = _codePage;
                         proLibrary.OnProgress += OnProgressionEvent;
                         try {
-                            foreach (var fileToAddInCab in plGroupedFiles) {
-                                var fileRelativePath = fileToAddInCab.RelativePathInArchive.ToCleanRelativePathUnix();
-                                if (proLibrary.MoveFile(fileRelativePath, fileToAddInCab.NewRelativePathInArchive.ToCleanRelativePathUnix())) {
-                                    nbFilesProcessed++;
-                                    OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(plGroupedFiles.Key, fileRelativePath));
+                            foreach (var file in plGroupedFiles) {
+                                var fileRelativePath = file.RelativePathInArchive.ToCleanRelativePathUnix();
+                                switch (action) {
+                                    case Action.Archive:
+                                        var fileToArchive = (IFileToArchive) file;
+                                        if (File.Exists(fileToArchive.SourcePath)) {
+                                            proLibrary.AddExternalFile(fileToArchive.SourcePath, fileRelativePath);
+                                            nbFilesProcessed++;
+                                            file.Processed = true;
+                                        }
+                                        break;
+                                    case Action.Extract:
+                                        if (proLibrary.ExtractToFile(fileRelativePath, ((IFileInArchiveToExtract) file).ExtractionPath)) {
+                                            nbFilesProcessed++;
+                                            file.Processed = true;
+                                        }
+                                        break;
+                                    case Action.Delete:
+                                        if (proLibrary.DeleteFile(fileRelativePath)) {
+                                            nbFilesProcessed++;
+                                            file.Processed = true;
+                                        }
+                                        break;
+                                    case Action.Move:
+                                        if (proLibrary.MoveFile(fileRelativePath, ((IFileInArchiveToMove) file).NewRelativePathInArchive.ToCleanRelativePathUnix())) {
+                                            nbFilesProcessed++;
+                                            file.Processed = true;
+                                        }
+                                        break;
+                                    default:
+                                        throw new ArgumentOutOfRangeException(nameof(action), action, null);
                                 }
                             }
-                            proLibrary.Save();
+                            if (action != Action.Extract) {
+                                proLibrary.Save();
+                            }
                         } finally {
                             proLibrary.OnProgress -= OnProgressionEvent;
                         }
@@ -223,15 +171,15 @@ namespace Oetools.Utilities.Archive.Prolib {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to move files from {plGroupedFiles.Key}.", e);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(plGroupedFiles.Key));
             }
             return nbFilesProcessed;
         }
         
-        private void OnProgressionEvent(object sender, ProLibrarySaveEventArgs e) {
-            if (sender is ProLibrary library) {
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(library.FilePath, e.RelativePathInPl, Math.Round(e.TotalBytesDone / (double) e.TotalBytesToProcess * 100, 2)));
-            }
+        private enum Action {
+            Archive,
+            Extract,
+            Delete,
+            Move
         }
 
     }

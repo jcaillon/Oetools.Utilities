@@ -34,6 +34,7 @@ namespace Oetools.Utilities.Archive.Ftp {
         /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPackIn) {
             var filesToPack = filesToPackIn.ToList();
+            filesToPack.ForEach(f => f.Processed = false);
             int totalFiles = filesToPack.Count;
             int totalFilesDone = 0;
             foreach (var ftpGroupedFiles in filesToPack.GroupBy(f => f.ArchivePath)) {
@@ -48,6 +49,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                     ConnectOrReconnectFtp(ftp, userName, passWord, host, port);
 
                     foreach (var file in ftpGroupedFiles) {
+                        file.Processed = false;
                         if (!File.Exists(file.SourcePath)) {
                             continue;
                         }
@@ -66,7 +68,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                                 ftp.PutFile(file.SourcePath, file.RelativePathInArchive, TransferCallback);
                             }
                             totalFilesDone++;
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(ftpGroupedFiles.Key, file.RelativePathInArchive));
+                            file.Processed = true;
                         } catch (Exception e) {
                             throw new ArchiverException($"Failed to send {file.SourcePath.PrettyQuote()} to {file.ArchivePath.PrettyQuote()} and distant path {file.RelativePathInArchive.PrettyQuote()}.", e);
                         }
@@ -78,17 +80,10 @@ namespace Oetools.Utilities.Archive.Ftp {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to send files to {ftpGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(ftpGroupedFiles.Key));
             }
 
             return totalFilesDone;
         }
-
-        /// <summary>
-        /// Not used for ftp archiver.
-        /// </summary>
-        /// <param name="archiveCompressionLevel"></param>
-        public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) { }
 
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
@@ -131,6 +126,7 @@ namespace Oetools.Utilities.Archive.Ftp {
         /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtractIn) {
             var filesToExtract = filesToExtractIn.ToList();
+            filesToExtract.ForEach(f => f.Processed = false);
             int totalFiles = filesToExtract.Count;
             int totalFilesDone = 0;
             foreach (var ftpGroupedFiles in filesToExtract.GroupBy(f => f.ArchivePath)) {
@@ -168,7 +164,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                                 throw;
                             }
                             totalFilesDone++;
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(ftpGroupedFiles.Key, file.RelativePathInArchive));
+                            file.Processed = true;
                         } catch (Exception e) {
                             throw new ArchiverException($"Failed to get {file.ExtractionPath.PrettyQuote()} from {file.ArchivePath.PrettyQuote()} and distant path {file.RelativePathInArchive.PrettyQuote()}.", e);
                         }
@@ -180,7 +176,6 @@ namespace Oetools.Utilities.Archive.Ftp {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to get files from {ftpGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(ftpGroupedFiles.Key));
             }
 
             return totalFilesDone;
@@ -189,6 +184,7 @@ namespace Oetools.Utilities.Archive.Ftp {
         /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDeleteIn) {         
             var filesToDelete = filesToDeleteIn.ToList();
+            filesToDelete.ForEach(f => f.Processed = false);
             int totalFiles = filesToDelete.Count;
             int totalFilesDone = 0;
             foreach (var ftpGroupedFiles in filesToDelete.GroupBy(f => f.ArchivePath)) {
@@ -215,7 +211,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                                 throw;
                             }
                             totalFilesDone++;
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(ftpGroupedFiles.Key, file.RelativePathInArchive));
+                            file.Processed = true;
                             OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                         } catch (Exception e) {
                             throw new ArchiverException($"Failed to delete {file.RelativePathInArchive.PrettyQuote()} from {file.ArchivePath.PrettyQuote()}.", e);
@@ -228,7 +224,6 @@ namespace Oetools.Utilities.Archive.Ftp {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to delete files from {ftpGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(ftpGroupedFiles.Key));
             }
 
             return totalFilesDone;
@@ -237,6 +232,7 @@ namespace Oetools.Utilities.Archive.Ftp {
         /// <inheritdoc cref="IArchiver.MoveFileSet"/>
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMoveIn) {
             var filesToMove = filesToMoveIn.ToList();
+            filesToMove.ForEach(f => f.Processed = false);
             int totalFiles = filesToMove.Count;
             int totalFilesDone = 0;
             foreach (var ftpGroupedFiles in filesToMove.GroupBy(f => f.ArchivePath)) {
@@ -269,7 +265,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                                 }
                             }
                             totalFilesDone++;
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(ftpGroupedFiles.Key, file.RelativePathInArchive));
+                            file.Processed = true;
                             OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                         } catch (Exception e) {
                             throw new ArchiverException($"Failed to move {file.RelativePathInArchive.PrettyQuote()} to {file.NewRelativePathInArchive.PrettyQuote()} in {file.ArchivePath.PrettyQuote()}.", e);
@@ -282,7 +278,6 @@ namespace Oetools.Utilities.Archive.Ftp {
                 } catch (Exception e) {
                     throw new ArchiverException($"Failed to move files from {ftpGroupedFiles.Key.PrettyQuote()}.", e);
                 }
-                OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(ftpGroupedFiles.Key));
             }
             return totalFilesDone;
         }

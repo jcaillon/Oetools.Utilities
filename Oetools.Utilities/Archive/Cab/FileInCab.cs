@@ -25,6 +25,7 @@ namespace Oetools.Utilities.Archive.Cab {
         
         public string ArchivePath { get; }
         public string RelativePathInArchive { get; }
+        public bool Processed { get; set; }
         public ulong SizeInBytes { get; }
         public DateTime LastWriteTime { get; }
 

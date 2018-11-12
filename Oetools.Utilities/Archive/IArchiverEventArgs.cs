@@ -26,11 +26,6 @@ namespace Oetools.Utilities.Archive {
     public interface IArchiverEventArgs {
         
         /// <summary>
-        /// The type of event.
-        /// </summary>
-        ArchiverEventType EventType { get; }
-
-        /// <summary>
         /// The path of the archive file concerned by this event.
         /// </summary>
         string ArchivePath { get; }

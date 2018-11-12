@@ -28,7 +28,7 @@ namespace Oetools.Utilities.Archive.Cab {
     /// <summary>
     /// Allows CRUD operations on windows cabinet files.
     /// </summary>
-    internal class CabArchiver : ArchiverBase, IArchiver {
+    internal class CabArchiver : ArchiverBase, ICabArchiver {
 
         private CabCompressionLevel _compressionLevel = CabCompressionLevel.None;
 
@@ -38,7 +38,7 @@ namespace Oetools.Utilities.Archive.Cab {
             _cabManager = CabManager.New();
         }
 
-        /// <inheritdoc cref="IArchiver.SetCompressionLevel"/>
+        /// <inheritdoc cref="ICabArchiver.SetCompressionLevel"/>
         public void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel) {
             // TODO : switch compression level when it is implemented in CabinetManager
             // does nothing for now because the compression is not implemented yet
@@ -138,16 +138,8 @@ namespace Oetools.Utilities.Archive.Cab {
         }
 
         private void CabManagerOnProgress(object sender, ICabProgressionEventArgs e) {
-            switch (e.EventType) {
-                case CabEventType.GlobalProgression:
-                    OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(e.CabPath, e.RelativePathInCab, e.PercentageDone));
-                    break;
-                case CabEventType.FileProcessed:
-                    OnProgress?.Invoke(this, ArchiverEventArgs.NewProcessedFile(e.CabPath, e.RelativePathInCab));
-                    break;
-                case CabEventType.CabinetCompleted:
-                    OnProgress?.Invoke(this, ArchiverEventArgs.NewArchiveCompleted(e.CabPath));
-                    break;
+            if (e.EventType == CabEventType.GlobalProgression) {
+                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(e.CabPath, e.RelativePathInCab, e.PercentageDone));
             }
         }
         

@@ -37,13 +37,13 @@ namespace Oetools.Utilities.Archive {
         /// et a new instance of an archiver.
         /// </summary>
         /// <returns></returns>
-        public static IArchiver NewCabArchiver() => new CabArchiver();
+        public static ICabArchiver NewCabArchiver() => new CabArchiver();
         
         /// <summary>
         /// et a new instance of an archiver.
         /// </summary>
         /// <returns></returns>
-        public static IArchiver NewZipArchiver() => new ZipArchiver();
+        public static IZipArchiver NewZipArchiver() => new ZipArchiver();
         
         /// <summary>
         /// et a new instance of an archiver.

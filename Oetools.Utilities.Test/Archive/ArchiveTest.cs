@@ -30,8 +30,6 @@ namespace Oetools.Utilities.Test.Archive {
     
     public class ArchiveTest {
 
-        private int _nbFileProcessed;
-        private int _nbArchiveFinished;
         private bool _hasReceivedGlobalProgression;
         private CancellationTokenSource _cancelSource;
 
@@ -56,9 +54,6 @@ namespace Oetools.Utilities.Test.Archive {
         
         protected void CreateArchive(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
             
-            _nbFileProcessed = 0;
-            _nbArchiveFinished = 0;
-
             var modifiedList = listFiles.GetRange(1, listFiles.Count - 1);
             
             // Test the cancellation.
@@ -66,14 +61,10 @@ namespace Oetools.Utilities.Test.Archive {
             archiver.SetCancellationToken(_cancelSource.Token);
             var list = modifiedList;
             Assert.ThrowsException<OperationCanceledException>(() => archiver.ArchiveFileSet(list));
-            Assert.IsTrue(_nbArchiveFinished == 0, "Nothing was done.");
             _cancelSource = null;
             archiver.SetCancellationToken(null);
             
             CleanupArchives(listFiles);
-            
-            _nbFileProcessed = 0;
-            _nbArchiveFinished = 0;
             
             // try to add a non existing file
             modifiedList.Add(new FileInArchive {
@@ -83,6 +74,7 @@ namespace Oetools.Utilities.Test.Archive {
             });
             
             Assert.AreEqual(modifiedList.Count - 1, archiver.ArchiveFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count - 1, modifiedList.Count(f => f.Processed), "Wrong number of processed files.");
             
             // test the update of archives
             modifiedList = listFiles.GetRange(0, 1);
@@ -96,18 +88,12 @@ namespace Oetools.Utilities.Test.Archive {
             
             // check progress
             Assert.IsTrue(_hasReceivedGlobalProgression, "Should have received a progress event.");
-            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event.");
-            Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count() + 1, _nbArchiveFinished, "Problem in the progress event, number of archives incorrect.");
-            
-            _nbFileProcessed = 0;
-            _nbArchiveFinished = 0;
+            Assert.AreEqual(listFiles.Count, listFiles.Count(f => f.Processed), "Wrong number of processed files.");
             
         }
         
         protected void MoveInArchives(IArchiver archiver, List<FileInArchive> listFiles) {
-            _nbFileProcessed = 0;
-            _nbArchiveFinished = 0;
-            
+
             var modifiedList = listFiles.ToList();
             modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
@@ -122,7 +108,6 @@ namespace Oetools.Utilities.Test.Archive {
             archiver.SetCancellationToken(_cancelSource.Token);
             var list = modifiedList;
             Assert.ThrowsException<OperationCanceledException>(() => archiver.MoveFileSet(list));
-            Assert.IsTrue(_nbArchiveFinished == 0, "Nothing was done.");
             _cancelSource = null;
             archiver.SetCancellationToken(null);
             
@@ -130,11 +115,11 @@ namespace Oetools.Utilities.Test.Archive {
 
             // try to move a non existing file
             Assert.AreEqual(modifiedList.Count - 1, archiver.MoveFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count - 1, modifiedList.Count(f => f.Processed), "Wrong number of processed files.");
             
             // check progress
             Assert.IsTrue(_hasReceivedGlobalProgression, "Should have received a progress event.");
-            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
-            Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
+            Assert.AreEqual(listFiles.Count, listFiles.Count(f => f.Processed), "Wrong number of processed files.");
             
             // move them back
             modifiedList.ForEach(f => {
@@ -143,6 +128,7 @@ namespace Oetools.Utilities.Test.Archive {
             });
             
             Assert.AreEqual(modifiedList.Count - 1, archiver.MoveFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count - 1, modifiedList.Count(f => f.Processed), "Wrong number of processed files.");
             
             modifiedList.ForEach(f => {
                 f.RelativePathInArchive = f.NewRelativePathInArchive;
@@ -160,8 +146,6 @@ namespace Oetools.Utilities.Test.Archive {
         }
 
         protected void Extract(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
-            _nbFileProcessed = 0;
-            _nbArchiveFinished = 0;
 
             var modifiedList = listFiles.ToList();
             modifiedList.Add(new FileInArchive {
@@ -175,7 +159,6 @@ namespace Oetools.Utilities.Test.Archive {
             archiver.SetCancellationToken(_cancelSource.Token);
             var list = modifiedList;
             Assert.ThrowsException<OperationCanceledException>(() => archiver.ExtractFileSet(list));
-            Assert.IsTrue(_nbArchiveFinished == 0, "Nothing was done.");
             _cancelSource = null;
             archiver.SetCancellationToken(null);
             
@@ -184,6 +167,7 @@ namespace Oetools.Utilities.Test.Archive {
             
             // try to extract a non existing file
             Assert.AreEqual(modifiedList.Count - 1, archiver.ExtractFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count - 1, modifiedList.Count(f => f.Processed), "Wrong number of processed files.");
             
             foreach (var fileToExtract in listFiles) {
                 Assert.IsTrue(File.Exists(fileToExtract.ExtractionPath), $"Extracted file does not exist : {fileToExtract.ExtractionPath}");
@@ -192,14 +176,11 @@ namespace Oetools.Utilities.Test.Archive {
             
             // check progress
             Assert.IsTrue(_hasReceivedGlobalProgression, "Should have received a progress event.");
-            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
-            Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
+            Assert.AreEqual(listFiles.Count, listFiles.Count(f => f.Processed), "Wrong number of processed files.");
         }
         
         protected void DeleteFilesInArchive(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
-            _nbFileProcessed = 0;
-            _nbArchiveFinished = 0;
-            
+
             var modifiedList = listFiles.ToList();
             modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
@@ -212,7 +193,6 @@ namespace Oetools.Utilities.Test.Archive {
             archiver.SetCancellationToken(_cancelSource.Token);
             var list = modifiedList;
             Assert.ThrowsException<OperationCanceledException>(() => archiver.DeleteFileSet(list));
-            Assert.IsTrue(_nbArchiveFinished == 0, "Nothing was done.");
             _cancelSource = null;
             archiver.SetCancellationToken(null);
             
@@ -220,11 +200,11 @@ namespace Oetools.Utilities.Test.Archive {
 
             // try to delete a non existing file
             Assert.AreEqual(modifiedList.Count - 1, archiver.DeleteFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count - 1, modifiedList.Count(f => f.Processed), "Wrong number of processed files.");
             
             // check progress
             Assert.IsTrue(_hasReceivedGlobalProgression, "Should have received a progress event.");
-            Assert.AreEqual(listFiles.Count, _nbFileProcessed, "Problem in the progress event");
-            Assert.AreEqual(listFiles.GroupBy(f => f.ArchivePath).Count(), _nbArchiveFinished, "Problem in the progress event, number of archives");
+            Assert.AreEqual(listFiles.Count, listFiles.Count(f => f.Processed), "Wrong number of processed files.");
         }
 
         protected void CheckForEmptyArchives(IArchiver archiver, List<FileInArchive> listFiles) {
@@ -235,23 +215,11 @@ namespace Oetools.Utilities.Test.Archive {
         }
 
         private void ArchiverOnOnProgress(object sender, ArchiverEventArgs e) {
-            switch (e.EventType) {
-                case ArchiverEventType.GlobalProgression:
-                    if (e.PercentageDone < 0 || e.PercentageDone > 100) {
-                        throw new Exception($"Wrong value for percentage done : {e.PercentageDone}%.");
-                    }
-                    _hasReceivedGlobalProgression = true;
-                    _cancelSource?.Cancel();
-                    break;
-                case ArchiverEventType.FileProcessed:
-                    _nbFileProcessed++;
-                    break;
-                case ArchiverEventType.ArchiveCompleted:
-                    _nbArchiveFinished++;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+            if (e.PercentageDone < 0 || e.PercentageDone > 100) {
+                throw new Exception($"Wrong value for percentage done : {e.PercentageDone}%.");
             }
+            _hasReceivedGlobalProgression = true;
+            _cancelSource?.Cancel();
         }
         
         protected List<FileInArchive> GetPackageTestFilesList(string testFolder, string archivePath) {

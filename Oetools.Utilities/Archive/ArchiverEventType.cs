@@ -33,18 +33,6 @@ namespace Oetools.Utilities.Archive {
         /// The <see cref="IArchiverEventArgs.RelativePathInArchive"/> will indicate which file is currently processed.
         /// </remarks>
         GlobalProgression,
-        
-        /// <summary>
-        /// Published when a file has been processed, this can be used to determine which files are actually processed.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// This event does NOT mean the file is already stored in the archive.
-        /// This is only to inform that the file has been processed and will be saved in the archive.
-        /// Use the <see cref="GlobalProgression"/> to follow the actual writing.
-        /// </para>
-        /// </remarks>
-        FileProcessed,
 
         /// <summary>
         /// Published when an archive has been completed and is saved.
