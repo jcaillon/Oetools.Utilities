@@ -72,13 +72,13 @@ namespace Oetools.Utilities.Archive.Zip {
                                 continue;
                             }
                             try {
-                                zip.CreateEntryFromFile(file.SourcePath, file.RelativePathInArchive, _compressionLevel);
+                                zip.CreateEntryFromFile(file.SourcePath, file.PathInArchive, _compressionLevel);
                             } catch (Exception e) {
-                                throw new ArchiverException($"Failed to pack {file.SourcePath.PrettyQuote()} into {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {file.RelativePathInArchive}.", e);
+                                throw new ArchiverException($"Failed to pack {file.SourcePath.PrettyQuote()} into {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {file.PathInArchive}.", e);
                             }
                             totalFilesDone++;
                             file.Processed = true;
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
+                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, file.PathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                         }
                     }
                 } catch (OperationCanceledException) {
@@ -98,7 +98,7 @@ namespace Oetools.Utilities.Archive.Zip {
             using (var archive = ZipFile.OpenRead(archivePath)) {
                 return archive.Entries
                     .Select(entry => new FileInZip {
-                        RelativePathInArchive = entry.FullName,
+                        PathInArchive = entry.FullName,
                         SizeInBytes = (ulong) entry.Length,
                         LastWriteTime = entry.LastWriteTime.DateTime,
                         ArchivePath = archivePath
@@ -126,16 +126,16 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.OpenRead(zipGroupedFiles.Key)) {
                         foreach (var entry in zip.Entries) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.RelativePathInArchive));
+                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.PathInArchive));
                             if (fileToExtract != null) {
                                 try {
                                     entry.ExtractToFile(fileToExtract.ExtractionPath, true);
                                 } catch (Exception e) {
-                                    throw new ArchiverException($"Failed to extract {fileToExtract.ExtractionPath.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {fileToExtract.RelativePathInArchive}.", e);
+                                    throw new ArchiverException($"Failed to extract {fileToExtract.ExtractionPath.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {fileToExtract.PathInArchive}.", e);
                                 }
                                 totalFilesDone++;
                                 fileToExtract.Processed = true;
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToExtract.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToExtract.PathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                             }
                         }
                     }
@@ -163,16 +163,16 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, ZipArchiveMode.Update)) {
                         foreach (var entry in zip.Entries.ToList()) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToDelete = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.RelativePathInArchive));
+                            var fileToDelete = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.PathInArchive));
                             if (fileToDelete != null) {
                                 try {
                                     entry.Delete();
                                 } catch (Exception e) {
-                                    throw new ArchiverException($"Failed to delete {fileToDelete.RelativePathInArchive.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                                    throw new ArchiverException($"Failed to delete {fileToDelete.PathInArchive.PrettyQuote()} from {zipGroupedFiles.Key.PrettyQuote()}.", e);
                                 }
                                 totalFilesDone++;
                                 fileToDelete.Processed = true;
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToDelete.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToDelete.PathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                             }
                         }
                     }
@@ -203,7 +203,7 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, ZipArchiveMode.Update)) {
                         foreach (var entry in zip.Entries.ToList()) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToMove = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.RelativePathInArchive));
+                            var fileToMove = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.PathInArchive));
                             if (fileToMove != null) {
                                 try {
                                     var exportPath = Path.Combine(tempPath, "temp");
@@ -212,11 +212,11 @@ namespace Oetools.Utilities.Archive.Zip {
                                     zip.CreateEntryFromFile(exportPath, fileToMove.NewRelativePathInArchive, _compressionLevel);
                                     File.Delete(exportPath);
                                 } catch (Exception e) {
-                                    throw new ArchiverException($"Failed to move {fileToMove.RelativePathInArchive.PrettyQuote()} to {fileToMove.NewRelativePathInArchive.PrettyQuote()} in {zipGroupedFiles.Key.PrettyQuote()}.", e);
+                                    throw new ArchiverException($"Failed to move {fileToMove.PathInArchive.PrettyQuote()} to {fileToMove.NewRelativePathInArchive.PrettyQuote()} in {zipGroupedFiles.Key.PrettyQuote()}.", e);
                                 }
                                 totalFilesDone++;
                                 fileToMove.Processed = true;
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToMove.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(zipGroupedFiles.Key, fileToMove.PathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                             }
                         }
                     }

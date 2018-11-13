@@ -263,7 +263,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             
             // try if connected well and can manage aliases
             env.DatabaseConnectionString = $"{UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn))} {UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn2))}";
-            env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
+            env.DatabaseAliases = new List<AUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "test1",
                     AliasLogicalName = "alias1"
@@ -432,7 +432,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             
             public string Output => _process.BatchOutput.ToString();
             
-            public UoeExecutionCustomTest(IUoeExecutionEnv env) : base(env) { }
+            public UoeExecutionCustomTest(AUoeExecutionEnv env) : base(env) { }
 
             protected override void AppendProgramToRun(StringBuilder runnerProgram) {
                 runnerProgram.AppendLine("PROCEDURE program_to_run PRIVATE:");

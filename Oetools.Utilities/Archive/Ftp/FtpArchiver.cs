@@ -57,20 +57,20 @@ namespace Oetools.Utilities.Archive.Ftp {
                         try {
                             var filesDone = totalFilesDone;
                             void TransferCallback(FtpsClient sender, ETransferActions action, string local, string remote, ulong done, ulong? total, ref bool cancel) {
-                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round((filesDone + (double) done / (total ?? 0)) / totalFiles * 100, 2)));
+                                OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.PathInArchive, Math.Round((filesDone + (double) done / (total ?? 0)) / totalFiles * 100, 2)));
                             }
                             try {
-                                ftp.PutFile(file.SourcePath, file.RelativePathInArchive, TransferCallback);
+                                ftp.PutFile(file.SourcePath, file.PathInArchive, TransferCallback);
                             } catch (Exception) {
                                 // try to create the directory and then push the file again
-                                ftp.MakeDir(Path.GetDirectoryName(file.RelativePathInArchive) ?? "", true);
+                                ftp.MakeDir(Path.GetDirectoryName(file.PathInArchive) ?? "", true);
                                 ftp.SetCurrentDirectory("/");
-                                ftp.PutFile(file.SourcePath, file.RelativePathInArchive, TransferCallback);
+                                ftp.PutFile(file.SourcePath, file.PathInArchive, TransferCallback);
                             }
                             totalFilesDone++;
                             file.Processed = true;
                         } catch (Exception e) {
-                            throw new ArchiverException($"Failed to send {file.SourcePath.PrettyQuote()} to {file.ArchivePath.PrettyQuote()} and distant path {file.RelativePathInArchive.PrettyQuote()}.", e);
+                            throw new ArchiverException($"Failed to send {file.SourcePath.PrettyQuote()} to {file.ArchivePath.PrettyQuote()} and distant path {file.PathInArchive.PrettyQuote()}.", e);
                         }
                     }
                     
@@ -111,7 +111,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                         folderStack.Push(Path.Combine(folder, file.Name).Replace("\\", "/"));
                     } else {
                         yield return new FileInFtp {
-                            RelativePathInArchive = Path.Combine(folder, file.Name).Replace("\\", "/").TrimStart('/'),
+                            PathInArchive = Path.Combine(folder, file.Name).Replace("\\", "/").TrimStart('/'),
                             LastWriteTime = file.CreationTime,
                             SizeInBytes = file.Size,
                             ArchivePath = uri
@@ -153,9 +153,9 @@ namespace Oetools.Utilities.Archive.Ftp {
                             try {
                                 var filesDone = totalFilesDone;
                                 void TransferCallback(FtpsClient sender, ETransferActions action, string local, string remote, ulong done, ulong? total, ref bool cancel) {
-                                    OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round((filesDone + (double) done / (total ?? 0)) / totalFiles * 100, 2)));
+                                    OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.PathInArchive, Math.Round((filesDone + (double) done / (total ?? 0)) / totalFiles * 100, 2)));
                                 }
-                                ftp.GetFile(file.RelativePathInArchive, file.ExtractionPath, TransferCallback);
+                                ftp.GetFile(file.PathInArchive, file.ExtractionPath, TransferCallback);
                             } catch (FtpCommandException e) {
                                 if (e.ErrorCode == 550) {
                                     // path does not exist
@@ -166,7 +166,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                             totalFilesDone++;
                             file.Processed = true;
                         } catch (Exception e) {
-                            throw new ArchiverException($"Failed to get {file.ExtractionPath.PrettyQuote()} from {file.ArchivePath.PrettyQuote()} and distant path {file.RelativePathInArchive.PrettyQuote()}.", e);
+                            throw new ArchiverException($"Failed to get {file.ExtractionPath.PrettyQuote()} from {file.ArchivePath.PrettyQuote()} and distant path {file.PathInArchive.PrettyQuote()}.", e);
                         }
                     }
                     
@@ -202,7 +202,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                         _cancelToken?.ThrowIfCancellationRequested();
                         try {
                             try {
-                                ftp.DeleteFile(file.RelativePathInArchive);
+                                ftp.DeleteFile(file.PathInArchive);
                             } catch (FtpCommandException e) {
                                 if (e.ErrorCode == 550) {
                                     // path does not exist
@@ -212,9 +212,9 @@ namespace Oetools.Utilities.Archive.Ftp {
                             }
                             totalFilesDone++;
                             file.Processed = true;
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
+                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.PathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                         } catch (Exception e) {
-                            throw new ArchiverException($"Failed to delete {file.RelativePathInArchive.PrettyQuote()} from {file.ArchivePath.PrettyQuote()}.", e);
+                            throw new ArchiverException($"Failed to delete {file.PathInArchive.PrettyQuote()} from {file.ArchivePath.PrettyQuote()}.", e);
                         }
                     }
                     
@@ -250,7 +250,7 @@ namespace Oetools.Utilities.Archive.Ftp {
                         _cancelToken?.ThrowIfCancellationRequested();
                         try {
                             try {
-                                ftp.RenameFile(file.RelativePathInArchive, file.NewRelativePathInArchive);
+                                ftp.RenameFile(file.PathInArchive, file.NewRelativePathInArchive);
                             } catch (FtpCommandException e) {
                                 if (e.ErrorCode == 550) {
                                     // path does not exist
@@ -259,16 +259,16 @@ namespace Oetools.Utilities.Archive.Ftp {
                                 if (e.ErrorCode == 553) {
                                     // target already exists
                                     ftp.DeleteFile(file.NewRelativePathInArchive);
-                                    ftp.RenameFile(file.RelativePathInArchive, file.NewRelativePathInArchive);
+                                    ftp.RenameFile(file.PathInArchive, file.NewRelativePathInArchive);
                                 } else {
                                     throw;
                                 }
                             }
                             totalFilesDone++;
                             file.Processed = true;
-                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.RelativePathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
+                            OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(ftpGroupedFiles.Key, file.PathInArchive, Math.Round(totalFilesDone / (double) totalFiles * 100, 2)));
                         } catch (Exception e) {
-                            throw new ArchiverException($"Failed to move {file.RelativePathInArchive.PrettyQuote()} to {file.NewRelativePathInArchive.PrettyQuote()} in {file.ArchivePath.PrettyQuote()}.", e);
+                            throw new ArchiverException($"Failed to move {file.PathInArchive.PrettyQuote()} to {file.NewRelativePathInArchive.PrettyQuote()} in {file.ArchivePath.PrettyQuote()}.", e);
                         }
                     }
                     

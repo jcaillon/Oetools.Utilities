@@ -36,7 +36,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         private readonly string _filePathToRun;
 
-        public UoeExecutionRun(IUoeExecutionEnv env, string filePathToRun) : base(env) {
+        public UoeExecutionRun(AUoeExecutionEnv env, string filePathToRun) : base(env) {
             _filePathToRun = filePathToRun;
         }
 

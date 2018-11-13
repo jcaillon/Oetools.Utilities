@@ -70,7 +70,7 @@ namespace Oetools.Utilities.Test.Archive {
             modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
                 ExtractionPath = listFiles.First().ExtractionPath,
-                RelativePathInArchive = "random.name"
+                PathInArchive = "random.name"
             });
             
             Assert.AreEqual(modifiedList.Count - 1, archiver.ArchiveFileSet(modifiedList));
@@ -98,10 +98,10 @@ namespace Oetools.Utilities.Test.Archive {
             modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
                 ExtractionPath = listFiles.First().ExtractionPath,
-                RelativePathInArchive = "random.name"
+                PathInArchive = "random.name"
             });
             
-            modifiedList.ForEach(f => f.NewRelativePathInArchive = $"{f.RelativePathInArchive}_move");
+            modifiedList.ForEach(f => f.NewRelativePathInArchive = $"{f.PathInArchive}_move");
             
             // Test the cancellation.
             _cancelSource = new CancellationTokenSource();
@@ -123,7 +123,7 @@ namespace Oetools.Utilities.Test.Archive {
             
             // move them back
             modifiedList.ForEach(f => {
-                f.RelativePathInArchive = f.NewRelativePathInArchive;
+                f.PathInArchive = f.NewRelativePathInArchive;
                 f.NewRelativePathInArchive = f.NewRelativePathInArchive.Substring(0, f.NewRelativePathInArchive.Length - 5);
             });
             
@@ -131,7 +131,7 @@ namespace Oetools.Utilities.Test.Archive {
             Assert.AreEqual(modifiedList.Count - 1, modifiedList.Count(f => f.Processed), "Wrong number of processed files.");
             
             modifiedList.ForEach(f => {
-                f.RelativePathInArchive = f.NewRelativePathInArchive;
+                f.PathInArchive = f.NewRelativePathInArchive;
             });
         }
         
@@ -139,7 +139,7 @@ namespace Oetools.Utilities.Test.Archive {
             foreach (var groupedTheoreticalFiles in listFiles.GroupBy(f => f.ArchivePath)) {
                 var actualFiles = archiver.ListFiles(groupedTheoreticalFiles.Key).ToList();
                 foreach (var theoreticalFile in groupedTheoreticalFiles) {
-                    Assert.IsTrue(actualFiles.ToList().Exists(f => f.RelativePathInArchive.Replace("/", "\\").Equals(theoreticalFile.RelativePathInArchive)), $"Can't find file in list : {theoreticalFile.RelativePathInArchive}");
+                    Assert.IsTrue(actualFiles.ToList().Exists(f => f.PathInArchive.Replace("/", "\\").Equals(theoreticalFile.PathInArchive)), $"Can't find file in list : {theoreticalFile.PathInArchive}");
                 }
                 Assert.AreEqual(groupedTheoreticalFiles.Count(), actualFiles.Count, $"Wrong number of files listed : {groupedTheoreticalFiles.Count()}!={actualFiles.Count}");
             }
@@ -151,7 +151,7 @@ namespace Oetools.Utilities.Test.Archive {
             modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
                 ExtractionPath = listFiles.First().ExtractionPath,
-                RelativePathInArchive = "random.name"
+                PathInArchive = "random.name"
             });
             
             // Test the cancellation.
@@ -185,7 +185,7 @@ namespace Oetools.Utilities.Test.Archive {
             modifiedList.Add(new FileInArchive {
                 ArchivePath = listFiles.First().ArchivePath,
                 ExtractionPath = listFiles.First().ExtractionPath,
-                RelativePathInArchive = "random.name"
+                PathInArchive = "random.name"
             });
             
             // Test the cancellation.
@@ -228,25 +228,25 @@ namespace Oetools.Utilities.Test.Archive {
                 new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file 0.txt"),
                     ArchivePath = archivePath,
-                    RelativePathInArchive = "file 0.txt",
+                    PathInArchive = "file 0.txt",
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "file 0.txt")
                 },
                 new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file1.txt"),
                     ArchivePath = archivePath,
-                    RelativePathInArchive = "file1.txt",
+                    PathInArchive = "file1.txt",
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "file1.txt")
                 },
                 new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file2.txt"),
                     ArchivePath = archivePath,
-                    RelativePathInArchive = Path.Combine("subfolder1", "file2.txt"),
+                    PathInArchive = Path.Combine("subfolder1", "file2.txt"),
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "subfolder1", "file2.txt")
                 },
                 new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file3.txt"),
                     ArchivePath = archivePath,
-                    RelativePathInArchive = Path.Combine("subfolder1", "bla bla", "file3.txt"),
+                    PathInArchive = Path.Combine("subfolder1", "bla bla", "file3.txt"),
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "subfolder1", "bla bla", "file3.txt")
                 }
             };

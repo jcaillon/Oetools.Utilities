@@ -63,7 +63,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     Environment to use
         /// </summary>
-        public IUoeExecutionEnv Env { get; }
+        public AUoeExecutionEnv Env { get; }
 
         /// <summary>
         ///     set to true if a the execution process has been killed
@@ -188,7 +188,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        public UoeExecution(IUoeExecutionEnv env) {
+        public UoeExecution(AUoeExecutionEnv env) {
             Env = env;
             PreprocessedVars = new Dictionary<string, string>();
             
@@ -239,7 +239,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 throw new UoeExecutionParametersException($"The propath used is too long (>{UoeConstants.MaximumPropathLength}) : {propath.PrettyQuote()}.");
             }
 
-            File.WriteAllText(_propathFilePath, propath, Env.IoEncoding);
+            File.WriteAllText(_propathFilePath, propath, Env.GetIoEncoding());
 
             // Set info
             SetExecutionInfo();
@@ -260,7 +260,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             runnerProgram.AppendLine(ProgramProgressRun);
             AppendProgramToRun(runnerProgram);
-            File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.IoEncoding);
+            File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.GetIoEncoding());
 
             // Parameters
             _exeParameters = new StringBuilder($"-p {_runnerPath.CliQuoter()}");
@@ -281,7 +281,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             // start the process
             _process = new UoeProcessIo(Env.DlcDirectoryPath, ForceCharacterModeUse || Env.UseProgressCharacterMode && !RequiresGraphicalMode, Env.CanProVersionUseNoSplash) {
                 WorkingDirectory = _processStartDir,
-                RedirectedOutputEncoding = Env.IoEncoding
+                RedirectedOutputEncoding = Env.GetIoEncoding()
             };
             _process.OnProcessExit += ProcessOnExited;
             _process.ExecuteAsync(_exeParameters.ToString(), SilentExecution);
@@ -469,7 +469,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         };
                         output.Add(t);
                     }
-                }, Env.IoEncoding);
+                }, Env.GetIoEncoding());
             }
             return output;
         }

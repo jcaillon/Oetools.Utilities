@@ -52,7 +52,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
                 .Select(path => {
                     var fileInfo = new FileInfo(path);
                     return new FileInFilesystem {
-                        RelativePathInArchive = path.FromAbsolutePathToRelativePath(archivePathNormalized),
+                        PathInArchive = path.FromAbsolutePathToRelativePath(archivePathNormalized),
                         ArchivePath = archivePath,
                         SizeInBytes = (ulong) fileInfo.Length,
                         LastWriteTime = fileInfo.LastWriteTime
@@ -87,11 +87,11 @@ namespace Oetools.Utilities.Archive.Filesystem {
                 try {
                     foreach (var file in archiveGroupedFiles) {
                         _cancelToken?.ThrowIfCancellationRequested();
-                        string source = (action == ActionType.Pack ? ((IFileToArchive) file).SourcePath : Path.Combine(file.ArchivePath, file.RelativePathInArchive)).ToCleanPath();
+                        string source = (action == ActionType.Pack ? ((IFileToArchive) file).SourcePath : Path.Combine(file.ArchivePath, file.PathInArchive)).ToCleanPath();
                         string target = null;
                         switch (action) {
                             case ActionType.Pack:
-                                target = Path.Combine(file.ArchivePath, ((IFileToArchive) file).RelativePathInArchive).ToCleanPath();
+                                target = Path.Combine(file.ArchivePath, ((IFileToArchive) file).PathInArchive).ToCleanPath();
                                 break;
                             case ActionType.Extract:
                                 target = ((IFileInArchiveToExtract) file).ExtractionPath.ToCleanPath();
@@ -135,7 +135,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
                                                     while ((currentBlockSize = sourceFileStream.Read(buffer, 0, buffer.Length)) > 0) {
                                                         totalBytes += currentBlockSize;
                                                         dest.Write(buffer, 0, currentBlockSize);
-                                                        OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(archiveGroupedFiles.Key, file.RelativePathInArchive, Math.Round((totalFilesDone + (double) totalBytes / fileLength) / totalFiles * 100, 2)));
+                                                        OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(archiveGroupedFiles.Key, file.PathInArchive, Math.Round((totalFilesDone + (double) totalBytes / fileLength) / totalFiles * 100, 2)));
                                                         _cancelToken?.ThrowIfCancellationRequested();
                                                     }
                                                 }
@@ -174,7 +174,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
                         
                         totalFilesDone++;
                         file.Processed = true;
-                        OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(archiveGroupedFiles.Key, file.RelativePathInArchive, Math.Round((double) totalFilesDone / totalFiles * 100, 2)));
+                        OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(archiveGroupedFiles.Key, file.PathInArchive, Math.Round((double) totalFilesDone / totalFiles * 100, 2)));
                     }
 
                 } catch (OperationCanceledException) {

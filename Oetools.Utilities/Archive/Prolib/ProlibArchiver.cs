@@ -71,7 +71,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                 return proLibrary.Files
                     .Select(file => new FileInProlib {
                         ArchivePath = archivePath,
-                        RelativePathInArchive = file.RelativePath,
+                        PathInArchive = file.RelativePath,
                         LastWriteTime = file.LastWriteTime ?? DateTime.Now,
                         SizeInBytes = file.Size,
                         IsRcode = file.Type == ProLibraryFileType.Rcode,
@@ -127,7 +127,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                         proLibrary.OnProgress += OnProgressionEvent;
                         try {
                             foreach (var file in plGroupedFiles) {
-                                var fileRelativePath = file.RelativePathInArchive.ToCleanRelativePathUnix();
+                                var fileRelativePath = file.PathInArchive.ToCleanRelativePathUnix();
                                 switch (action) {
                                     case Action.Archive:
                                         var fileToArchive = (IFileToArchive) file;

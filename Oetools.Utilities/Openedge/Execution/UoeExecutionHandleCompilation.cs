@@ -152,7 +152,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// </summary>
         private string _progressionFilePath;
 
-        public UoeExecutionHandleCompilation(IUoeExecutionEnv env) : base(env) {
+        public UoeExecutionHandleCompilation(AUoeExecutionEnv env) : base(env) {
             _filesListPath = Path.Combine(_tempDir, "files.list");
             _progressionFilePath = Path.Combine(_tempDir, "compile.progression");
             _compilationLog = Path.Combine(_tempDir, "compilation.log");
@@ -263,7 +263,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
             
            
-            File.WriteAllText(_filesListPath, filesListcontent.ToString(), Env.IoEncoding);
+            File.WriteAllText(_filesListPath, filesListcontent.ToString(), Env.GetIoEncoding());
 
             SetPreprocessedVar("CompileListFilePath", _filesListPath.ProPreProcStringify());
             SetPreprocessedVar("CompileProgressionFilePath", _progressionFilePath.ProPreProcStringify());
@@ -298,7 +298,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (!ExecutionFailed) {
                 try {
                     Parallel.ForEach(CompiledFiles, file => {
-                        file.ReadCompilationResults(Env.IoEncoding);
+                        file.ReadCompilationResults(Env.GetIoEncoding());
                         file.ComputeRequiredDatabaseReferences(Env, AnalysisModeSimplifiedDatabaseReferences);
                     });
                     

@@ -87,7 +87,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
 
             env.DatabaseConnectionString = $"{UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, "dummy.db"))} {UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, "base.db"))}";
-            env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
+            env.DatabaseAliases = new List<AUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "dummy",
                     AliasLogicalName = "alias1"

@@ -22,7 +22,7 @@ using System;
 namespace Oetools.Utilities.Archive.Prolib {
     internal class FileInProlib : IFileInArchive {
         public string ArchivePath { get; set; }
-        public string RelativePathInArchive { get; set; }
+        public string PathInArchive { get; set; }
         public bool Processed { get; set; }
         public ulong SizeInBytes { get; set; }
         public bool IsRcode { get; set; }

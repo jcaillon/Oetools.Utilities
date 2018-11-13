@@ -24,73 +24,76 @@ using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Openedge.Execution {
     
-    public interface IUoeExecutionEnv {
+    /// <summary>
+    /// An openedge execution environment. Contains the parameters needed for any openedge execution.
+    /// </summary>
+    public abstract class AUoeExecutionEnv {
         
         /// <summary>
         /// Path to the dlc folder (openedge installation folder)
         /// </summary>
-        string DlcDirectoryPath { get; }
+        public abstract string DlcDirectoryPath { get; set; }
 
         /// <summary>
         /// True if using _progres
         /// </summary>
-        bool UseProgressCharacterMode { get; }
+        public abstract bool UseProgressCharacterMode { get; set; }
 
         /// <summary>
         /// Connection string to use for the database connection in a CONNECT statement (there can be several databases)
         /// </summary>
-        string DatabaseConnectionString { get; }
+        public abstract string DatabaseConnectionString { get; set; }
 
         /// <summary>
         /// List of aliases to use for the connected databases
         /// </summary>
-        IEnumerable<IUoeExecutionDatabaseAlias> DatabaseAliases { get; }
+        public abstract IEnumerable<AUoeExecutionDatabaseAlias> DatabaseAliases { get; set; }
 
         /// <summary>
         /// Path to the .ini file (to define FONTS/COLORS mostly, the PROPATH value should be emptied as it *weirdly* slows down the execution if it is not)
         /// </summary>
-        string IniFilePath { get; }
+        public abstract string IniFilePath { get; set; }
 
         /// <summary>
         /// Propath, list of directories/.pl
         /// </summary>
-        List<string> ProPathList { get; }
+        public abstract List<string> ProPathList { get; set; }
 
         /// <summary>
         /// Command line parameters to append to the execution of progress
         /// </summary>
-        string ProExeCommandLineParameters { get; }
+        public abstract string ProExeCommandLineParameters { get; set; }
 
         /// <summary>
         /// Path of the .p program that should be executed at the start of an openedge session
         /// </summary>
-        string PreExecutionProgramPath { get; }
+        public abstract string PreExecutionProgramPath { get; set; }
 
         /// <summary>
         /// Path of the .p program that should be executed at the end of an openedge session
         /// </summary>
-        string PostExecutionProgramPath { get; }
+        public abstract string PostExecutionProgramPath { get; set; }
 
         /// <summary>
         /// Indicates whether or not the -nosplash parameter is available for this version of openedge
         /// </summary>
-        bool CanProVersionUseNoSplash { get; }
+        public abstract bool CanProVersionUseNoSplash { get; }
 
         /// <summary>
         /// Temporary folder used when executing openedge
         /// </summary>
-        string TempDirectory { get; }
+        public abstract string TempDirectory { get; set; }
 
         /// <summary>
         /// Returns true if the given version is higher or equal to the pro version found in the dlc/version file
         /// </summary>
         /// <param name="version"></param>
         /// <returns></returns>
-        bool IsProVersionHigherOrEqualTo(Version version);
-        
+        public abstract bool IsProVersionHigherOrEqualTo(Version version);
+
         /// <summary>
         /// The encoding to use for i/o with openedge processes.
         /// </summary>
-        Encoding IoEncoding { get; }
+        public abstract Encoding GetIoEncoding();
     }
 }

@@ -63,7 +63,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             
             public override int MinimumNumberOfFilesPerProcess => 1;
 
-            public UoeExecutionParallelCompile2(IUoeExecutionEnv env) : base(env) { }
+            public UoeExecutionParallelCompile2(AUoeExecutionEnv env) : base(env) { }
         }
         
         [TestMethod]

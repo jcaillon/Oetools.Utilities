@@ -33,7 +33,7 @@ namespace Oetools.Utilities.Archive {
         /// <summary>
         /// Relative path of the file in the archive.
         /// </summary>
-        string RelativePathInArchive { get; }
+        string PathInArchive { get; }
         
         /// <summary>
         /// Boolean set after an archiver action which indicates if this file was actually processed.

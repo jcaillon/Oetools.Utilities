@@ -36,7 +36,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected string _databaseExtractFilePath;
 
-        public UoeExecutionDbExtract(IUoeExecutionEnv env) : base(env) {
+        public UoeExecutionDbExtract(AUoeExecutionEnv env) : base(env) {
             _databaseExtractFilePath = Path.Combine(_tempDir, "db.dump");
         }
 

@@ -18,10 +18,20 @@
 // ========================================================================
 #endregion
 namespace Oetools.Utilities.Openedge.Execution {
-    public interface IUoeExecutionDatabaseAlias {
-                
-        string AliasLogicalName { get; }
-
-        string DatabaseLogicalName { get; }
+    
+    /// <summary>
+    /// A database alias.
+    /// </summary>
+    public abstract class AUoeExecutionDatabaseAlias {
+        
+        /// <summary>
+        /// The alias.
+        /// </summary>
+        public abstract string AliasLogicalName { get; set; }
+        
+        /// <summary>
+        /// The database logical name of this alias.
+        /// </summary>
+        public abstract string DatabaseLogicalName { get; set; }
     }
 }

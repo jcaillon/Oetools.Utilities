@@ -20,8 +20,8 @@
 using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Test.Openedge {
-    public class UoeExecutionDatabaseAlias : IUoeExecutionDatabaseAlias {
-        public string AliasLogicalName { get; set; }
-        public string DatabaseLogicalName { get; set; }
+    public class UoeExecutionDatabaseAlias : AUoeExecutionDatabaseAlias {
+        public override string AliasLogicalName { get; set; }
+        public override string DatabaseLogicalName { get; set; }
     }
 }

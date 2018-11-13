@@ -703,7 +703,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
             env.DatabaseConnectionString = UoeDatabaseOperator.GetMultiUserConnectionString(Path.Combine(TestFolder, "dummy.db"));
-            env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
+            env.DatabaseAliases = new List<AUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "dummy",
                     AliasLogicalName = "alias1"
@@ -773,7 +773,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
             env.DatabaseConnectionString = UoeDatabaseOperator.GetMultiUserConnectionString(Path.Combine(TestFolder, "dummy.db"));
-            env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
+            env.DatabaseAliases = new List<AUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "dummy",
                     AliasLogicalName = "alias1"

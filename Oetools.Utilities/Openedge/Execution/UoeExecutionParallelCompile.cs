@@ -53,7 +53,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         private List<UoeExecutionCompile> _processes = new List<UoeExecutionCompile>();
         
-        public UoeExecutionParallelCompile(IUoeExecutionEnv env) : base(env) {}
+        public UoeExecutionParallelCompile(AUoeExecutionEnv env) : base(env) {}
         
         public override void Dispose() {
             try {

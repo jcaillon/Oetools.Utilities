@@ -44,7 +44,7 @@ namespace Oetools.Utilities.Archive {
         /// Moves the given files within archives.
         /// Requesting the movement from a non existing archive will not throw an exception.
         /// Requesting the movement a file that does not exist in the archive will not throw an exception.
-        /// You can inspect which files are processed with the <see cref="ISimpleArchiver.OnProgress"/> event.
+        /// You can inspect which files are processed with the <see cref="IFileArchivedBase.Processed"/> property.
         /// </para>
         /// </summary>
         /// <param name="filesToMove"></param>

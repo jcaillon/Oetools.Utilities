@@ -66,16 +66,7 @@ namespace Oetools.Utilities.Archive.Cab {
 
         /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPack) {
-            _cabManager.OnProgress += CabManagerOnProgress;
-            try {
-                return _cabManager.PackFileSet(filesToPack.Select(f => CabFile.NewToPack(f.ArchivePath, f.RelativePathInArchive, f.SourcePath)));
-            } catch (OperationCanceledException) {
-                throw;
-            } catch (Exception e) {
-                throw new ArchiverException(e.Message, e);
-            } finally {
-                _cabManager.OnProgress -= CabManagerOnProgress;
-            }
+            return Do(filesToPack, Action.Archive);
         }
 
         /// <inheritdoc cref="IArchiver.OnProgress"/>
@@ -97,37 +88,54 @@ namespace Oetools.Utilities.Archive.Cab {
 
         /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract) {
-            _cabManager.OnProgress += CabManagerOnProgress;
-            try {
-                return _cabManager.ExtractFileSet(filesToExtract.Select(f => CabFile.NewToExtract(f.ArchivePath, f.RelativePathInArchive, f.ExtractionPath)));
-            } catch (OperationCanceledException) {
-                throw;
-            } catch (Exception e) {
-                throw new ArchiverException(e.Message, e);
-            } finally {
-                _cabManager.OnProgress -= CabManagerOnProgress;
-            }
+            return Do(filesToExtract, Action.Extract);
         }
 
         /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete) {
-            _cabManager.OnProgress += CabManagerOnProgress;
-            try {
-                return _cabManager.DeleteFileSet(filesToDelete.Select(f => CabFile.NewToDelete(f.ArchivePath, f.RelativePathInArchive)));
-            } catch (OperationCanceledException) {
-                throw;
-            } catch (Exception e) {
-                throw new ArchiverException(e.Message, e);
-            } finally {
-                _cabManager.OnProgress -= CabManagerOnProgress;
-            }
+            return Do(filesToDelete, Action.Delete);
         }
 
         /// <inheritdoc cref="IArchiver.MoveFileSet"/>
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove) {
+            return Do(filesToMove, Action.Move);
+        }
+
+        private int Do(IEnumerable<IFileArchivedBase> filesIn, Action action) {
+            var files = filesIn.ToList();
+            files.ForEach(f => f.Processed = false);
+            
             _cabManager.OnProgress += CabManagerOnProgress;
             try {
-                return _cabManager.MoveFileSet(filesToMove.Select(f => CabFile.NewToMove(f.ArchivePath, f.RelativePathInArchive, f.NewRelativePathInArchive)));
+                List<CabFile> parameterFiles;
+                int nbFilesProcessed;
+
+                switch (action) {
+                    case Action.Archive:
+                        parameterFiles = files.Select(f => CabFile.NewToPack(f.ArchivePath, f.PathInArchive, ((IFileToArchive) f).SourcePath)).ToList();
+                        nbFilesProcessed = _cabManager.PackFileSet(parameterFiles);
+                        break;
+                    case Action.Extract:
+                        parameterFiles = files.Select(f => CabFile.NewToExtract(f.ArchivePath, f.PathInArchive, ((IFileInArchiveToExtract) f).ExtractionPath)).ToList();
+                        nbFilesProcessed = _cabManager.ExtractFileSet(parameterFiles);
+                        break;
+                    case Action.Delete:
+                        parameterFiles = files.Select(f => CabFile.NewToDelete(f.ArchivePath, f.PathInArchive)).ToList();
+                        nbFilesProcessed = _cabManager.DeleteFileSet(parameterFiles);
+                        break;
+                    case Action.Move:
+                        parameterFiles = files.Select(f => CabFile.NewToMove(f.ArchivePath, f.PathInArchive, ((IFileInArchiveToMove) f).NewRelativePathInArchive)).ToList();
+                        nbFilesProcessed = _cabManager.MoveFileSet(parameterFiles);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(action), action, null);
+                }
+
+                for (int i = 0; i < parameterFiles.Count; i++) {
+                    files[i].Processed = parameterFiles[i].Processed;
+                }
+
+                return nbFilesProcessed;
             } catch (OperationCanceledException) {
                 throw;
             } catch (Exception e) {
@@ -136,17 +144,25 @@ namespace Oetools.Utilities.Archive.Cab {
                 _cabManager.OnProgress -= CabManagerOnProgress;
             }
         }
-
+        
         private void CabManagerOnProgress(object sender, ICabProgressionEventArgs e) {
             if (e.EventType == CabEventType.GlobalProgression) {
                 OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(e.CabPath, e.RelativePathInCab, e.PercentageDone));
             }
         }
         
+        private enum Action {
+            Archive,
+            Extract,
+            Delete,
+            Move
+        }
+        
         private class CabFile : IFileInCabToDelete, IFileInCabToExtract, IFileToAddInCab, IFileInCabToMove {
             
             public string CabPath { get; private set; }
             public string RelativePathInCab { get; private set; }
+            public bool Processed { get; set; }
             public string ExtractionPath { get; private set; }
             public string SourcePath { get; private set; }
             public string NewRelativePathInCab { get; private set; }

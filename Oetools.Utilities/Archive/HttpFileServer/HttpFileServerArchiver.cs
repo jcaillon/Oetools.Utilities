@@ -94,7 +94,7 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                         break;
                     case Action.Download:
                         foreach (var file in files.OfType<IFileInArchiveToExtract>()) {
-                            var response = HttpRequest.GetFileSize(WebUtility.UrlEncode(file.RelativePathInArchive.ToCleanRelativePathUnix()), out long size);
+                            var response = HttpRequest.GetFileSize(WebUtility.UrlEncode(file.PathInArchive.ToCleanRelativePathUnix()), out long size);
                             if (response.Success) {
                                 totalSize += size;
                             }
@@ -114,7 +114,7 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
                     foreach (var file in serverGroupedFiles) {
                         bool requestOk;
                         HttpResponse response;
-                        var fileRelativePath = WebUtility.UrlEncode(file.RelativePathInArchive.ToCleanRelativePathUnix());
+                        var fileRelativePath = WebUtility.UrlEncode(file.PathInArchive.ToCleanRelativePathUnix());
 
                         switch (action) {
                             case Action.Upload:

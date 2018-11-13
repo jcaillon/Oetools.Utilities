@@ -23,7 +23,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         
         public override bool NeedDatabaseConnection => true;
         
-        public UoeExecutionCompile(IUoeExecutionEnv env) : base(env) {}
+        public UoeExecutionCompile(AUoeExecutionEnv env) : base(env) {}
 
     }
 }

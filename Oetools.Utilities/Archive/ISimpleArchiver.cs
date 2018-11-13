@@ -44,9 +44,9 @@ namespace Oetools.Utilities.Archive {
         
         /// <summary>
         /// <para>
-        /// Pack (i.e. add or replace) files into archives.
+        /// Archives (i.e. add or replace) files into archives.
         /// Non existing source files will not throw an exception.
-        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
+        /// You can inspect which files are processed with the <see cref="IFileArchivedBase.Processed"/> property.
         /// Packing into an existing archive will update it.
         /// Packing existing files will update them.
         /// </para>
@@ -61,7 +61,7 @@ namespace Oetools.Utilities.Archive {
         /// Extracts the given files from archives.
         /// Requesting the extraction from a non existing archive will not throw an exception.
         /// Requesting the extraction a file that does not exist in the archive will not throw an exception.
-        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
+        /// You can inspect which files are processed with the <see cref="IFileArchivedBase.Processed"/> property.
         /// </summary>
         /// <param name="filesToExtract"></param>
         /// <exception cref="ArchiverException"></exception>
@@ -73,7 +73,7 @@ namespace Oetools.Utilities.Archive {
         /// Deletes the given files from archives.
         /// Requesting the deletion from a non existing archive will not throw an exception.
         /// Requesting the deletion a file that does not exist in the archive will not throw an exception.
-        /// You can inspect which files are processed with the <see cref="OnProgress"/> event.
+        /// You can inspect which files are processed with the <see cref="IFileArchivedBase.Processed"/> property.
         /// </summary>
         /// <param name="filesToDelete"></param>
         /// <exception cref="ArchiverException"></exception>

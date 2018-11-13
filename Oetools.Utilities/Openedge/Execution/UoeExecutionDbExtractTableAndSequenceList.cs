@@ -32,7 +32,7 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// </summary>
     public class UoeExecutionDbExtractTableAndSequenceList : UoeExecutionDbExtract {
         
-        public UoeExecutionDbExtractTableAndSequenceList( IUoeExecutionEnv env) : base(env) { }
+        public UoeExecutionDbExtractTableAndSequenceList( AUoeExecutionEnv env) : base(env) { }
 
         public override string DatabaseExtractCandoTblType { get; set; } = "T,S";
 
@@ -76,7 +76,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (!string.IsNullOrEmpty(_databaseExtractFilePath) && File.Exists(_databaseExtractFilePath)) {
                 _tablesCrc = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 _sequences = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                using (var reader = new UoeExportReader(_databaseExtractFilePath, Env.IoEncoding)) {
+                using (var reader = new UoeExportReader(_databaseExtractFilePath, Env.GetIoEncoding())) {
                     string currentDatabaseName = null;
                     while (reader.ReadRecord(out List<string> record, out int _, true)) {
                         if (record.Count < 2) {

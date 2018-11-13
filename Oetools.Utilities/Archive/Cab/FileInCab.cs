@@ -24,14 +24,14 @@ namespace Oetools.Utilities.Archive.Cab {
     internal class FileInCab : IFileInArchive {
         
         public string ArchivePath { get; }
-        public string RelativePathInArchive { get; }
+        public string PathInArchive { get; }
         public bool Processed { get; set; }
         public ulong SizeInBytes { get; }
         public DateTime LastWriteTime { get; }
 
         internal FileInCab(string archivePath, string relativePathInArchive, ulong sizeInBytes, DateTime lastWriteTime) {
             ArchivePath = archivePath;
-            RelativePathInArchive = relativePathInArchive;
+            PathInArchive = relativePathInArchive;
             SizeInBytes = sizeInBytes;
             LastWriteTime = lastWriteTime;
         }
