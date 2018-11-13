@@ -57,9 +57,9 @@ namespace Oetools.Utilities.Archive.Prolib {
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
-        /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
-        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPack) {
-            return DoAction(filesToPack, Action.Archive);
+        /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
+        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
+            return DoAction(filesToArchive, Action.Archive);
         }
 
         /// <inheritdoc cref="IArchiver.ListFiles"/>

@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IProlibArchiver.cs) is part of Oetools.Utilities.
+// This file (IArchiverList.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,23 +18,17 @@
 // ========================================================================
 #endregion
 
-namespace Oetools.Utilities.Archive.Prolib {
-    
-    /// <summary>
-    /// CRUD operations on an openedge pro library.
-    /// </summary>
-    public interface IProlibArchiver : IArchiverFullFeatured {
-        
+using System.Collections.Generic;
+
+namespace Oetools.Utilities.Archive {
+    public interface IArchiverList : IArchiver {
+               
         /// <summary>
-        /// Sets the prolib version to use when writing this prolib.
+        /// List all the files in an archive. Returns an empty enumerable if the archive does not exist.
         /// </summary>
-        /// <param name="version"></param>
-        void SetProlibVersion(ProlibVersion version);
-        
-        /// <summary>
-        /// Sets the code page to use for file path inside the prolib.
-        /// </summary>
-        /// <param name="codePage"></param>
-        void SetFilePathCodePage(string codePage);
+        /// <param name="archivePath"></param>
+        /// <returns></returns>
+        /// <exception cref="ArchiverException"></exception>
+        IEnumerable<IFileInArchive> ListFiles(string archivePath);
     }
 }

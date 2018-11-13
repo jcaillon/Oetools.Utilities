@@ -23,7 +23,7 @@ namespace Oetools.Utilities.Lib.Http {
     /// <summary>
     /// The progression of a request.
     /// </summary>
-    public struct HttpProgress {
+    public class HttpProgress {
         
         /// <summary>
         /// Is it an upstream request (upload).

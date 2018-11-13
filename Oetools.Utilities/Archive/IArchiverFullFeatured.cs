@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IProlibArchiver.cs) is part of Oetools.Utilities.
+// This file (IArchiverArchive.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,23 +18,17 @@
 // ========================================================================
 #endregion
 
-namespace Oetools.Utilities.Archive.Prolib {
+using System;
+using System.Collections.Generic;
+
+namespace Oetools.Utilities.Archive {
     
     /// <summary>
-    /// CRUD operations on an openedge pro library.
+    /// <para>
+    /// An archiver allows CRUD operation on an archive.
+    /// This is a full featured archiver.
+    /// </para>
     /// </summary>
-    public interface IProlibArchiver : IArchiverFullFeatured {
-        
-        /// <summary>
-        /// Sets the prolib version to use when writing this prolib.
-        /// </summary>
-        /// <param name="version"></param>
-        void SetProlibVersion(ProlibVersion version);
-        
-        /// <summary>
-        /// Sets the code page to use for file path inside the prolib.
-        /// </summary>
-        /// <param name="codePage"></param>
-        void SetFilePathCodePage(string codePage);
+    public interface IArchiverFullFeatured : IArchiver, IArchiverDelete, IArchiverExtract, IArchiverList, IArchiverMove {
     }
 }

@@ -1,7 +1,7 @@
-﻿#region header
+#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IUoeExecutionDatabaseAlias.cs) is part of Oetools.Utilities.
+// This file (IProlibArchiver.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,21 +17,24 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-namespace Oetools.Utilities.Openedge.Execution {
+
+namespace Oetools.Utilities.Archive.Xcode {
     
     /// <summary>
-    /// A database alias.
+    /// A simple archiver to encode/decode files using the openedge xcode algorithm.
     /// </summary>
-    public abstract class AUoeExecutionDatabaseAlias {
+    public interface IXcodeArchiver : IArchiver {
         
         /// <summary>
-        /// The alias.
+        /// Sets the encode mode. If true, the archiver will encode, if false it will decode. Default to true.
         /// </summary>
-        public abstract string AliasLogicalName { get; set; }
-        
+        /// <param name="isEncodeMode"></param>
+        void SetEncodeMode(bool isEncodeMode);
+
         /// <summary>
-        /// The database logical name of this alias.
+        /// Use the given encryption key.
         /// </summary>
-        public abstract string DatabaseLogicalName { get; set; }
+        /// <param name="key">If null, will default to Progress.</param>
+        void SetKey(string key);
     }
 }

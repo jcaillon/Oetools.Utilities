@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ArchiveZipTest.cs) is part of Oetools.Utilities.Test.
+// This file (HttpFileServerArchiverTest.cs) is part of Oetools.Utilities.Test.
 // 
 // Oetools.Utilities.Test is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,19 +18,17 @@
 // ========================================================================
 #endregion
 
-using System.Collections.Generic;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 
-namespace Oetools.Utilities.Test.Archive.FileSystem {
-    
-    [TestClass]
-    public class FileSystemArchiverTest : ArchiveTest {
-        
-        private static string _testFolder;
+namespace Oetools.Utilities.Test.Archive.Xcode {
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(FileSystemArchiverTest)));
+    [TestClass]
+    public class XcodeArchiverTest : ArchiveTest {
+
+        private static string _testFolder;
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(XcodeArchiverTest)));
 
         [ClassInitialize]
         public static void Init(TestContext context) {
@@ -47,13 +45,17 @@ namespace Oetools.Utilities.Test.Archive.FileSystem {
 
         [TestMethod]
         public void Test() {
-            IArchiverFullFeatured archiver = Archiver.NewFileSystemArchiver();
-
+            var archiver = Archiver.NewXcodeArchiver();
+            
+            archiver.SetKey("progress");
+            archiver.SetEncodeMode(true);
+            
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1"));
             listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2")));
-
-            WholeTest(archiver, listFiles);
-
+            
+            archiver.OnProgress += ArchiverOnOnProgress;
+            CreateArchive(archiver, listFiles);
+            archiver.OnProgress -= ArchiverOnOnProgress;
         }
     }
 }

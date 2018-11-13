@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IProlibArchiver.cs) is part of Oetools.Utilities.
+// This file (IArchiverExtract.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,23 +18,22 @@
 // ========================================================================
 #endregion
 
-namespace Oetools.Utilities.Archive.Prolib {
-    
-    /// <summary>
-    /// CRUD operations on an openedge pro library.
-    /// </summary>
-    public interface IProlibArchiver : IArchiverFullFeatured {
-        
+using System;
+using System.Collections.Generic;
+
+namespace Oetools.Utilities.Archive {
+    public interface IArchiverExtract : IArchiver {
+                
         /// <summary>
-        /// Sets the prolib version to use when writing this prolib.
+        /// Extracts the given files from archives.
+        /// Requesting the extraction from a non existing archive will not throw an exception.
+        /// Requesting the extraction a file that does not exist in the archive will not throw an exception.
+        /// You can inspect which files are processed with the <see cref="IFileArchivedBase.Processed"/> property.
         /// </summary>
-        /// <param name="version"></param>
-        void SetProlibVersion(ProlibVersion version);
-        
-        /// <summary>
-        /// Sets the code page to use for file path inside the prolib.
-        /// </summary>
-        /// <param name="codePage"></param>
-        void SetFilePathCodePage(string codePage);
+        /// <param name="filesToExtract"></param>
+        /// <exception cref="ArchiverException"></exception>
+        /// <exception cref="OperationCanceledException"></exception>
+        /// <returns>Total number of files actually extracted.</returns>
+        int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract);
     }
 }

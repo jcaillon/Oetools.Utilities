@@ -22,7 +22,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using Oetools.Utilities.Archive.Prolib;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
@@ -55,9 +54,9 @@ namespace Oetools.Utilities.Archive.Zip {
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
-        /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
-        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPackIn) {
-            var filesToPack = filesToPackIn.ToList();
+        /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
+        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
+            var filesToPack = filesToArchive.ToList();
             filesToPack.ForEach(f => f.Processed = false);
             int totalFiles = filesToPack.Count;
             int totalFilesDone = 0;
@@ -90,7 +89,7 @@ namespace Oetools.Utilities.Archive.Zip {
             return totalFilesDone;
         }
 
-        /// <inheritdoc cref="IArchiver.ListFiles"/>
+        /// <inheritdoc cref="IArchiverList.ListFiles"/>
         public IEnumerable<IFileInArchive> ListFiles(string archivePath) {
             if (!File.Exists(archivePath)) {
                 return Enumerable.Empty<IFileInArchive>();
@@ -106,7 +105,7 @@ namespace Oetools.Utilities.Archive.Zip {
             }
         }
 
-        /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
+        /// <inheritdoc cref="IArchiverExtract.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtractIn) {
             var filesToExtract = filesToExtractIn.ToList();
             filesToExtract.ForEach(f => f.Processed = false);
@@ -149,7 +148,7 @@ namespace Oetools.Utilities.Archive.Zip {
             return totalFilesDone;
         }
 
-        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        /// <inheritdoc cref="IArchiverDelete.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDeleteIn) {            
             var filesToDelete = filesToDeleteIn.ToList();
             filesToDelete.ForEach(f => f.Processed = false);
@@ -186,7 +185,7 @@ namespace Oetools.Utilities.Archive.Zip {
             return totalFilesDone;
         }
         
-        /// <inheritdoc cref="IArchiver.MoveFileSet"/>
+        /// <inheritdoc cref="IArchiverMove.MoveFileSet"/>
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMoveIn) {
             var filesToMove = filesToMoveIn.ToList();
             filesToMove.ForEach(f => f.Processed = false);

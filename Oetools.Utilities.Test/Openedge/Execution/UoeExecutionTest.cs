@@ -263,7 +263,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             
             // try if connected well and can manage aliases
             env.DatabaseConnectionString = $"{UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn))} {UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn2))}";
-            env.DatabaseAliases = new List<AUoeExecutionDatabaseAlias> {
+            env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "test1",
                     AliasLogicalName = "alias1"

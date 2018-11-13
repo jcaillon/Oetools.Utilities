@@ -19,10 +19,10 @@
 #endregion
 
 namespace Oetools.Utilities.Archive.Zip {
-    public interface IZipArchiver : IArchiver {
+    public interface IZipArchiver : IArchiverFullFeatured {
         
         /// <summary>
-        /// Sets the compression level to use for the next <see cref="ISimpleArchiver.ArchiveFileSet"/> process.
+        /// Sets the compression level to use for the next <see cref="IArchiverBasic.ArchiveFileSet"/> process.
         /// </summary>
         /// <param name="archiveCompressionLevel"></param>
         void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel);

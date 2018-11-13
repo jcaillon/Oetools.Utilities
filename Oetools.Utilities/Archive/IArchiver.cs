@@ -29,30 +29,34 @@ namespace Oetools.Utilities.Archive {
     /// An archive is simply a container for files, it can take many forms : a zip, a .cab, an ftp server and so on...
     /// </para>
     /// </summary>
-    public interface IArchiver : ISimpleArchiver {
-       
+    public interface IArchiver {
+
         /// <summary>
-        /// List all the files in an archive. Returns an empty enumerable if the archive does not exist.
+        /// Sets a cancellation token that can be used to interrupt the process if needed.
         /// </summary>
-        /// <param name="archivePath"></param>
-        /// <returns></returns>
-        /// <exception cref="ArchiverException"></exception>
-        IEnumerable<IFileInArchive> ListFiles(string archivePath);
+        void SetCancellationToken(CancellationToken? cancelToken);
         
         /// <summary>
         /// <para>
-        /// Moves the given files within archives.
-        /// Requesting the movement from a non existing archive will not throw an exception.
-        /// Requesting the movement a file that does not exist in the archive will not throw an exception.
-        /// You can inspect which files are processed with the <see cref="IFileArchivedBase.Processed"/> property.
+        /// Event published when the archiving process is progressing.
         /// </para>
         /// </summary>
-        /// <param name="filesToMove"></param>
+        event EventHandler<ArchiverEventArgs> OnProgress;
+        
+        /// <summary>
+        /// <para>
+        /// Archives (i.e. add or replace) files into archives.
+        /// Non existing source files will not throw an exception.
+        /// You can inspect which files are processed with the <see cref="IFileArchivedBase.Processed"/> property.
+        /// Packing into an existing archive will update it.
+        /// Packing existing files will update them.
+        /// </para>
+        /// </summary>
+        /// <param name="filesToArchive"></param>
         /// <exception cref="ArchiverException"></exception>
         /// <exception cref="OperationCanceledException"></exception>
-        /// <returns>Total number of files actually deleted.</returns>
-        int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove);
-        
+        /// <returns>Total number of files actually packed.</returns>
+        int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive);
     }
 
 }

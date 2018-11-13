@@ -64,15 +64,15 @@ namespace Oetools.Utilities.Archive.Cab {
             _cabManager.SetCancellationToken(_cancelToken);
         }
 
-        /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
-        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPack) {
-            return Do(filesToPack, Action.Archive);
+        /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
+        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
+            return Do(filesToArchive, Action.Archive);
         }
 
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
 
-        /// <inheritdoc cref="IArchiver.ListFiles"/>
+        /// <inheritdoc cref="IArchiverList.ListFiles"/>
         public IEnumerable<IFileInArchive> ListFiles(string archivePath) {
             _cabManager.OnProgress += CabManagerOnProgress;
             try {
@@ -86,17 +86,17 @@ namespace Oetools.Utilities.Archive.Cab {
             }
         }
 
-        /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
+        /// <inheritdoc cref="IArchiverExtract.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract) {
             return Do(filesToExtract, Action.Extract);
         }
 
-        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        /// <inheritdoc cref="IArchiverDelete.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete) {
             return Do(filesToDelete, Action.Delete);
         }
 
-        /// <inheritdoc cref="IArchiver.MoveFileSet"/>
+        /// <inheritdoc cref="IArchiverMove.MoveFileSet"/>
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove) {
             return Do(filesToMove, Action.Move);
         }

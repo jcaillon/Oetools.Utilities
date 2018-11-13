@@ -51,7 +51,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
         
         [TestMethod]
         public void Test() {
-            IArchiver archiver = Archiver.NewProlibArchiver();
+            IArchiverFullFeatured archiver = Archiver.NewProlibArchiver();
 
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.pl"));
             listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2.pl")));

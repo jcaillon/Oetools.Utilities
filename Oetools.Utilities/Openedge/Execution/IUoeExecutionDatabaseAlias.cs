@@ -1,7 +1,7 @@
-#region header
+﻿#region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IProlibArchiver.cs) is part of Oetools.Utilities.
+// This file (IUoeExecutionDatabaseAlias.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,24 +17,21 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-
-namespace Oetools.Utilities.Archive.Prolib {
+namespace Oetools.Utilities.Openedge.Execution {
     
     /// <summary>
-    /// CRUD operations on an openedge pro library.
+    /// A database alias.
     /// </summary>
-    public interface IProlibArchiver : IArchiverFullFeatured {
+    public interface IUoeExecutionDatabaseAlias {
         
         /// <summary>
-        /// Sets the prolib version to use when writing this prolib.
+        /// The alias.
         /// </summary>
-        /// <param name="version"></param>
-        void SetProlibVersion(ProlibVersion version);
+        string AliasLogicalName { get; set; }
         
         /// <summary>
-        /// Sets the code page to use for file path inside the prolib.
+        /// The database logical name of this alias.
         /// </summary>
-        /// <param name="codePage"></param>
-        void SetFilePathCodePage(string codePage);
+        string DatabaseLogicalName { get; set; }
     }
 }

@@ -62,7 +62,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <inheritdoc cref="AUoeExecutionEnv.DatabaseAliases"/>
-        public override IEnumerable<AUoeExecutionDatabaseAlias> DatabaseAliases { get; set; }
+        public override IEnumerable<IUoeExecutionDatabaseAlias> DatabaseAliases { get; set; }
         
         /// <inheritdoc cref="AUoeExecutionEnv.IniFilePath"/>
         public override string IniFilePath {

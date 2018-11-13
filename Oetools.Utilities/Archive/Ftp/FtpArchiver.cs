@@ -29,11 +29,11 @@ using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Archive.Ftp {
     
-    internal class FtpArchiver : ArchiverBase, IArchiver {
+    internal class FtpArchiver : ArchiverBase, IArchiverFullFeatured {
         
-        /// <inheritdoc cref="ISimpleArchiver.ArchiveFileSet"/>
-        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToPackIn) {
-            var filesToPack = filesToPackIn.ToList();
+        /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
+        public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
+            var filesToPack = filesToArchive.ToList();
             filesToPack.ForEach(f => f.Processed = false);
             int totalFiles = filesToPack.Count;
             int totalFilesDone = 0;
@@ -88,7 +88,7 @@ namespace Oetools.Utilities.Archive.Ftp {
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
 
-        /// <inheritdoc cref="IArchiver.ListFiles"/>
+        /// <inheritdoc cref="IArchiverList.ListFiles"/>
         public IEnumerable<IFileInArchive> ListFiles(string ftpUri) {
             
             if (!ftpUri.ParseFtpAddress(out var uri, out var userName, out var passWord, out var host, out var port, out var relativePath)) {
@@ -123,7 +123,7 @@ namespace Oetools.Utilities.Archive.Ftp {
             FtpsClient.Instance.DisconnectFtp();
         }
 
-        /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
+        /// <inheritdoc cref="IArchiverExtract.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtractIn) {
             var filesToExtract = filesToExtractIn.ToList();
             filesToExtract.ForEach(f => f.Processed = false);
@@ -181,7 +181,7 @@ namespace Oetools.Utilities.Archive.Ftp {
             return totalFilesDone;
         }
 
-        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        /// <inheritdoc cref="IArchiverDelete.DeleteFileSet"/>
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDeleteIn) {         
             var filesToDelete = filesToDeleteIn.ToList();
             filesToDelete.ForEach(f => f.Processed = false);

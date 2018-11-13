@@ -33,7 +33,7 @@ namespace Oetools.Utilities.Test.Archive {
         private bool _hasReceivedGlobalProgression;
         private CancellationTokenSource _cancelSource;
 
-        protected void WholeTest(IArchiver archiver, List<FileInArchive> listFiles) {
+        protected void WholeTest(IArchiverFullFeatured archiver, List<FileInArchive> listFiles) {
             archiver.OnProgress += ArchiverOnOnProgress;
             CreateArchive(archiver, listFiles);
             MoveInArchives(archiver, listFiles);
@@ -44,25 +44,25 @@ namespace Oetools.Utilities.Test.Archive {
             archiver.OnProgress -= ArchiverOnOnProgress;
         }
 
-        protected void PartialTestForHttpFileServer(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
-            archiver.OnProgress += ArchiverOnOnProgress;
-            CreateArchive(archiver, listFiles);
-            Extract(archiver, listFiles);
-            DeleteFilesInArchive(archiver, listFiles);
-            archiver.OnProgress -= ArchiverOnOnProgress;
+        protected void PartialTestForHttpFileServer(IArchiverBasic archiverBasic, List<FileInArchive> listFiles) {
+            archiverBasic.OnProgress += ArchiverOnOnProgress;
+            CreateArchive(archiverBasic, listFiles);
+            Extract(archiverBasic, listFiles);
+            DeleteFilesInArchive(archiverBasic, listFiles);
+            archiverBasic.OnProgress -= ArchiverOnOnProgress;
         }
         
-        protected void CreateArchive(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
+        protected void CreateArchive(IArchiver archiverBasic, List<FileInArchive> listFiles) {
             
             var modifiedList = listFiles.GetRange(1, listFiles.Count - 1);
             
             // Test the cancellation.
             _cancelSource = new CancellationTokenSource();
-            archiver.SetCancellationToken(_cancelSource.Token);
+            archiverBasic.SetCancellationToken(_cancelSource.Token);
             var list = modifiedList;
-            Assert.ThrowsException<OperationCanceledException>(() => archiver.ArchiveFileSet(list));
+            Assert.ThrowsException<OperationCanceledException>(() => archiverBasic.ArchiveFileSet(list));
             _cancelSource = null;
-            archiver.SetCancellationToken(null);
+            archiverBasic.SetCancellationToken(null);
             
             CleanupArchives(listFiles);
             
@@ -73,12 +73,12 @@ namespace Oetools.Utilities.Test.Archive {
                 PathInArchive = "random.name"
             });
             
-            Assert.AreEqual(modifiedList.Count - 1, archiver.ArchiveFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count - 1, archiverBasic.ArchiveFileSet(modifiedList));
             Assert.AreEqual(modifiedList.Count - 1, modifiedList.Count(f => f.Processed), "Wrong number of processed files.");
             
             // test the update of archives
             modifiedList = listFiles.GetRange(0, 1);
-            Assert.AreEqual(modifiedList.Count, archiver.ArchiveFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count, archiverBasic.ArchiveFileSet(modifiedList));
  
             foreach (var archive in listFiles.GroupBy(f => f.ArchivePath)) {
                 if (Directory.Exists(Path.GetDirectoryName(archive.Key))) {
@@ -92,7 +92,7 @@ namespace Oetools.Utilities.Test.Archive {
             
         }
         
-        protected void MoveInArchives(IArchiver archiver, List<FileInArchive> listFiles) {
+        protected void MoveInArchives(IArchiverMove archiver, List<FileInArchive> listFiles) {
 
             var modifiedList = listFiles.ToList();
             modifiedList.Add(new FileInArchive {
@@ -135,7 +135,7 @@ namespace Oetools.Utilities.Test.Archive {
             });
         }
         
-        protected void ListArchive(IArchiver archiver, List<FileInArchive> listFiles) {
+        protected void ListArchive(IArchiverList archiver, List<FileInArchive> listFiles) {
             foreach (var groupedTheoreticalFiles in listFiles.GroupBy(f => f.ArchivePath)) {
                 var actualFiles = archiver.ListFiles(groupedTheoreticalFiles.Key).ToList();
                 foreach (var theoreticalFile in groupedTheoreticalFiles) {
@@ -145,7 +145,7 @@ namespace Oetools.Utilities.Test.Archive {
             }
         }
 
-        protected void Extract(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
+        protected void Extract(IArchiverExtract archiverBasic, List<FileInArchive> listFiles) {
 
             var modifiedList = listFiles.ToList();
             modifiedList.Add(new FileInArchive {
@@ -156,17 +156,17 @@ namespace Oetools.Utilities.Test.Archive {
             
             // Test the cancellation.
             _cancelSource = new CancellationTokenSource();
-            archiver.SetCancellationToken(_cancelSource.Token);
+            archiverBasic.SetCancellationToken(_cancelSource.Token);
             var list = modifiedList;
-            Assert.ThrowsException<OperationCanceledException>(() => archiver.ExtractFileSet(list));
+            Assert.ThrowsException<OperationCanceledException>(() => archiverBasic.ExtractFileSet(list));
             _cancelSource = null;
-            archiver.SetCancellationToken(null);
+            archiverBasic.SetCancellationToken(null);
             
-            CreateArchive(archiver, listFiles);
+            CreateArchive(archiverBasic, listFiles);
             CleanupExtractedFiles(listFiles);
             
             // try to extract a non existing file
-            Assert.AreEqual(modifiedList.Count - 1, archiver.ExtractFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count - 1, archiverBasic.ExtractFileSet(modifiedList));
             Assert.AreEqual(modifiedList.Count - 1, modifiedList.Count(f => f.Processed), "Wrong number of processed files.");
             
             foreach (var fileToExtract in listFiles) {
@@ -179,7 +179,7 @@ namespace Oetools.Utilities.Test.Archive {
             Assert.AreEqual(listFiles.Count, listFiles.Count(f => f.Processed), "Wrong number of processed files.");
         }
         
-        protected void DeleteFilesInArchive(ISimpleArchiver archiver, List<FileInArchive> listFiles) {
+        protected void DeleteFilesInArchive(IArchiverDelete archiverBasic, List<FileInArchive> listFiles) {
 
             var modifiedList = listFiles.ToList();
             modifiedList.Add(new FileInArchive {
@@ -190,16 +190,16 @@ namespace Oetools.Utilities.Test.Archive {
             
             // Test the cancellation.
             _cancelSource = new CancellationTokenSource();
-            archiver.SetCancellationToken(_cancelSource.Token);
+            archiverBasic.SetCancellationToken(_cancelSource.Token);
             var list = modifiedList;
-            Assert.ThrowsException<OperationCanceledException>(() => archiver.DeleteFileSet(list));
+            Assert.ThrowsException<OperationCanceledException>(() => archiverBasic.DeleteFileSet(list));
             _cancelSource = null;
-            archiver.SetCancellationToken(null);
+            archiverBasic.SetCancellationToken(null);
             
-            CreateArchive(archiver, listFiles);
+            CreateArchive(archiverBasic, listFiles);
 
             // try to delete a non existing file
-            Assert.AreEqual(modifiedList.Count - 1, archiver.DeleteFileSet(modifiedList));
+            Assert.AreEqual(modifiedList.Count - 1, archiverBasic.DeleteFileSet(modifiedList));
             Assert.AreEqual(modifiedList.Count - 1, modifiedList.Count(f => f.Processed), "Wrong number of processed files.");
             
             // check progress
@@ -207,14 +207,14 @@ namespace Oetools.Utilities.Test.Archive {
             Assert.AreEqual(listFiles.Count, listFiles.Count(f => f.Processed), "Wrong number of processed files.");
         }
 
-        protected void CheckForEmptyArchives(IArchiver archiver, List<FileInArchive> listFiles) {
+        protected void CheckForEmptyArchives(IArchiverList archiver, List<FileInArchive> listFiles) {
             foreach (var groupedFiles in listFiles.GroupBy(f => f.ArchivePath)) {
                 var files = archiver.ListFiles(groupedFiles.Key);
                 Assert.AreEqual(0, files.Count(), $"The archive is not empty : {groupedFiles.Key}");
             }
         }
 
-        private void ArchiverOnOnProgress(object sender, ArchiverEventArgs e) {
+        protected void ArchiverOnOnProgress(object sender, ArchiverEventArgs e) {
             if (e.PercentageDone < 0 || e.PercentageDone > 100) {
                 throw new Exception($"Wrong value for percentage done : {e.PercentageDone}%.");
             }

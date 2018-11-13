@@ -24,6 +24,7 @@ using Oetools.Utilities.Archive.Filesystem;
 using Oetools.Utilities.Archive.Ftp;
 using Oetools.Utilities.Archive.HttpFileServer;
 using Oetools.Utilities.Archive.Prolib;
+using Oetools.Utilities.Archive.Xcode;
 using Oetools.Utilities.Archive.Zip;
 
 namespace Oetools.Utilities.Archive {
@@ -34,40 +35,46 @@ namespace Oetools.Utilities.Archive {
     public class Archiver {
 
         /// <summary>
-        /// et a new instance of an archiver.
+        /// Get a new instance of an archiver.
         /// </summary>
         /// <returns></returns>
         public static ICabArchiver NewCabArchiver() => new CabArchiver();
         
         /// <summary>
-        /// et a new instance of an archiver.
+        /// Get a new instance of an archiver.
         /// </summary>
         /// <returns></returns>
         public static IZipArchiver NewZipArchiver() => new ZipArchiver();
         
         /// <summary>
-        /// et a new instance of an archiver.
+        /// Get a new instance of an archiver.
         /// </summary>
         /// <returns></returns>
         public static IProlibArchiver NewProlibArchiver() => new ProlibArchiver();
         
         /// <summary>
-        /// et a new instance of an archiver.
+        /// Get a new instance of an archiver.
         /// </summary>
         /// <returns></returns>
-        public static IArchiver NewFtpArchiver() => new FtpArchiver();
+        public static IArchiverFullFeatured NewFtpArchiver() => new FtpArchiver();
         
         /// <summary>
-        /// et a new instance of an archiver.
+        /// Get a new instance of an archiver.
         /// </summary>
         /// <returns></returns>
-        public static IArchiver NewFileSystemArchiver() => new FileSystemArchiver();
+        public static IArchiverFullFeatured NewFileSystemArchiver() => new FileSystemArchiver();
         
         /// <summary>
-        /// et a new instance of an archiver.
+        /// Get a new instance of an archiver.
         /// </summary>
         /// <returns></returns>
         public static IHttpFileServerArchiver NewHttpFileServerArchiver() => new HttpFileServerArchiver();
+        
+        /// <summary>
+        /// Get a new instance of an archiver.
+        /// </summary>
+        /// <returns></returns>
+        public static IXcodeArchiver NewXcodeArchiver() => new XcodeArchiver();
         
     }
 }

@@ -19,9 +19,12 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using Oetools.Utilities.Archive;
 using Oetools.Utilities.Openedge.Exceptions;
 
 namespace Oetools.Utilities.Openedge {
@@ -39,14 +42,22 @@ namespace Oetools.Utilities.Openedge {
         private const short MaxKey = 15;
         
         private readonly ushort[] _crcTable;
-        private readonly byte[] _keyData;
+        private byte[] _keyData;
 
         /// <summary>
-        /// New encryptor using the given encryption key
+        /// New encryptor using the given encryption key.
         /// </summary>
-        /// <param name="key">If null, will default to Progress</param>
+        /// <param name="key">If null, will default to Progress.</param>
         public UoeEncryptor(string key) {
             _crcTable = UoeHash.GetConstantCrcTable();
+            SetKey(key);
+        }
+
+        /// <summary>
+        /// Use the given encryption key.
+        /// </summary>
+        /// <param name="key">If null, will default to Progress.</param>
+        public void SetKey(string key) {
             _keyData = GetKeyData(key);
         }
 
@@ -70,6 +81,10 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="outputFilePath"></param>
         /// <exception cref="UoeAlreadyConvertedException"></exception>
         public void ConvertFile(string filePath, bool encode, string outputFilePath) {
+            var dir = Path.GetDirectoryName(outputFilePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+                Directory.CreateDirectory(dir);
+            }
             File.WriteAllBytes(outputFilePath, ConvertData(File.ReadAllBytes(filePath), encode));
         }
         
@@ -134,6 +149,7 @@ namespace Oetools.Utilities.Openedge {
         }
         
         private static bool IsFirstByteFromEncryptedFile(int firstByte) => (firstByte | 2) == 0x13;
+        
     }
 }
 
