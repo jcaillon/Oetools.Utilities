@@ -47,6 +47,9 @@ namespace Oetools.Utilities.Openedge {
         /// <summary>
         /// Computes the CRC value of a byte array using the openedge crc table.
         /// </summary>
+        /// <remarks>
+        /// This corresponds to CRC-16/ARC implementation.
+        /// </remarks>
         /// <param name="value"></param>
         /// <param name="data"></param>
         /// <returns></returns>

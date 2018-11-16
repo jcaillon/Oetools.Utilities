@@ -190,6 +190,64 @@ namespace Oetools.Utilities.Test.Lib {
         }
 
         [TestMethod]
+        public void Overload_instances() {
+            var instanceGlobalDefault = new Obj5 {
+                Prop2 = new List<Obj3> {
+                    new Obj3 {
+                        Prop1 = "cool1"
+                    },
+                    new Obj3 {
+                        Prop2 = "cool2"
+                    }
+                },
+                Prop4 = 10,
+                Prop5 = new List<string> {
+                    "cool4",
+                    "cool5"
+                },
+                Prop6 = new[] {
+                    "cool6", null, "cool7"
+                },
+                Prop7 = new Obj3 {
+                    Prop2 = "cool9"
+                },
+                Prop8 = 45
+            };
+            var instanceOverload = new Obj5 {
+                Prop2 = new List<Obj3> {
+                    new Obj3 {
+                        Prop2 = "cool3"
+                    },
+                    new Obj3 {
+                        Prop1 = "cool4"
+                    }
+                },
+                Prop3 = "cool2",
+                Prop4 = 25,
+                Prop7 = new Obj3 {
+                    Prop1 = "cool1"
+                }
+            };
+
+            var copy = instanceGlobalDefault.GetDeepCopy();
+            instanceOverload.DeepCopy(copy);
+            
+            Assert.AreEqual("cool3", copy.Prop2[0].Prop2);
+            Assert.AreEqual("cool4", copy.Prop2[1].Prop1);
+            Assert.AreEqual("cool2", copy.Prop3);
+            Assert.AreEqual(25, copy.Prop4);
+            Assert.AreEqual("cool1", copy.Prop7.Prop1);
+            
+            Assert.AreEqual("cool4", copy.Prop5[0]);
+            Assert.AreEqual("cool5", copy.Prop5[1]);
+            Assert.AreEqual("cool6", copy.Prop6[0]);
+            Assert.AreEqual(null, copy.Prop6[1]);
+            Assert.AreEqual("cool7", copy.Prop6[2]);
+            Assert.AreEqual("cool9", copy.Prop7.Prop2);
+            Assert.AreEqual(0, copy.Prop8);
+        }
+
+        [TestMethod]
         public void ReplacePlaceHoldersInAllPublicProperties_Test() {
             var instance = new Obj1 {
                 Prop1 = new Obj2 {

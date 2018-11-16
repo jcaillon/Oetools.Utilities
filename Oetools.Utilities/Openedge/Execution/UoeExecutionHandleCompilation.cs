@@ -51,7 +51,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// we use xref and not xml-xref because :
         /// - the file is smaller
         /// - its faster to read
-        /// - xref-xml has a strong tendancy to fail to generate!
+        /// - xref-xml has a strong tendency to fail to generate!
         /// </remarks>
         public bool CompileInAnalysisMode { get; set; }
        

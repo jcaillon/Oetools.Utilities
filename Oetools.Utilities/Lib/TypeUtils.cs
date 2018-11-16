@@ -197,7 +197,8 @@ namespace Oetools.Utilities.Lib {
                         break;
                     default:
                         if (sourceProperty.PropertyType.IsClass) {
-                            targetProperty.SetValue(targetObj, DeepCopyPublicProperties(obj, targetProperty.PropertyType));
+                            var targetObjValue = targetProperty.GetValue(targetObj);
+                            targetProperty.SetValue(targetObj, DeepCopyPublicProperties(obj, targetProperty.PropertyType, targetObjValue));
                         } else {
                             targetProperty.SetValue(targetObj, obj);
                         }
