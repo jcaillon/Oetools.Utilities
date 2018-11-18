@@ -393,7 +393,7 @@ namespace Oetools.Utilities.Lib {
         /// Returns a temporary directory for this application
         /// </summary>
         /// <returns></returns>
-        public static string GetTempDirectory(string subfolder = null) {
+        public static string CreateTempDirectory(string subfolder = null) {
             var tmpDir = Path.Combine(Path.GetTempPath(), ".oe_tmp");
             if (!string.IsNullOrEmpty(subfolder)) {
                 tmpDir = Path.Combine(tmpDir, subfolder);

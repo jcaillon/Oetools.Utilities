@@ -55,11 +55,16 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         
         [TestMethod]
         public void OeExecution_Expect_Exception() {
-            if (GetEnvExecution(out UoeExecutionEnv _ )) {
+            if (GetEnvExecution(out UoeExecutionEnv env2 )) {
+                env2.Dispose();
                 Assert.ThrowsException<UoeExecutionParametersException>(() => {
-                    using (var exec = new UoeExecutionCustomTest(new UoeExecutionEnv { DlcDirectoryPath = "" })) {
-                        exec.Start();
-                        exec.WaitForExecutionEnd();
+                    using (var env = new UoeExecutionEnv {
+                        DlcDirectoryPath = ""
+                    }) {
+                        using (var exec = new UoeExecutionCustomTest(env)) {
+                            exec.Start();
+                            exec.WaitForExecutionEnd();
+                        }
                     }
                 });
             }
@@ -81,6 +86,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.HasBeenKilled, "killed");
                 Assert.AreEqual(expected, exec.Output.ToLower(), "checking DISPLAY-TYPE");
             }
+            env.Dispose();
         }
 
         private int _iOeExecutionTestEvents;
@@ -114,6 +120,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.ExecutionHandledExceptions, "failed");
                 Assert.AreEqual(5, _iOeExecutionTestEvents);
             }
+            env.Dispose();
         }
         
         
@@ -147,6 +154,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 // the end event executed correctly even if the process has been killed
                 Assert.IsNotNull(exec.ExecutionTimeSpan);
             }
+            env.Dispose();
         }
         
         private int _iOeExecutionTestKilledEvents;
@@ -176,6 +184,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsNotNull(exec.ExecutionTimeSpan);
                 Assert.AreEqual(1, _iOeExecutionTestKilledEvents);
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -237,6 +246,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.ExecutionFailed, "failed to execute 3");
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is UoeExecutionOpenedgeException), "HandledExceptions 3");
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -289,6 +299,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual("dictdb alias1 alias2 alias3", exec.Output.CliCompactWhitespaces());
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -318,6 +329,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.ExecutionHandledExceptions, "ex2");
                 Assert.IsTrue(exec.DatabaseConnectionFailed, "no connection 2");
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -334,6 +346,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.IsTrue(exec.Output.Contains("-s 2000"), "startup params");
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -351,6 +364,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.Output.Contains(TestFolder), "propath 1");
                 Assert.IsTrue(exec.Output.Contains(Path.Combine(TestFolder, "random")), "propath 2");
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -371,6 +385,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual("1", exec.Output);
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -396,6 +411,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual("okay", exec.Output);
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -412,6 +428,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual(exec.Output.Replace("\r", "").Replace("\\\n", "\n").TrimEnd('\\'), $"{exec.ExecutionTemporaryDirectory}\n{TestFolder}");
             }
+            env.Dispose();
         }
 
         private bool GetEnvExecution(out UoeExecutionEnv env) {

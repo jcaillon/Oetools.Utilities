@@ -53,6 +53,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             using (var exec = new UoeExecutionRun(env, "")) {
                 Assert.ThrowsException<UoeExecutionParametersException>(() => exec.Start(), "nothing to run");
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -82,6 +83,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "no exceptions");
                 Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "nice.log")));
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -102,6 +104,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.AreEqual("4GLMessages", ((UoeExecutionOpenedgeException)exec.HandledExceptions[0]).ErrorMessage);
                 Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "error.log")));
             }
+            env.Dispose();
         }
         
         private bool GetEnvExecution(out UoeExecutionEnv env) {

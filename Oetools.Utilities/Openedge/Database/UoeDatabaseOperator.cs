@@ -268,7 +268,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
 
-            // RÚparation Prostrct de la base de donnÚes fuck Ó l'aide du fichier de structure fuck.st terminÚe. (13485)
+            // RÚparation Prostrct de la base de donnÚes Ó l'aide du fichier de structure fuck.st terminÚe. (13485)
         }
 
         /// <summary>

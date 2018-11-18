@@ -31,7 +31,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// The temp folder to use when we need to write the openedge procedure for data administration
         /// </summary>
-        public string TempFolder { get; set; } = Utils.GetTempDirectory();
+        public string TempFolder { get; set; } = Utils.CreateTempDirectory();
         
         public UoeDatabaseAdministrator(string dlcPath) : base(dlcPath) { }
 

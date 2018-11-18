@@ -56,6 +56,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -70,6 +71,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsTrue(exec.DatabaseConnectionFailed, "DbConnectionFailed");
             }
+            env.Dispose();
         }
         
         [TestMethod]
@@ -103,6 +105,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.AreEqual("dummy.sequence1,alias1.sequence1,base.sequence1", string.Join(",", exec.Sequences), "sequences");
                 Assert.AreEqual("dummy.table1,alias1.table1,dummy._Sequence,alias1._Sequence,base.table1,base._Sequence", string.Join(",", exec.TablesCrc.Keys), "tables");
             }
+            env.Dispose();
         }
 
         private bool GetEnvExecution(out UoeExecutionEnv env) {

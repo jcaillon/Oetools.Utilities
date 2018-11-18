@@ -27,7 +27,7 @@ using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Openedge.Execution {
     
-    public class UoeExecutionEnv : AUoeExecutionEnv {
+    public class UoeExecutionEnv : AUoeExecutionEnv, IDisposable {
         
         private string _iniFilePath;
         private string _tempIniFilePath;
@@ -116,7 +116,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         /// <inheritdoc cref="AUoeExecutionEnv.TempDirectory"/>
         public override string TempDirectory {
-            get => _tempDirectory ?? Utils.GetTempDirectory();
+            get => _tempDirectory ?? Utils.CreateTempDirectory();
             set {
                 _tempIniFilePath = null;
                 _tempDirectory = value;
@@ -195,6 +195,10 @@ namespace Oetools.Utilities.Openedge.Execution {
                 _tablesCrc = exec.TablesCrc;
                 _sequences = exec.Sequences;
             }
+        }
+
+        public void Dispose() {
+            Utils.DeleteDirectoryIfExists(TempDirectory, true);
         }
     }
 }
