@@ -27,17 +27,21 @@ using Oetools.Utilities.Resources;
 namespace Oetools.Utilities.Openedge.Database {
     
     public class UoeDatabaseAdministrator : UoeDatabaseOperator, IDisposable {
-
+        
         /// <summary>
         /// The temp folder to use when we need to write the openedge procedure for data administration
         /// </summary>
-        public string TempFolder { get; set; } = Utils.CreateTempDirectory();
-        
+        public string TempFolder {
+            get => _tempFolder ?? (_tempFolder = Utils.CreateTempDirectory());
+            set => _tempFolder = value;
+        }
+
         public UoeDatabaseAdministrator(string dlcPath) : base(dlcPath) { }
 
         private UoeProcessIo _progres;
         
         private string _procedurePath;
+        private string _tempFolder;
 
         private string ProcedurePath {
             get {
@@ -95,7 +99,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Progres.WorkingDirectory = dbFolder;
 
-            var executionOk = Progres.TryExecute($"-db {dbPhysicalName}.db -1 -ld DICTDB -p {ProcedurePath.CliQuoter()} -param {$"load-df|{dfFilePath}".CliQuoter()}");
+            var executionOk = Progres.TryExecute($"-db {dbPhysicalName}.db -1 -ld DICTDB -p {ProcedurePath.CliQuoter()} -param {$"load-df|{dfFilePath.MakePathAbsolute()}".CliQuoter()}");
             if (!executionOk || Progres.BatchOutput.ToString().EndsWith("**ERROR")) {
                 throw new UoeDatabaseOperationException(Progres.BatchOutput.ToString());
             }
@@ -104,7 +108,9 @@ namespace Oetools.Utilities.Openedge.Database {
         public void Dispose() {
             _progres?.Dispose();
             _progres = null;
-            File.Delete(ProcedurePath);
+            if (!string.IsNullOrEmpty(_procedurePath)) {
+                File.Delete(_procedurePath);
+            }
         }
     }
 }

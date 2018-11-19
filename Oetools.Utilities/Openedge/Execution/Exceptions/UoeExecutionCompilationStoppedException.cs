@@ -19,6 +19,8 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace Oetools.Utilities.Openedge.Execution.Exceptions {
     public class UoeExecutionCompilationStoppedException : UoeExecutionOpenedgeException {
@@ -27,6 +29,24 @@ namespace Oetools.Utilities.Openedge.Execution.Exceptions {
         
         public List<UoeCompilationProblem> CompilationProblems { get; set; }
         
-        public override string Message => $"The compilation process stopped on the first compilation {(StopOnWarning ? "warning" : "error")}{(CompilationProblems != null && CompilationProblems.Count > 0 ? $" :\n- {string.Join("\n- ", CompilationProblems)}" : "")}";
+        public override string Message {
+            get {
+                var sb = new StringBuilder("The compilation process stopped on the first compilation ").Append(StopOnWarning ? "warning" : "error").Append(": ");
+                if (CompilationProblems != null && CompilationProblems.Count > 0) {
+                    foreach (var filePathGrouped in CompilationProblems.GroupBy(cp => cp.FilePath)) {
+                        sb.AppendLine();
+                        sb.Append("in ").Append(filePathGrouped.Key).Append(":");
+                        foreach (var problem in filePathGrouped) {
+                            sb.AppendLine();
+                            sb.Append(" - ").Append(problem);
+                        }
+                    }
+                    
+                } else {
+                    sb.Append("empty problem list.");
+                }
+                return sb.ToString();
+            }
+        }
     }
 }

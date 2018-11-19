@@ -131,22 +131,22 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected readonly Dictionary<string, string> PreprocessedVars;
 
         /// <summary>
-        ///     Path to the output .log file (for compilation)
+        /// Path to the output progress .log file (errors that happened when running the process).
         /// </summary>
         protected string _errorLogPath;
 
         /// <summary>
-        ///     log to the database connection log (not existing if everything is ok)
+        /// Path to the database connection log (not existing if everything is ok).
         /// </summary>
         protected string _dbErrorLogPath;
 
         /// <summary>
-        ///     Full path to the directory containing all the files needed for the execution
+        /// Full path to the directory containing all the files needed for the execution.
         /// </summary>
         protected string _tempDir;
 
         /// <summary>
-        ///     Full path to the directory used as the working directory to start the prowin process
+        /// Full path to the directory used as the working directory to start the prowin process.
         /// </summary>
         protected string _processStartDir;
 

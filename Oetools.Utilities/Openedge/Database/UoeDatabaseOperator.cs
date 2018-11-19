@@ -149,7 +149,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)}")) {
+            if (!dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.MakePathAbsolute().CliQuoter()} -blocksize {blockSize.ToString().Substring(1)}")) {
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
         }
@@ -182,7 +182,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}")) {
+            if (!dbUtil.TryExecute($"procopy {sourceDbPath.MakePathAbsolute().CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}")) {
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
         }
@@ -225,7 +225,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}") || !dbUtil.BatchOutput.ToString().Contains("(1365)")) {
+            if (!dbUtil.TryExecute($"procopy {sourceDbPath.MakePathAbsolute().CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}") || !dbUtil.BatchOutput.ToString().Contains("(1365)")) {
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
 
