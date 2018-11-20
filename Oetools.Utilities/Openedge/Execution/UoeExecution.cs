@@ -73,14 +73,16 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Set to true after the process is over if there was errors during the execution.
         /// The process executed till the end but there were errors or warning that should be displayed
-        /// to the end user
+        /// to the end user.
+        /// You can check <see cref="HandledExceptions"/> to get the errors.
         /// </summary>
         public bool ExecutionHandledExceptions => HandledExceptions != null && HandledExceptions.Count > 0;
         
         /// <summary>
         /// Set to true if the process failed to go to the end or didn't event start,
         /// if this is true, you should be really worried because something is wrong with the internal
-        /// procedures in this very library
+        /// procedures in this very library.
+        /// You can check <see cref="HandledExceptions"/> to get the errors.
         /// </summary>
         public bool ExecutionFailed { get; protected set; }
 
