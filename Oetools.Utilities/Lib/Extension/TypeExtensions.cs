@@ -147,6 +147,13 @@ namespace Oetools.Utilities.Lib.Extension {
             return (T) DeepCopyPublicProperties(sourceObj, targetType, targetObj);
         }
         
+        public static object DeepCopyToNew(this object sourceObj, Type targetType) {
+            if (!HasDefaultConstructor(targetType)) {
+                throw new Exception($"Can't deep copy to a new instance without a default constructor for type {targetType}.");
+            }
+            return DeepCopyPublicProperties(sourceObj, targetType);
+        }
+        
         /// <summary>
         /// Copies all the public properties of one object to another
         /// </summary>
@@ -184,7 +191,7 @@ namespace Oetools.Utilities.Lib.Extension {
                 if (targetProperty == null || !targetProperty.CanWrite || targetProperty.PropertyType.IsNotPublic) {
                     continue;
                 }
-                if (Attribute.GetCustomAttribute(targetProperty, typeof(DeepCopy), true) is DeepCopy attribute && attribute.Ignore) {
+                if (Attribute.GetCustomAttribute(targetProperty, typeof(DeepCopyAttribute), true) is DeepCopyAttribute attribute && attribute.Ignore) {
                     continue;
                 }
                 if (sourceProperty.PropertyType != targetProperty.PropertyType) {

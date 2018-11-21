@@ -98,7 +98,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForExecutionEnd();
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"not ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "expect having compiled the last file even if the file[1] has errors");
-                Assert.AreEqual(2, exec.CompiledFiles.ElementAt(1).CompilationErrors.Count, "expect to have compile the error file despite file[0] having warnings");
+                Assert.AreEqual(2, exec.CompiledFiles.ElementAt(1).CompilationProblems.Count, "expect to have compile the error file despite file[0] having warnings");
             }
             
             // second scenario, stop on error
@@ -117,8 +117,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.AreEqual(typeof(UoeExecutionCompilationStoppedException), exec.HandledExceptions[0].GetType(), $"exeption type : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(0, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "no files compiled correctly, we stopped before");
                 Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledWithWarnings), "1 file with warning");
-                Assert.AreEqual(1, exec.CompiledFiles.ElementAt(0).CompilationErrors.Count, "get the errors on the file that were compiled");
-                Assert.AreEqual(2, exec.CompiledFiles.ElementAt(1).CompilationErrors.Count, "also get errors on the file that made the compilation stopped");
+                Assert.AreEqual(1, exec.CompiledFiles.ElementAt(0).CompilationProblems.Count, "get the errors on the file that were compiled");
+                Assert.AreEqual(2, exec.CompiledFiles.ElementAt(1).CompilationProblems.Count, "also get errors on the file that made the compilation stopped");
             }
             
             // thirs scenario, stop on warning
@@ -137,8 +137,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.AreEqual(typeof(UoeExecutionCompilationStoppedException), exec.HandledExceptions[0].GetType(), $"exeption type : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(0, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "no files compiled correctly, we stopped before");
                 Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledWithWarnings), "1 file with warning");
-                Assert.AreEqual(1, exec.CompiledFiles.ElementAt(0).CompilationErrors.Count, "get the errors on the file that were compiled");
-                Assert.AreEqual(null, exec.CompiledFiles.ElementAt(1).CompilationErrors, "we don't have anything past the first file because we stopped the process");
+                Assert.AreEqual(1, exec.CompiledFiles.ElementAt(0).CompilationProblems.Count, "get the errors on the file that were compiled");
+                Assert.AreEqual(null, exec.CompiledFiles.ElementAt(1).CompilationProblems, "we don't have anything past the first file because we stopped the process");
             }
             env.Dispose();
         }
@@ -210,7 +210,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 var compiledFile = exec.CompiledFiles.First();
                 Assert.AreEqual(Path.Combine(TestFolder, "ok.p"), compiledFile.Path, "SourceFilePath");
                 Assert.AreEqual(Path.Combine(TestFolder, "ok.p"), compiledFile.CompiledFilePath, "CompiledPath");
-                Assert.AreEqual(null, compiledFile.CompilationErrors, "CompilationErrors");
+                Assert.AreEqual(null, compiledFile.CompilationProblems, "CompilationErrors");
                 Assert.AreEqual(true, compiledFile.CompiledCorrectly, "CompiledCorrectly");
                 Assert.AreEqual(true, analyze || compiledFile.RequiredFiles == null, "RequiredFiles");
                 Assert.AreEqual(true, analyze || compiledFile.RequiredDatabaseReferences == null, "RequiredTables");
@@ -267,29 +267,29 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     
                     var compiledFile = exec.CompiledFiles.First();
                     Assert.AreEqual(false, compiledFile.CompiledCorrectly, "not CompiledCorrectly");
-                    Assert.AreEqual(2, compiledFile.CompilationErrors.Count, "2 CompilationErrors");
+                    Assert.AreEqual(2, compiledFile.CompilationProblems.Count, "2 CompilationErrors");
                     
-                    Assert.AreEqual(2, compiledFile.CompilationErrors[0].Line, "line 2");
-                    Assert.AreEqual(typeof(UoeCompilationError), compiledFile.CompilationErrors[0].GetType(), "level");
-                    Assert.AreEqual(201, compiledFile.CompilationErrors[0].ErrorNumber, "error 201");
+                    Assert.AreEqual(2, compiledFile.CompilationProblems[0].Line, "line 2");
+                    Assert.AreEqual(typeof(UoeCompilationError), compiledFile.CompilationProblems[0].GetType(), "level");
+                    Assert.AreEqual(201, compiledFile.CompilationProblems[0].ErrorNumber, "error 201");
                     
-                    Assert.AreEqual(2, compiledFile.CompilationErrors[1].Line, "line 2");
-                    Assert.AreEqual(196, compiledFile.CompilationErrors[1].ErrorNumber, "error 196");
+                    Assert.AreEqual(2, compiledFile.CompilationProblems[1].Line, "line 2");
+                    Assert.AreEqual(196, compiledFile.CompilationProblems[1].ErrorNumber, "error 196");
                     
                     // we do not have the same line error if we are using the version <10.2 and >=10.2
                     
                     compiledFile = exec.CompiledFiles.Last();
                     Assert.AreEqual(false, compiledFile.CompiledCorrectly, "not CompiledCorrectly");
-                    Assert.AreEqual(3, compiledFile.CompilationErrors.Count, "3 CompilationErrors");
+                    Assert.AreEqual(3, compiledFile.CompilationProblems.Count, "3 CompilationErrors");
                     
-                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 2 : 3, compiledFile.CompilationErrors[0].Line, "line");
-                    Assert.AreEqual(typeof(UoeCompilationError), compiledFile.CompilationErrors[0].GetType(), "level");
-                    Assert.AreEqual(247, compiledFile.CompilationErrors[0].ErrorNumber, "error 247");
-                    Assert.AreEqual(Path.Combine(TestFolder, "error_include.i"), compiledFile.CompilationErrors[0].FilePath, "source inc");
+                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 2 : 3, compiledFile.CompilationProblems[0].Line, "line");
+                    Assert.AreEqual(typeof(UoeCompilationError), compiledFile.CompilationProblems[0].GetType(), "level");
+                    Assert.AreEqual(247, compiledFile.CompilationProblems[0].ErrorNumber, "error 247");
+                    Assert.AreEqual(Path.Combine(TestFolder, "error_include.i"), compiledFile.CompilationProblems[0].FilePath, "source inc");
                     
-                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 2 : 3, compiledFile.CompilationErrors[1].Line, "line");
-                    Assert.AreEqual(198, compiledFile.CompilationErrors[1].ErrorNumber, "error 198");
-                    Assert.AreEqual(Path.Combine(TestFolder, "error_include.i"), compiledFile.CompilationErrors[1].FilePath, "source inc");
+                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 2 : 3, compiledFile.CompilationProblems[1].Line, "line");
+                    Assert.AreEqual(198, compiledFile.CompilationProblems[1].ErrorNumber, "error 198");
+                    Assert.AreEqual(Path.Combine(TestFolder, "error_include.i"), compiledFile.CompilationProblems[1].FilePath, "source inc");
                 }
                 
                 // ERRORS AND WARNINGS
@@ -316,32 +316,32 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     var compiledFile = exec.CompiledFiles.First();
                     Assert.AreEqual(false, compiledFile.CompiledCorrectly, "not CompiledCorrectly");
                     Assert.AreEqual(false, compiledFile.CompiledWithWarnings, "not even compiled with warnings");
-                    Assert.AreEqual(5, compiledFile.CompilationErrors.Count, "5 CompilationErrors");
+                    Assert.AreEqual(5, compiledFile.CompilationProblems.Count, "5 CompilationErrors");
                     
-                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 3 : 1, compiledFile.CompilationErrors[0].Line, "line");
-                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationErrors[0].GetType(), "level");
-                    Assert.AreEqual(15090, compiledFile.CompilationErrors[0].ErrorNumber, "error 201");
-                    Assert.AreEqual(Path.Combine(TestFolder, isProVersionHigherOrEqualTo102 ? "warnings_include.i" : "withwarnings_in_include.p"), compiledFile.CompilationErrors[0].FilePath, "source inc");
+                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 3 : 1, compiledFile.CompilationProblems[0].Line, "line");
+                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationProblems[0].GetType(), "level");
+                    Assert.AreEqual(15090, compiledFile.CompilationProblems[0].ErrorNumber, "error 201");
+                    Assert.AreEqual(Path.Combine(TestFolder, isProVersionHigherOrEqualTo102 ? "warnings_include.i" : "withwarnings_in_include.p"), compiledFile.CompilationProblems[0].FilePath, "source inc");
                     
-                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 6 : 1, compiledFile.CompilationErrors[1].Line, "line");
-                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationErrors[1].GetType(), "level");
-                    Assert.AreEqual(15090, compiledFile.CompilationErrors[1].ErrorNumber, "error 201");
-                    Assert.AreEqual(Path.Combine(TestFolder, isProVersionHigherOrEqualTo102 ? "warnings_include.i" : "withwarnings_in_include.p"), compiledFile.CompilationErrors[1].FilePath, "source inc");
+                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 6 : 1, compiledFile.CompilationProblems[1].Line, "line");
+                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationProblems[1].GetType(), "level");
+                    Assert.AreEqual(15090, compiledFile.CompilationProblems[1].ErrorNumber, "error 201");
+                    Assert.AreEqual(Path.Combine(TestFolder, isProVersionHigherOrEqualTo102 ? "warnings_include.i" : "withwarnings_in_include.p"), compiledFile.CompilationProblems[1].FilePath, "source inc");
                     
-                    Assert.AreEqual(1, compiledFile.CompilationErrors[2].Line, "line");
-                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationErrors[2].GetType(), "level");
-                    Assert.AreEqual(15090, compiledFile.CompilationErrors[2].ErrorNumber, "error");
-                    Assert.AreEqual(Path.Combine(TestFolder, "withwarnings_in_include.p"), compiledFile.CompilationErrors[2].FilePath, "source");
+                    Assert.AreEqual(1, compiledFile.CompilationProblems[2].Line, "line");
+                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationProblems[2].GetType(), "level");
+                    Assert.AreEqual(15090, compiledFile.CompilationProblems[2].ErrorNumber, "error");
+                    Assert.AreEqual(Path.Combine(TestFolder, "withwarnings_in_include.p"), compiledFile.CompilationProblems[2].FilePath, "source");
                     
-                    Assert.AreEqual(1, compiledFile.CompilationErrors[3].Line, "line");
-                    Assert.AreEqual(typeof(UoeCompilationError), compiledFile.CompilationErrors[3].GetType(), "level");
-                    Assert.AreEqual(201, compiledFile.CompilationErrors[3].ErrorNumber, "error");
-                    Assert.AreEqual(Path.Combine(TestFolder, "withwarnings_in_include.p"), compiledFile.CompilationErrors[3].FilePath, "source");
+                    Assert.AreEqual(1, compiledFile.CompilationProblems[3].Line, "line");
+                    Assert.AreEqual(typeof(UoeCompilationError), compiledFile.CompilationProblems[3].GetType(), "level");
+                    Assert.AreEqual(201, compiledFile.CompilationProblems[3].ErrorNumber, "error");
+                    Assert.AreEqual(Path.Combine(TestFolder, "withwarnings_in_include.p"), compiledFile.CompilationProblems[3].FilePath, "source");
                     
-                    Assert.AreEqual(1, compiledFile.CompilationErrors[4].Line, "line");
-                    Assert.AreEqual(typeof(UoeCompilationError), compiledFile.CompilationErrors[4].GetType(), "level");
-                    Assert.AreEqual(196, compiledFile.CompilationErrors[4].ErrorNumber, "error");
-                    Assert.AreEqual(Path.Combine(TestFolder, "withwarnings_in_include.p"), compiledFile.CompilationErrors[4].FilePath, "source");
+                    Assert.AreEqual(1, compiledFile.CompilationProblems[4].Line, "line");
+                    Assert.AreEqual(typeof(UoeCompilationError), compiledFile.CompilationProblems[4].GetType(), "level");
+                    Assert.AreEqual(196, compiledFile.CompilationProblems[4].ErrorNumber, "error");
+                    Assert.AreEqual(Path.Combine(TestFolder, "withwarnings_in_include.p"), compiledFile.CompilationProblems[4].FilePath, "source");
                 }
                 
                 // ONLY WARNINGS
@@ -361,17 +361,17 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     var compiledFile = exec.CompiledFiles.First();
                     Assert.AreEqual(false, compiledFile.CompiledCorrectly, "not CompiledCorrectly");
                     Assert.AreEqual(true, compiledFile.CompiledWithWarnings, "but compiled with warnings");
-                    Assert.AreEqual(2, compiledFile.CompilationErrors.Count, "2 CompilationErrors");
+                    Assert.AreEqual(2, compiledFile.CompilationProblems.Count, "2 CompilationErrors");
                     
-                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 3 : 1, compiledFile.CompilationErrors[0].Line, "line");
-                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationErrors[0].GetType(), "level");
-                    Assert.AreEqual(15090, compiledFile.CompilationErrors[0].ErrorNumber, "error 201");
-                    Assert.AreEqual(Path.Combine(TestFolder, isProVersionHigherOrEqualTo102 ? "warnings_include.i" : "withwarnings_in_include.p"), compiledFile.CompilationErrors[0].FilePath, "source inc");
+                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 3 : 1, compiledFile.CompilationProblems[0].Line, "line");
+                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationProblems[0].GetType(), "level");
+                    Assert.AreEqual(15090, compiledFile.CompilationProblems[0].ErrorNumber, "error 201");
+                    Assert.AreEqual(Path.Combine(TestFolder, isProVersionHigherOrEqualTo102 ? "warnings_include.i" : "withwarnings_in_include.p"), compiledFile.CompilationProblems[0].FilePath, "source inc");
                     
-                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 6 : 1, compiledFile.CompilationErrors[1].Line, "line");
-                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationErrors[1].GetType(), "level");
-                    Assert.AreEqual(15090, compiledFile.CompilationErrors[1].ErrorNumber, "error 201");
-                    Assert.AreEqual(Path.Combine(TestFolder, isProVersionHigherOrEqualTo102 ? "warnings_include.i" : "withwarnings_in_include.p"), compiledFile.CompilationErrors[1].FilePath, "source inc");
+                    Assert.AreEqual(isProVersionHigherOrEqualTo102 ? 6 : 1, compiledFile.CompilationProblems[1].Line, "line");
+                    Assert.AreEqual(typeof(UoeCompilationWarning), compiledFile.CompilationProblems[1].GetType(), "level");
+                    Assert.AreEqual(15090, compiledFile.CompilationProblems[1].ErrorNumber, "error 201");
+                    Assert.AreEqual(Path.Combine(TestFolder, isProVersionHigherOrEqualTo102 ? "warnings_include.i" : "withwarnings_in_include.p"), compiledFile.CompilationProblems[1].FilePath, "source inc");
                 }
                 
             }
@@ -482,10 +482,10 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 
                 var compiledFile = exec.CompiledFiles.First();
                 Assert.AreEqual(false, compiledFile.CompiledCorrectly, "not CompiledCorrectly");
-                Assert.AreEqual(2, compiledFile.CompilationErrors.Count, "2 CompilationErrors");
+                Assert.AreEqual(2, compiledFile.CompilationProblems.Count, "2 CompilationErrors");
                 
-                Assert.AreEqual(Path.Combine(TestFolder, "niceu.p"), compiledFile.CompilationErrors[0].FilePath, "source");
-                Assert.AreEqual(Path.Combine(TestFolder, "niceu.p"), compiledFile.CompilationErrors[1].FilePath, "source2");
+                Assert.AreEqual(Path.Combine(TestFolder, "niceu.p"), compiledFile.CompilationProblems[0].FilePath, "source");
+                Assert.AreEqual(Path.Combine(TestFolder, "niceu.p"), compiledFile.CompilationProblems[1].FilePath, "source2");
             }
             env.Dispose();
         }
@@ -557,7 +557,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForExecutionEnd();
                 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
-                Assert.AreEqual(2, exec.CompiledFiles.ElementAt(0).CompilationErrors.Count, $"exec.CompiledFiles[0].CompilationErrors : {string.Join("\n", exec.CompiledFiles.ElementAt(0).CompilationErrors)}");
+                Assert.AreEqual(2, exec.CompiledFiles.ElementAt(0).CompilationProblems.Count, $"exec.CompiledFiles[0].CompilationErrors : {string.Join("\n", exec.CompiledFiles.ElementAt(0).CompilationProblems)}");
             }
             env.Dispose();
         }
@@ -735,7 +735,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForExecutionEnd();
                 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed procedure : {string.Join("\n", exec.HandledExceptions)}");
-                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all procedures compile ok : {string.Join(",", exec.CompiledFiles.ElementAt(0).CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
+                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all procedures compile ok : {string.Join(",", exec.CompiledFiles.ElementAt(0).CompilationProblems?.Select(e => e.Message) ?? new List<string>())}");
                 
                 Assert.AreEqual(references, string.Join(",", exec.CompiledFiles.ElementAt(0).RequiredDatabaseReferences.Select(r => r.QualifiedName)), "procedure ref");
                 Assert.IsTrue(exec.CompiledFiles.ElementAt(0).RequiredDatabaseReferences.Where(r => r is UoeDatabaseReferenceTable).Cast<UoeDatabaseReferenceTable>().All(r => !string.IsNullOrEmpty(r.Crc)));
@@ -806,7 +806,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.WaitForExecutionEnd();
                 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
-                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all compile ok : {string.Join(",", exec.CompiledFiles.ElementAt(0).CompilationErrors?.Select(e => e.Message) ?? new List<string>())}");
+                Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all compile ok : {string.Join(",", exec.CompiledFiles.ElementAt(0).CompilationProblems?.Select(e => e.Message) ?? new List<string>())}");
                 
                 Assert.AreEqual(references, string.Join(",", exec.CompiledFiles.ElementAt(0).RequiredDatabaseReferences.Select(r => r.QualifiedName)), "ref");
                 Assert.IsTrue(exec.CompiledFiles.ElementAt(0).RequiredDatabaseReferences.Where(r => r is UoeDatabaseReferenceTable).Cast<UoeDatabaseReferenceTable>().All(r => !string.IsNullOrEmpty(r.Crc)));

@@ -42,7 +42,7 @@ namespace Oetools.Utilities.Lib {
                 if (!property.CanRead || !property.CanWrite || property.PropertyType.IsNotPublic) {
                     continue;
                 }
-                if (Attribute.GetCustomAttribute(property, typeof(ReplaceStringProperty), true) is ReplaceStringProperty attribute && attribute.SkipReplace) {
+                if (Attribute.GetCustomAttribute(property, typeof(ReplaceStringPropertyAttribute), true) is ReplaceStringPropertyAttribute attribute && attribute.SkipReplace) {
                     continue;
                 }
                 
@@ -73,12 +73,10 @@ namespace Oetools.Utilities.Lib {
             }
         }
         
-        private const string GetDefaultMethodPrefix = "GetDefault";
-
         /// <summary>
-        /// Allows to set default values to certain public properties of an object, a static method retuning the type of the property
-        /// and named GetDefaultXXX (<see cref="GetDefaultMethodPrefix"/>, where XXX is the property name) must be defined;
-        /// does not replace non null values
+        /// Allows to set default values to certain public properties of an object using a static method retuning the type of the property.
+        /// Does not replace non null values.
+        /// Set the name of the static method using <see cref="DefaultValueMethodAttribute"/>.
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
@@ -88,33 +86,35 @@ namespace Oetools.Utilities.Lib {
                 return;
             }
             var objType = obj.GetType();
-            foreach (var method in objType.GetMethods().Where(m => m.IsStatic && m.Name.StartsWith(GetDefaultMethodPrefix, StringComparison.CurrentCulture))) {
-                var prop = objType.GetProperty(method.Name.Substring(GetDefaultMethodPrefix.Length));
-                if (prop != null) {
-                    var propValue = prop.GetValue(obj);
+            foreach (var property in objType.GetProperties()) {
+                if (!property.CanRead || !property.CanWrite || property.PropertyType.IsNotPublic) {
+                    continue;
+                }
+                var propValue = property.GetValue(obj);
+                if (Attribute.GetCustomAttribute(property, typeof(DefaultValueMethodAttribute), true) is DefaultValueMethodAttribute attribute && !string.IsNullOrEmpty(attribute.MethodName)) {
                     if (propValue == null) {
-                        propValue = method.Invoke(null, null);
-                        prop.SetValue(obj, propValue); // invoke static method
+                        var methodInfo = objType.GetMethod(attribute.MethodName, BindingFlags.Public | BindingFlags.Static| BindingFlags.FlattenHierarchy);
+                        if (methodInfo != null) {
+                            propValue = methodInfo.Invoke(null, null);
+                            property.SetValue(obj, propValue); // invoke static method
+                        }
                     }
-                    switch (propValue) {
-                        case string strObj:
-                            SetDefaultValues(strObj);
-                            break;
-                        case IEnumerable listItem:
-                            if (prop.PropertyType.UnderlyingSystemType.GenericTypeArguments.Length > 0) {
-                                foreach (var item in listItem) {
-                                    if (item != null) {
-                                        SetDefaultValues(item);
-                                    }
+                }
+                switch (propValue) {
+                    case IEnumerable listItem:
+                        if (property.PropertyType.UnderlyingSystemType.GenericTypeArguments.Length > 0) {
+                            foreach (var item in listItem) {
+                                if (item != null) {
+                                    SetDefaultValues(item);
                                 }
                             }
-                            break;
-                        default:
-                            if (prop.PropertyType.IsClass && propValue != null) {
-                                SetDefaultValues(propValue);
-                            }
-                            break;
-                    }
+                        }
+                        break;
+                    default:
+                        if (property.PropertyType.IsClass && propValue != null) {
+                            SetDefaultValues(propValue);
+                        }
+                        break;
                 }
             }
         }

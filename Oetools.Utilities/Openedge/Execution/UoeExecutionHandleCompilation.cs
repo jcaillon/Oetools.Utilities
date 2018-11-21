@@ -307,7 +307,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         if (HandledExceptions[i] is UoeExecutionOpenedgeException oeException) {
                             if (oeException.ErrorNumber == UoeConstants.StopOnCompilationReturnErrorCode) {
                                 HandledExceptions[i] = new UoeExecutionCompilationStoppedException {
-                                    CompilationProblems = CompiledFiles.CopyWhere(f => f.CompilationErrors != null).SelectMany(f => f.CompilationErrors).Where(e => StopOnCompilationError ? e is UoeCompilationError : e is UoeCompilationWarning).ToList(),
+                                    CompilationProblems = CompiledFiles.CopyWhere(f => f.CompilationProblems != null).SelectMany(f => f.CompilationProblems).Where(e => StopOnCompilationError ? e is UoeCompilationError : e is UoeCompilationWarning).ToList(),
                                     StopOnWarning = StopOnCompilationWarning
                                 };
                             }

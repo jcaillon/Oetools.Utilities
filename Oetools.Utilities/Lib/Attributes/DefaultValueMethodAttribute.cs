@@ -20,17 +20,20 @@
 using System;
 
 namespace Oetools.Utilities.Lib.Attributes {
+    
     /// <summary>
-    /// Special attribute that allows to decide wether or not properties should be written when using object deep copy
+    /// Special attribute that allows to know the name of the method that should be used in order to get a property default value.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
-    public class DeepCopy : Attribute {
+    public class DefaultValueMethodAttribute : Attribute {
             
         /// <summary>
-        /// Do not replace the value of this property
+        /// The name of the method to use in order to get the default value for this property.
         /// </summary>
-        public bool Ignore { get; set; }
+        public string MethodName { get; set; }
             
-        public DeepCopy() { }
+        public DefaultValueMethodAttribute(string methodName) {
+            MethodName = methodName;
+        }
     }
 }

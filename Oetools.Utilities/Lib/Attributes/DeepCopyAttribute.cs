@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ReplaceStringProperty.cs) is part of Oetools.Utilities.
+// This file (DeepCopy.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,16 +21,16 @@ using System;
 
 namespace Oetools.Utilities.Lib.Attributes {
     /// <summary>
-    /// Special attribute that allows to decide wether or not variables should be replaced in a property of type string
+    /// Special attribute that allows to decide wether or not properties should be written when using object deep copy
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
-    public class ReplaceStringProperty : Attribute {
+    public class DeepCopyAttribute : Attribute {
             
         /// <summary>
-        /// Do not replace the variables in this string property
+        /// Do not replace the value of this property
         /// </summary>
-        public bool SkipReplace { get; set; }
+        public bool Ignore { get; set; }
             
-        public ReplaceStringProperty() { }
+        public DeepCopyAttribute() { }
     }
 }

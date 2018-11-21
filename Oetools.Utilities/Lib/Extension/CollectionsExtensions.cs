@@ -71,6 +71,13 @@ namespace Oetools.Utilities.Lib.Extension {
         }
         
         /// <summary>
+        ///     Same as ToList but returns an empty list on Null instead of an exception
+        /// </summary>
+        public static IEnumerable<T> ToNonNullEnumerable<T>(this IEnumerable<T> obj) {
+            return obj ?? Enumerable.Empty<T>();
+        }
+        
+        /// <summary>
         /// Returns all distinct elements of the given source, where "distinctness"
         /// is determined via a projection and the specified comparer for the projected type.
         /// </summary>

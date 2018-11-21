@@ -186,6 +186,8 @@ namespace Oetools.Utilities.Test.Lib {
         }
 
         private class Obj2 {
+            
+            [DefaultValueMethod(nameof(GetDefaultProp1))]
             public string Prop1 { get; set; }
             public static string GetDefaultProp1() => "nice";
 
@@ -197,6 +199,8 @@ namespace Oetools.Utilities.Test.Lib {
         private class Obj3 {
             public string Prop1 { get; set; }
 
+            
+            [DefaultValueMethod(nameof(GetDefaultProp2))]
             public string Prop2 { get; set; }
             public static string GetDefaultProp2() => "cool";
         }
@@ -216,19 +220,24 @@ namespace Oetools.Utilities.Test.Lib {
         }
         
         private class ObjGetDefault {
+            
+            [DefaultValueMethod(nameof(GetDefaultProp1))]
             public Obj2 Prop1 { get; set; }
             public static Obj2 GetDefaultProp1() => new Obj2();
-
+            
+            [DefaultValueMethod(nameof(GetDefaultProp2))]
             public List<Obj3> Prop2 { get; set; }
             public static List<Obj3> GetDefaultProp2() => new List<Obj3> { new Obj3() };
 
             public string Prop3 { get; set; }
-
+            
+            [DefaultValueMethod(nameof(GetDefaultProp4))]
             public int? Prop4 { get; set; }
             public static int GetDefaultProp4() => 10;
 
             public List<string> Prop5 { get; set; }
             
+            [DefaultValueMethod(nameof(GetDefaultProp6))]
             public Obj2 Prop6 { get; set; }
             public static Obj2 GetDefaultProp6() => new Obj2();
         }

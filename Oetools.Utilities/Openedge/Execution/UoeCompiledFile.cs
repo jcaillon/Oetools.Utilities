@@ -94,7 +94,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     List of errors
         /// </summary>
-        public List<UoeCompilationProblem> CompilationErrors { get; set; }
+        public List<UoeCompilationProblem> CompilationProblems { get; set; }
 
         /// <summary>
         ///     represents the source file (i.e. includes) used to generate a given .r code file
@@ -150,8 +150,8 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
 
             var rcodeExists = File.Exists(CompilationRcodeFilePath);
-            CompiledCorrectly = rcodeExists && (CompilationErrors == null || CompilationErrors.Count == 0);
-            CompiledWithWarnings = !CompiledCorrectly && rcodeExists && (CompilationErrors == null || CompilationErrors.All(e => e is UoeCompilationWarning));
+            CompiledCorrectly = rcodeExists && (CompilationProblems == null || CompilationProblems.Count == 0);
+            CompiledWithWarnings = !CompiledCorrectly && rcodeExists && (CompilationProblems == null || CompilationProblems.All(e => e is UoeCompilationWarning));
         }
         
         /// <summary>
@@ -204,7 +204,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         private void AddWarningIfFileDefinedButDoesNotExist(string path) {
             if (!string.IsNullOrEmpty(path) && !File.Exists(path)) {
-                (CompilationErrors ?? (CompilationErrors = new List<UoeCompilationProblem>())).Add(new UoeCompilationWarning {
+                (CompilationProblems ?? (CompilationProblems = new List<UoeCompilationProblem>())).Add(new UoeCompilationWarning {
                     FilePath = Path,
                     Column = 1,
                     Line = 1,
@@ -227,7 +227,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         problem.Column = Math.Max(1, (int) fields[4].ConvertFromStr(typeof(int)));
                         problem.ErrorNumber = Math.Max(0, (int) fields[5].ConvertFromStr(typeof(int)));
                         problem.Message = fields[6].ProUnescapeString().Replace(CompiledFilePath, Path).Trim();
-                        (CompilationErrors ?? (CompilationErrors = new List<UoeCompilationProblem>())).Add(problem);
+                        (CompilationProblems ?? (CompilationProblems = new List<UoeCompilationProblem>())).Add(problem);
                     }
                 }, enc);
             }
