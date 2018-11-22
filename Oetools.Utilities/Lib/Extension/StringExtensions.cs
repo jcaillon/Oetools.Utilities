@@ -165,7 +165,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="text"></param>
         /// <returns></returns>
         public static string PrettyQuote(this string text) {
-            return $"<<{text ?? ""}>>";
+            return $"«{text ?? ""}»";
         }
 
         /// <summary>
