@@ -20,6 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -160,12 +161,23 @@ namespace Oetools.Utilities.Lib.Extension {
         }
         
         /// <summary>
+        /// Converts a camel case string to a string separated with the given separator.
+        /// Ex: from ThisSentence to this_sentence.
+        /// </summary>
+        /// <param name="str"></param>
+        /// <param name="separator"></param>
+        /// <returns></returns>
+        public static string CamelCaseToSeparator(this string str, string separator = "_") {
+            return string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? separator + x.ToString() : x.ToString())).ToLower();
+        }
+        
+        /// <summary>
         /// A simple quote to use for result display
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
         public static string PrettyQuote(this string text) {
-            return $"«{text ?? ""}»";
+            return $"'{text ?? ""}'";
         }
 
         /// <summary>
