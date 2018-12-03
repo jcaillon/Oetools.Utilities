@@ -123,6 +123,9 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
+        /// <inheritdoc />
+        public override bool TryToHideProcessFromTaskBarOnWindows { get; set; } = true;
+
         /// <summary>
         /// Returns the installed version of openedge.
         /// </summary>

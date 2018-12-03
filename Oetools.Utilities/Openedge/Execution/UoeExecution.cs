@@ -283,10 +283,12 @@ namespace Oetools.Utilities.Openedge.Execution {
             // start the process
             _process = new UoeProcessIo(Env.DlcDirectoryPath, ForceCharacterModeUse || Env.UseProgressCharacterMode && !RequiresGraphicalMode, Env.CanProVersionUseNoSplash) {
                 WorkingDirectory = _processStartDir,
-                RedirectedOutputEncoding = Env.GetIoEncoding()
+                RedirectedOutputEncoding = Env.GetIoEncoding(),
+                TryToHideFromTaskBar = Env.TryToHideProcessFromTaskBarOnWindows
             };
             _process.OnProcessExit += ProcessOnExited;
             _process.ExecuteAsync(_exeParameters.ToString(), SilentExecution);
+
         }
 
         /// <summary>

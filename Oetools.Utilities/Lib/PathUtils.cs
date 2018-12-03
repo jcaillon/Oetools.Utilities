@@ -102,7 +102,7 @@ namespace Oetools.Utilities.Lib {
         /// <param name="currentDirectory"></param>
         /// <returns></returns>
         public static string MakePathAbsolute(this string path, string currentDirectory = null) {
-            if (Path.IsPathRooted(path)) {
+            if (IsPathRooted(path)) {
                 return path;
             }
             return Path.Combine(currentDirectory ?? Directory.GetCurrentDirectory(), path);

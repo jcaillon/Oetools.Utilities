@@ -62,7 +62,7 @@ namespace Oetools.Utilities.Archive.Prolib {
             return DoAction(filesToArchive, Action.Archive);
         }
 
-        /// <inheritdoc cref="IArchiver.ListFiles"/>
+        /// <inheritdoc />
         public IEnumerable<IFileInArchive> ListFiles(string archivePath) {
             if (!File.Exists(archivePath)) {
                 return Enumerable.Empty<IFileInArchive>();
@@ -80,17 +80,17 @@ namespace Oetools.Utilities.Archive.Prolib {
             }
         }
 
-        /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
+        /// <inheritdoc />
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract) {
             return DoAction(filesToExtract, Action.Extract);
         }
 
-        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        /// <inheritdoc />
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete) {
             return DoAction(filesToDelete, Action.Delete);
         }
 
-        /// <inheritdoc cref="IArchiver.MoveFileSet"/>
+        /// <inheritdoc />
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove) {
             return DoAction(filesToMove, Action.Move);
         }

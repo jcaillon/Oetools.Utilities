@@ -85,6 +85,11 @@ namespace Oetools.Utilities.Openedge.Execution {
         public abstract string TempDirectory { get; set; }
 
         /// <summary>
+        /// Windows only, try to hide the prowin.exe executable from the task bar.
+        /// </summary>
+        public abstract bool TryToHideProcessFromTaskBarOnWindows { get; set; } 
+
+        /// <summary>
         /// Returns true if the given version is higher or equal to the pro version found in the dlc/version file
         /// </summary>
         /// <param name="version"></param>

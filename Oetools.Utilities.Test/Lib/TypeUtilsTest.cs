@@ -43,6 +43,32 @@ namespace Oetools.Utilities.Test.Lib {
         }
 
         [TestMethod]
+        public void ReplaceEmptyListsByNull() {
+            var ojb = new ObjReplaceEmptyListsByNull {
+                Prop1 = new List<Obj3>(),
+                Prop2 = new List<Obj4> {
+                    new Obj4 {
+                        Prop1 = new List<Obj4>()
+                    },
+                    new Obj4 {
+                        Prop1 = new List<Obj4> {
+                            new Obj4()
+                        }
+                    }
+                }
+            };
+            Assert.IsNotNull(ojb.Prop1);
+            Assert.IsNotNull(ojb.Prop2);
+            Assert.IsNotNull(ojb.Prop2[0].Prop1);
+            Assert.IsNotNull(ojb.Prop2[1].Prop1);
+            Utils.ReplaceEmptyListsByNull(ojb);
+            Assert.IsNull(ojb.Prop1);
+            Assert.IsNotNull(ojb.Prop2);
+            Assert.IsNull(ojb.Prop2[0].Prop1);
+            Assert.IsNotNull(ojb.Prop2[1].Prop1);
+        }
+
+        [TestMethod]
         public void SetDefaultValues_Test() {
             var ojb = new ObjGetDefault();
             ojb.Prop6 = new Obj2 {
@@ -240,6 +266,17 @@ namespace Oetools.Utilities.Test.Lib {
             [DefaultValueMethod(nameof(GetDefaultProp6))]
             public Obj2 Prop6 { get; set; }
             public static Obj2 GetDefaultProp6() => new Obj2();
+        }
+        
+        private class ObjReplaceEmptyListsByNull {
+            
+            public List<Obj3> Prop1 { get; set; }
+            public List<Obj4> Prop2 { get; set; }
+
+        }
+        
+        private class Obj4 {
+            public List<Obj4> Prop1 { get; set; }
         }
     }
 }

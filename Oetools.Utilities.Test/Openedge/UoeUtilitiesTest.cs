@@ -245,7 +245,7 @@ namespace Oetools.Utilities.Test.Openedge {
 ", @"C:\Users\Julien\analysefiles.xrf,C:\Work\Tests\UoeExecutionCompileTest\analysefiles.p,C:\Work\Tests\UoeExecutionCompileTest\includes with spaces\analysefilesfirst.i,C:\Work\Tests\UoeExecutionCompileTest\analysefilessecond.i,C:\Users\Julien\analysefiles.r")]
         public void GetReferencedFilesFromFileIdLog_Test(string fileContent, string expected) {
             File.WriteAllText(Path.Combine(TestFolder, "test.fileidlog"), fileContent, Encoding.Default);
-            var l = UoeUtilities.GetReferencedFilesFromFileIdLog(Path.Combine(TestFolder, "test.fileidlog"), Encoding.Default);
+            var l = UoeUtilities.GetReferencedFilesFromFileIdLog(Path.Combine(TestFolder, "test.fileidlog"), Encoding.Default, "");
             Assert.AreEqual(expected, string.Join(",", l));
         }
 

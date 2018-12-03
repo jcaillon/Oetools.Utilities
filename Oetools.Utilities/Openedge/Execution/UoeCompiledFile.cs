@@ -126,7 +126,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         private bool _compilationResultsRead;
         
-        public void ReadCompilationResults(Encoding enc) {
+        public void ReadCompilationResults(Encoding enc, string currentDirectory) {
             if (_compilationResultsRead) {
                 return;
             }
@@ -146,19 +146,20 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             if (IsAnalysisMode) {
                 AddWarningIfFileDefinedButDoesNotExist(CompilationFileIdLogFilePath);
-                ComputeReferencedFiles(enc);
+                ComputeReferencedFiles(enc, currentDirectory);
             }
 
             var rcodeExists = File.Exists(CompilationRcodeFilePath);
             CompiledCorrectly = rcodeExists && (CompilationProblems == null || CompilationProblems.Count == 0);
             CompiledWithWarnings = !CompiledCorrectly && rcodeExists && (CompilationProblems == null || CompilationProblems.All(e => e is UoeCompilationWarning));
         }
-        
+
         /// <summary>
         /// Read the table referenced in the source file using either the xref file or the RCODE-INFO:TABLE-LIST,
         /// make sure to also get the CRC value for each table
         /// </summary>
         /// <param name="ienv"></param>
+        /// <param name="analysisModeSimplifiedDatabaseReferences"></param>
         public void ComputeRequiredDatabaseReferences(AUoeExecutionEnv ienv, bool analysisModeSimplifiedDatabaseReferences) {
             if (!IsAnalysisMode || string.IsNullOrEmpty(CompilationXrefFilePath) && string.IsNullOrEmpty(CompilationRcodeTableListFilePath)) {
                 return;
@@ -258,14 +259,14 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Gets the files that were necessary to compile this file
         /// </summary>
-        private void ComputeReferencedFiles(Encoding enc) {
+        private void ComputeReferencedFiles(Encoding enc, string currentDirectory) {
 
             if (string.IsNullOrEmpty(CompilationFileIdLogFilePath)) {
                 return;
             }
             
             if (File.Exists(CompilationFileIdLogFilePath)) {
-                RequiredFiles = UoeUtilities.GetReferencedFilesFromFileIdLog(CompilationFileIdLogFilePath, enc);
+                RequiredFiles = UoeUtilities.GetReferencedFilesFromFileIdLog(CompilationFileIdLogFilePath, enc, currentDirectory);
                 
                 RequiredFiles.RemoveWhere(f => 
                     f.PathEquals(CompiledFilePath) ||

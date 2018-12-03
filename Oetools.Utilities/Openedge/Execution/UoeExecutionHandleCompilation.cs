@@ -298,7 +298,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (!ExecutionFailed) {
                 try {
                     Parallel.ForEach(CompiledFiles, file => {
-                        file.ReadCompilationResults(Env.GetIoEncoding());
+                        file.ReadCompilationResults(Env.GetIoEncoding(), _processStartDir);
                         file.ComputeRequiredDatabaseReferences(Env, AnalysisModeSimplifiedDatabaseReferences);
                     });
                     

@@ -20,7 +20,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Oetools.Utilities.Lib.Attributes;
 
@@ -67,6 +66,43 @@ namespace Oetools.Utilities.Lib {
                     default:
                         if (property.PropertyType.IsClass && obj != null) {
                             ForEachPublicPropertyStringInObject(property.PropertyType, obj, stringReplacementFunction);
+                        }
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// For a given object, replace all properties with the empty lists by the value null.
+        /// </summary>
+        /// <param name="obj"></param>
+        public static void ReplaceEmptyListsByNull(object obj) {
+            if (obj == null) {
+                return;
+            }
+            var objType = obj.GetType();
+            foreach (var property in objType.GetProperties()) {
+                if (!property.CanRead || !property.CanWrite || property.PropertyType.IsNotPublic) {
+                    continue;
+                }
+                var propValue = property.GetValue(obj);
+                if (propValue == null) {
+                    continue;
+                }
+                switch (propValue) {
+                    case IList listItem:
+                        if (listItem.Count == 0) {
+                            property.SetValue(obj, null);
+                        } else {
+                            foreach (var item in listItem) {
+                                ReplaceEmptyListsByNull(item);
+                            }
+                            
+                        }
+                        break;
+                    default:
+                        if (property.PropertyType.IsClass) {
+                            ReplaceEmptyListsByNull(propValue);
                         }
                         break;
                 }

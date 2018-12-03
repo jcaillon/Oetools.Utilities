@@ -21,7 +21,6 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Timers;
 using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Openedge.Execution {
@@ -38,10 +37,6 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// </remarks>
     public class UoeProcessIo : ProcessIoAsync {
         
-#if WINDOWSONLYBUILD
-        private Timer _timer;
-#endif
-        
         /// <summary>
         /// DLC path to use
         /// </summary>
@@ -56,6 +51,15 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Whether or not the executable can use the -nosplash parameter
         /// </summary>
         public bool CanUseNoSplash { get; set; }
+        
+        /// <summary>
+        /// Whether or not we should try to hide the prowin.exe executable from the task bar on windows.
+        /// </summary>
+        /// <remarks>
+        /// For unknown reasons, the prowin.exe executable started in batch mode (-b) systematically creates a new window. That window is hidden but it still appears in the taskbar. Weirdly enough, starting prowin.exe without the -b parameter does not show ny window, but we need the batch mode to correctly redirect runtime errors (otherwise it should show the errors in an alert-box).
+        /// As a workaround, we wait for the prowin.exe to start and to create its window and then we hide it using widows API.
+        /// </remarks>
+        public bool TryToHideFromTaskBar { get; set; } = true;
         
         /// <summary>
         /// The complete start parameters used
@@ -76,34 +80,25 @@ namespace Oetools.Utilities.Openedge.Execution {
             CanUseNoSplash = canUseNoSplash ?? UoeUtilities.CanProVersionUseNoSplashParameter(UoeUtilities.GetProVersionFromDlc(DlcPath));
             ExecutablePath = UoeUtilities.GetProExecutableFromDlc(DlcPath, UseCharacterMode);
         }
-        
-#if WINDOWSONLYBUILD
-        public new void Dispose() {
-            base.Dispose();
-            _timer?.Dispose();
-            _timer = null;
-        }
-#endif
-        
+
         protected override void ExecuteAsyncProcess(string arguments = null, bool silent = true) {
             base.ExecuteAsyncProcess(arguments, silent);
-#if WINDOWSONLYBUILD
-            if (silent && !UseCharacterMode) {
-                _timer = new Timer {
-                    Interval = 250,
-                    AutoReset = false
-                };
-                _timer.Elapsed += TimerOnElapsed;
-                _timer.Start();
+            if (Utils.IsRuntimeWindowsPlatform && silent && !UseCharacterMode && TryToHideFromTaskBar) {
+                while (!HideProcessFromTaskBar(_process.Id) && _process.TotalProcessorTime.TotalMilliseconds < 2000) {
+                    if (WaitUntilProcessExits(50)) {
+                        break;
+                    }
+                }
             }
-#endif
         }
 
+        /// <inheritdoc />
         protected override bool WaitUntilProcessExits(int timeoutMs) {
             RestoreSplashScreen();
             return base.WaitUntilProcessExits(timeoutMs);
         }
 
+        /// <inheritdoc />
         protected override void PrepareStart(string arguments, bool silent) {
             
             if (silent) {
@@ -151,16 +146,6 @@ namespace Oetools.Utilities.Openedge.Execution {
                 // if it fails it is not really a problem
             }
         }
-
-#if WINDOWSONLYBUILD
-        
-        private void TimerOnElapsed(object sender, ElapsedEventArgs e) {
-            if (HideProcessFromTaskBar(_process.Id) || _process.TotalProcessorTime.TotalMilliseconds > 3000) {
-                _timer.Dispose();
-            } else {
-                _timer.Start();
-            }
-        }
         
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr FindWindowEx(IntPtr parentHandle, IntPtr childAfter, string className,  string windowTitle);
@@ -192,7 +177,6 @@ namespace Oetools.Utilities.Openedge.Execution {
                 hWnd = FindWindowEx(IntPtr.Zero, hWnd, UoeConstants.ProwinWindowClass, null);
                 GetWindowThreadProcessId(hWnd, out var hWndProcessId);
                 if (hWndProcessId == procId) {
-                    ShowWindow(hWnd, 1);
                     SetWindowLong(hWnd, GWL_EX_STYLE, (GetWindowLong(hWnd, GWL_EX_STYLE) | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW);
                     ShowWindow(hWnd, 0);
                     return true;
@@ -200,7 +184,6 @@ namespace Oetools.Utilities.Openedge.Execution {
             } while(hWnd != IntPtr.Zero);	
             return false;
         }
-
-#endif
+        
     }
 }

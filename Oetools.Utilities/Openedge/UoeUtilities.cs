@@ -38,8 +38,9 @@ namespace Oetools.Utilities.Openedge {
         /// </summary>
         /// <param name="filePath"></param>
         /// <param name="encoding"></param>
+        /// <param name="currentDirectory"></param>
         /// <returns></returns>
-        public static HashSet<string> GetReferencedFilesFromFileIdLog(string filePath, Encoding encoding) {
+        public static HashSet<string> GetReferencedFilesFromFileIdLog(string filePath, Encoding encoding, string currentDirectory) {
             
             // we want to read this kind of line :
             // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID   Open E:\Common\CommonObj.i ID=33
@@ -69,6 +70,10 @@ namespace Oetools.Utilities.Openedge {
                         foundRef = $"{foundRef} {lastString}";
                         lastString = reader.RecordValue;
                     } while (true);
+                    if (!Utils.IsPathRooted(foundRef)) {
+                        foundRef = Path.Combine(currentDirectory, foundRef);
+                    }
+                    foundRef = foundRef.ToCleanPath();
                     if (!references.Contains(foundRef)) {
                         references.Add(foundRef);
                     }
@@ -266,6 +271,7 @@ namespace Oetools.Utilities.Openedge {
                 return false;
             }
         }
+        
         /// <summary>
         /// Returns the openedge name of an encoding.
         /// </summary>
@@ -380,7 +386,7 @@ namespace Oetools.Utilities.Openedge {
                     }
 
                     // need to take into account relative paths
-                    if (!Path.IsPathRooted(thisPath)) {
+                    if (!Utils.IsPathRooted(thisPath)) {
                         thisPath = Path.GetFullPath(Path.Combine(currentDirectory ?? "", thisPath));
                     }
 
