@@ -24,7 +24,6 @@ using System.Runtime.InteropServices;
 
 namespace Oetools.Utilities.Lib {
 
-#if WINDOWSONLYBUILD
     public static class HtmlHelpInterop {
         
         [Flags]
@@ -43,6 +42,9 @@ namespace Oetools.Utilities.Lib {
         private static extern IntPtr HtmlHelp(IntPtr hWndCaller, [MarshalAs(UnmanagedType.LPWStr)] string helpFile, HTMLHelpCommand command, IntPtr data);
 
         public static IntPtr DisplayIndex(string file, string index) {
+            if (!Utils.IsRuntimeWindowsPlatform) {
+                return IntPtr.Zero;
+            }
             var data = Marshal.StringToHGlobalUni(index);
             var res = HtmlHelp(IntPtr.Zero, file, HTMLHelpCommand.HH_DISPLAY_INDEX, data);
             Marshal.FreeHGlobal(data);
@@ -50,5 +52,4 @@ namespace Oetools.Utilities.Lib {
         }
         
     }
-#endif
 }
