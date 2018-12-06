@@ -61,7 +61,11 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
         
         [TestMethod]
         public void ProlibraryTest() {
-            
+            using (var prolib = new ProLibrary(@"C:\data\repo\_gitlab\Bao\Mdo\derp\message\_test.pl", null)) {
+                foreach (var file in prolib.Files) {
+                    prolib.ExtractToFile(file.RelativePath, Path.Combine(@"C:\data\repo\_gitlab\Bao\Mdo\derp\message\test", file.RelativePath));
+                }
+            }
         }
         
         [TestMethod]
