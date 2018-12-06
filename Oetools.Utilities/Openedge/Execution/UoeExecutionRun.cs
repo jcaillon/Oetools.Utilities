@@ -26,7 +26,7 @@ using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Openedge.Execution {
 
-    internal class UoeExecutionRun : UoeExecutionHandleCompilation {
+    internal class UoeExecutionRun : AUoeExecutionHandleCompilation {
 
         public bool RunSilently { get; set; }
         

@@ -19,7 +19,7 @@
 #endregion
 namespace Oetools.Utilities.Openedge.Execution {
     
-    public class UoeExecutionCompile : UoeExecutionHandleCompilation {
+    public class UoeExecutionCompile : AUoeExecutionHandleCompilation {
         
         public override bool NeedDatabaseConnection => true;
         

@@ -41,7 +41,6 @@ namespace Oetools.Utilities.Openedge.Execution.Exceptions {
                             sb.Append(" - ").Append(problem);
                         }
                     }
-                    
                 } else {
                     sb.Append("empty problem list.");
                 }

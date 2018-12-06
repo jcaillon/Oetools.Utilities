@@ -29,7 +29,7 @@ using Oetools.Utilities.Resources;
 
 namespace Oetools.Utilities.Openedge.Execution {
 
-    public abstract class UoeExecutionHandleCompilation : UoeExecution {
+    public abstract class AUoeExecutionHandleCompilation : UoeExecution {
         
         /// <summary>
         /// Immediately stop the compilation process when a compilation error (include warnings) is found,
@@ -152,7 +152,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// </summary>
         private string _progressionFilePath;
 
-        public UoeExecutionHandleCompilation(AUoeExecutionEnv env) : base(env) {
+        public AUoeExecutionHandleCompilation(AUoeExecutionEnv env) : base(env) {
             _filesListPath = Path.Combine(_tempDir, "files.list");
             _progressionFilePath = Path.Combine(_tempDir, "compile.progression");
             _compilationLog = Path.Combine(_tempDir, "compilation.log");

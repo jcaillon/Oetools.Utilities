@@ -19,6 +19,7 @@
 #endregion
 
 using System;
+using System.IO;
 
 namespace Oetools.Utilities.Openedge.Execution {
     
@@ -52,6 +53,6 @@ namespace Oetools.Utilities.Openedge.Execution {
         public int ErrorNumber { get; set; }
         public string Message { get; set; }
 
-        public override string ToString() => $"Line {Line}, Column {Column}, error {ErrorNumber} : {Message}";
+        public override string ToString() => $"Line {Line}, Column {Column}, error {ErrorNumber} : {(string.IsNullOrEmpty(FilePath) ? Message : Message.Replace(FilePath, Path.GetFileName(FilePath)))}";
     }
 }
