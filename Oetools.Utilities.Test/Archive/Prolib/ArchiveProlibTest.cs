@@ -61,11 +61,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
         
         [TestMethod]
         public void ProlibraryTest() {
-            using (var prolib = new ProLibrary(@"C:\data\repo\_gitlab\Bao\Mdo\derp\message\_test.pl", null)) {
-                foreach (var file in prolib.Files) {
-                    prolib.ExtractToFile(file.RelativePath, Path.Combine(@"C:\data\repo\_gitlab\Bao\Mdo\derp\message\test", file.RelativePath));
-                }
-            }
+            // TODO: test the edge cases were the file entries fill 511/512/513 of the file entries block size
         }
         
         [TestMethod]

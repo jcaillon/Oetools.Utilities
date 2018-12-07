@@ -39,6 +39,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         private const byte HeaderExtraBytesLength = 4;
         private const byte ProlibSignatureFirstByte = 0xD7;
         private const byte ReadFileEntry = 0xFF;
+        private const int FileEntriesMaxBlockSize = 512;
         private const byte SkipUntilNextFileEntry = 0xFE;
         private const int DataBufferSize = 1024 * 1024;
         
@@ -365,11 +366,12 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                         Files.Add(fileEntry);
                         fileEntry.ReadFileEntry(reader);
                         break;
+                    case 0:
                     case SkipUntilNextFileEntry:
                         // skip bytes (usually null bytes) until the next file entry
                         var foundNextFileEntry = false;
                         do {
-                            var data = reader.ReadBytes(550);
+                            var data = reader.ReadBytes(FileEntriesMaxBlockSize);
                             if (data.Length == 0) {
                                 // done reading
                                 return;
@@ -385,9 +387,6 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                             reader.BaseStream.Position = reader.BaseStream.Position - data.Length + i;
                         } while (!foundNextFileEntry);
                         break;
-                    case 0:
-                        // done reading
-                        return;
                     default:
                         throw new ProLibraryException($"Unexpected byte found at position {reader.BaseStream.Position}.");
                 }
@@ -456,11 +455,27 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         }
 
         private void WriteFileEntries(BinaryWriter writer) {
+            var fileEntriesBlockSize = 0;
             foreach (var file in Files) {
+                if (fileEntriesBlockSize + file.FileEntryLength + 1 >= FileEntriesMaxBlockSize) {
+                    // if the next file entry will overflow the max block size
+                    if (fileEntriesBlockSize < FileEntriesMaxBlockSize) {
+                        // if we have the space, write the SkipUntilNextFileEntry
+                        writer.Write(fileEntriesBlockSize + 1 == FileEntriesMaxBlockSize ? (byte) 0 : SkipUntilNextFileEntry);
+                        if (FileEntriesMaxBlockSize - fileEntriesBlockSize - 1 > 0) {
+                            writer.Write(new byte[FileEntriesMaxBlockSize - fileEntriesBlockSize - 1]);
+                        }
+                    }
+                    fileEntriesBlockSize = 0;
+                }
                 writer.Write(ReadFileEntry);
                 file.WriteFileEntry(writer);
+                fileEntriesBlockSize += file.FileEntryLength + 1;
             }
             writer.Write(SkipUntilNextFileEntry);
+            if (FileEntriesMaxBlockSize - fileEntriesBlockSize - 1 > 0) {
+                writer.Write(new byte[FileEntriesMaxBlockSize - fileEntriesBlockSize - 1]);
+            }
         }
         
         private void WriteHeaderAfterCrc(BinaryWriter writer) {

@@ -108,7 +108,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <summary>
         /// Minus the initial FF.
         /// </summary>
-        private int FileEntryLength => 1 + RelativePathSize + 2 + (Parent.Is64Bits ? sizeof(long) : sizeof(uint)) + 1 + 4 + 4 + 4 + NumberOfNullsAfterFileEntry;
+        public int FileEntryLength => 1 + RelativePathSize + 2 + (Parent.Is64Bits ? sizeof(long) : sizeof(uint)) + 1 + 4 + 4 + 4 + NumberOfNullsAfterFileEntry;
 
         private string _relativePath;
         private byte[] _fileEntryExtraBytes;
