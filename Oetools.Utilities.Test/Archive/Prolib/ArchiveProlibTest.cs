@@ -60,8 +60,50 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
         }
         
         [TestMethod]
-        public void ProlibraryTest() {
-            // TODO: test the edge cases were the file entries fill 511/512/513 of the file entries block size
+        public void ProlibraryTestEdgeCases() {
+            if (!TestHelper.GetDlcPath(out string dlcPath) || UoeUtilities.GetProVersionFromDlc(dlcPath).Major != 11) {
+                return;
+            }
+            
+            // test the edge cases were the file entries fill 511/512/513 of the file entries block size
+            var filePath = Path.Combine(TestFolder, "test_edge_cases");
+            File.WriteAllText($"{filePath}1", "");
+            File.WriteAllText($"{filePath}2", "");
+            File.WriteAllText($"{filePath}3", "");
+            File.WriteAllText($"{filePath}4", "");
+            File.WriteAllText($"{filePath}5", "");
+            
+            for (int i = 65; i >= 63; i--) {
+                // progress prolib
+                OeProlibArchiver oeArchiver;
+                try {
+                    oeArchiver = new OeProlibArchiver(dlcPath, Encoding.Default);
+                } catch (ArchiverException e) {
+                    Console.WriteLine($"Cancelling test, prolib not found! : {e.Message}");
+                    return;
+                }
+                oeArchiver.ArchiveFileSet(new List<IFileToArchive> {
+                    new FileInArchive { SourcePath = $"{filePath}1", PathInArchive = new string('a', 83), ArchivePath = Path.Combine(TestFolder, "test_edge_cases_official.pl") },
+                    new FileInArchive { SourcePath = $"{filePath}2", PathInArchive = new string('b', 84), ArchivePath = Path.Combine(TestFolder, "test_edge_cases_official.pl") },
+                    new FileInArchive { SourcePath = $"{filePath}3", PathInArchive = new string('f', 84), ArchivePath = Path.Combine(TestFolder, "test_edge_cases_official.pl") },
+                    new FileInArchive { SourcePath = $"{filePath}4", PathInArchive = new string('c', i), ArchivePath = Path.Combine(TestFolder, "test_edge_cases_official.pl") },
+                    new FileInArchive { SourcePath = $"{filePath}5", PathInArchive = new string('d', 1), ArchivePath = Path.Combine(TestFolder, "test_edge_cases_official.pl") }
+                });
+                
+                // our prolib
+                File.Copy(Path.Combine(TestFolder, "test_edge_cases_official.pl"), Path.Combine(TestFolder, "test_edge_cases.pl"));
+                using (var prolib = new ProLibrary(Path.Combine(TestFolder, "test_edge_cases.pl"), null)) {
+                    prolib.Save();
+                }
+                
+                Assert.IsTrue(File.ReadAllBytes(Path.Combine(TestFolder, "test_edge_cases_official.pl")).SequenceEqual(File.ReadAllBytes(Path.Combine(TestFolder, "test_edge_cases.pl"))), "file not recreated the same way : test_edge_cases.");
+                
+                File.Delete(Path.Combine(TestFolder, "test_edge_cases.pl"));
+                File.Delete(Path.Combine(TestFolder, "test_edge_cases_official.pl"));
+            }
+            
+
+
         }
         
         [TestMethod]

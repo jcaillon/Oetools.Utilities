@@ -35,8 +35,6 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
     
     /// <summary>
     /// Allows to pack files into a prolib file
-    /// TODO : do not use a wrapper around prolib.exe, reverse eng. the .pl format
-    /// look into https://github.com/jaime-olivares/zipstorer
     /// </summary>
     internal class OeProlibArchiver : ArchiverBase, IArchiver {
         
