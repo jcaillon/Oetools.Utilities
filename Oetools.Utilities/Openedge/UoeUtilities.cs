@@ -71,7 +71,7 @@ namespace Oetools.Utilities.Openedge {
                         lastString = reader.RecordValue;
                     } while (true);
                     if (!Utils.IsPathRooted(foundRef)) {
-                        foundRef = Path.Combine(currentDirectory, foundRef);
+                        foundRef = Path.GetFullPath(Path.Combine(currentDirectory, foundRef));
                     }
                     foundRef = foundRef.ToCleanPath();
                     if (!references.Contains(foundRef)) {
