@@ -138,15 +138,19 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <exception cref="Exception"></exception>
         public static T DeepCopy<T>(this object sourceObj, T targetObj) where T : class {
             var targetType = typeof(T);
-            if (targetType.IsInterface) {
-                throw new Exception($"Can't deep copy an interface, need a implementation of type {targetType}.");
-            }
-            if (targetObj == null && !HasDefaultConstructor(targetType)) {
+            if (targetObj == null && (targetType.IsInterface || !HasDefaultConstructor(targetType))) {
                 throw new Exception($"Can't deep copy to a new instance without a default constructor for type {targetType}.");
             }
             return (T) DeepCopyPublicProperties(sourceObj, targetType, targetObj);
         }
         
+        /// <summary>
+        /// Create a new deep copy of an object, using its default constructor.
+        /// </summary>
+        /// <param name="sourceObj"></param>
+        /// <param name="targetType"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public static object DeepCopyToNew(this object sourceObj, Type targetType) {
             if (!HasDefaultConstructor(targetType)) {
                 throw new Exception($"Can't deep copy to a new instance without a default constructor for type {targetType}.");
@@ -169,9 +173,9 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <exception cref="Exception"></exception>
         private static object DeepCopyPublicProperties(object sourceObj, Type targetType, object targetObj = null) {
             if (sourceObj == null) {
-                return null;
+                return targetObj;
             }
-            if (!targetType.IsClass) {
+            if (!targetType.IsClass && !targetType.IsInterface) {
                 return sourceObj;
             }
             if (targetType == typeof(string)) {
@@ -239,7 +243,7 @@ namespace Oetools.Utilities.Lib.Extension {
                         
                         break;
                     default:
-                        if (sourceProperty.PropertyType.IsClass) {
+                        if (sourceProperty.PropertyType.IsClass || sourceProperty.PropertyType.IsInterface) {
                             var targetObjValue = targetProperty.GetValue(targetObj);
                             targetProperty.SetValue(targetObj, DeepCopyPublicProperties(obj, targetProperty.PropertyType, targetObjValue));
                         } else {

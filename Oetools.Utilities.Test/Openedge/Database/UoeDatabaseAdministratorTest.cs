@@ -35,14 +35,6 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         public static void Init(TestContext context) {           
             Cleanup();
             Directory.CreateDirectory(TestFolder);
-            
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-
-            var db = new UoeDatabaseOperator(dlcPath);
-            db.Procopy(Path.Combine(TestFolder, "ref.db"), DatabaseBlockSize.S1024);
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "ref.db")));
         }
         
         [ClassCleanup]
@@ -57,6 +49,10 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
+            
+            var db = new UoeDatabaseOperator(dlcPath);
+            db.Procopy(Path.Combine(TestFolder, "ref.db"), DatabaseBlockSize.S1024);
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "ref.db")));
             
             // create .df
             var dfPath = Path.Combine(TestFolder, "ref.df");
@@ -73,6 +69,10 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                 return;
             }
             
+            var db = new UoeDatabaseOperator(dlcPath);
+            db.Procopy(Path.Combine(TestFolder, "ref2.db"), DatabaseBlockSize.S1024);
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "ref2.db")));
+            
             // create .df
             var dfPath = Path.Combine(TestFolder, "ref2.df");
             File.WriteAllText(dfPath, "ADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10");
@@ -86,6 +86,45 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                 ex = e;
             }
             Assert.IsNotNull(ex);
+        }
+
+        [TestMethod]
+        public void CreateDatabase() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            
+            using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
+                dataAdmin.CreateDatabase(Path.Combine(TestFolder, "created1.db"));
+                Assert.IsTrue(dataAdmin.GetBusyMode(Path.Combine(TestFolder, "created1.db")).Equals(DatabaseBusyMode.NotBusy));
+            }
+            
+            // create .df
+            var dfPath = Path.Combine(TestFolder, "ref.df");
+            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+            
+            using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
+                dataAdmin.CreateDatabase(Path.Combine(TestFolder, "created2.db"), dataAdmin.CreateStandardStructureFile(Path.Combine(TestFolder, "created2.db")), DatabaseBlockSize.S2048, null, true, true, dfPath);
+                Assert.IsTrue(dataAdmin.GetBusyMode(Path.Combine(TestFolder, "created2.db")).Equals(DatabaseBusyMode.NotBusy));
+            }
+            
+        }
+
+        [TestMethod]
+        public void CreateCompilationDatabase() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            
+            // create .df
+            var dfPath = Path.Combine(TestFolder, "compil.df");
+            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+            
+            using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
+                dataAdmin.CreateCompilationDatabaseFromDf(Path.Combine(TestFolder, "compil.db"), dfPath);
+                Assert.IsTrue(dataAdmin.GetBusyMode(Path.Combine(TestFolder, "compil.db")).Equals(DatabaseBusyMode.NotBusy));
+            }
+            
         }
         
     }

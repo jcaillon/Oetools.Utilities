@@ -102,10 +102,15 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// The encoding to use for I/O of the openedge executables.
         /// </summary>
-        public Encoding Encoding { get; set; } = Encoding.Default;
+        public Encoding Encoding { get; } = Encoding.Default;
+        
+        /// <summary>
+        /// A logger.
+        /// </summary>
+        public ILog Log { get; set; }
 
         /// <summary>
-        /// New database utility
+        /// New database utility.
         /// </summary>
         /// <param name="dlcPath"></param>
         /// <param name="encoding"></param>
@@ -139,8 +144,10 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseOperationException("The structure file path can't be null.");
             }
 
+            structureFilePath = structureFilePath.MakePathAbsolute();
+
             if (!File.Exists(structureFilePath)) {
-                throw new UoeDatabaseOperationException($"The structure file does not exist : {structureFilePath.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
             }
 
             if (!Directory.Exists(dbFolder)) {
@@ -149,9 +156,14 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.MakePathAbsolute().CliQuoter()} -blocksize {blockSize.ToString().Substring(1)}")) {
+            
+            Log?.Info($"Creating database structure for {targetDbPath.PrettyQuote()} from {structureFilePath.PrettyQuote()} with block size {blockSize.ToString().Substring(1)}.");
+            
+            if (!dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)}")) {
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
+            
+            Log?.Debug(GetErrorFromProcessIo(dbUtil));
         }
 
 
@@ -171,9 +183,9 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseOperationException("The source database can't be null.");
             }
 
-            sourceDbPath = Path.Combine(sourceDbFolder, $"{sourceDbPhysicalName}.db");
+            sourceDbPath = Path.Combine(sourceDbFolder, $"{sourceDbPhysicalName}.db").MakePathAbsolute();
             if (!File.Exists(sourceDbPath)) {
-                throw new UoeDatabaseOperationException($"Could not find the procopy source database : {sourceDbPath.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"Could not find the procopy source database: {sourceDbPath.PrettyQuote()}.");
             }
             
             if (!Directory.Exists(dbFolder)) {
@@ -182,9 +194,15 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"procopy {sourceDbPath.MakePathAbsolute().CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}")) {
+            
+            Log?.Info($"Copying database {sourceDbPath.PrettyQuote()} to {targetDbPath.PrettyQuote()}.");
+            
+            if (!dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}") || !dbUtil.BatchOutput.ToString().Contains("(1365)")) {
+                // db copied from C:\progress\client\v117x_dv\dlc\empty1. (1365)
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
+            
+            Log?.Debug(GetErrorFromProcessIo(dbUtil));
         }
 
         /// <summary>
@@ -197,8 +215,6 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="relativePath">Use -relativepath in procopy command</param>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public void Procopy(string targetDbPath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
-            
             if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
                 blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
             }
@@ -207,29 +223,19 @@ namespace Oetools.Utilities.Openedge.Database {
             if (!string.IsNullOrEmpty(codePage)) {
                 emptyDbFolder = Path.Combine(DlcPath, "prolang", codePage);
                 if (!Directory.Exists(emptyDbFolder)) {
-                    throw new UoeDatabaseOperationException($"Invalid codepage, the folder doesn't exist : {emptyDbFolder.PrettyQuote()}.");
+                    throw new UoeDatabaseOperationException($"Invalid codepage, the folder doesn't exist: {emptyDbFolder.PrettyQuote()}.");
                 }
             } else {
                 emptyDbFolder = DlcPath;
             }
 
-            var sourceDbPath = Path.Combine(emptyDbFolder, $"empty{(int) blockSize}");
+            var sourceDbPath = Path.Combine(emptyDbFolder, $"empty{(int) blockSize}").MakePathAbsolute();
 
             if (!File.Exists($"{sourceDbPath}.db")) {
-                throw new UoeDatabaseOperationException($"Could not find the procopy source database : {sourceDbPath.PrettyQuote()}.");
-            }
-            
-            if (!Directory.Exists(dbFolder)) {
-                Directory.CreateDirectory(dbFolder);
+                throw new UoeDatabaseOperationException($"Could not find the procopy source database: {sourceDbPath.PrettyQuote()}.");
             }
 
-            var dbUtil = GetExecutable(DbUtilPath);
-            dbUtil.WorkingDirectory = dbFolder;
-            if (!dbUtil.TryExecute($"procopy {sourceDbPath.MakePathAbsolute().CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}") || !dbUtil.BatchOutput.ToString().Contains("(1365)")) {
-                throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
-            }
-
-            // db copied from C:\progress\client\v117x_dv\dlc\empty1. (1365)
+            Procopy(targetDbPath, sourceDbPath, newInstance, relativePath);
         }
 
         /// <summary>
@@ -250,6 +256,8 @@ namespace Oetools.Utilities.Openedge.Database {
             } catch (Exception e) {
                 throw new UoeDatabaseOperationException($"Could not write .st file to {stPath.PrettyQuote()}.", e);
             }
+            
+            Log?.Info($"Created standard structure file {stPath.PrettyQuote()}.");
 
             return stPath;
         }
@@ -264,11 +272,15 @@ namespace Oetools.Utilities.Openedge.Database {
            
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
+            
+            Log?.Info($"Repairing database structure of {targetDbPath.PrettyQuote()}.");
+            
             if (!dbUtil.TryExecute($"prostrct repair {dbPhysicalName}") || !dbUtil.BatchOutput.ToString().Contains("(13485)")) {
+                // repair of *** ended. (13485)
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
             }
-
-            // RÚparation Prostrct de la base de donnÚes Ó l'aide du fichier de structure fuck.st terminÚe. (13485)
+            
+            Log?.Debug(GetErrorFromProcessIo(dbUtil));
         }
 
         /// <summary>
@@ -346,7 +358,8 @@ namespace Oetools.Utilities.Openedge.Database {
 
             options = $"{dbPhysicalName} {options ?? ""}".CliCompactWhitespaces();
 
-            GetExecutable(ProservePath);
+            Log?.Info($"Starting database server for {targetDbPath.PrettyQuote()} with options: {options.PrettyQuote()}.");
+            
             var proc = Process.Start(new ProcessStartInfo {
                 FileName = ProservePath,
                 UseShellExecute = false,
@@ -357,7 +370,7 @@ namespace Oetools.Utilities.Openedge.Database {
             });
 
             if (proc == null) {
-                throw new UoeDatabaseOperationException($"Failed to start {ProservePath} {options}.");
+                throw new UoeDatabaseOperationException($"Failed to start {ProservePath.PrettyQuote()} with options: {options.PrettyQuote()}.");
             }
             
             do {
@@ -365,7 +378,7 @@ namespace Oetools.Utilities.Openedge.Database {
             } while (busyMode != DatabaseBusyMode.MultiUser && !proc.HasExited);
 
             if (busyMode != DatabaseBusyMode.MultiUser) {
-                throw new UoeDatabaseOperationException($"Failed to serve the database, check the database log file {Path.Combine(dbFolder, $"{dbPhysicalName}.lg").PrettyQuote()}, options used : {options.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"Failed to serve the database, check the database log file {Path.Combine(dbFolder, $"{dbPhysicalName}.lg").PrettyQuote()}, options used: {options.PrettyQuote()}.");
             }
 
             return options;
@@ -410,11 +423,16 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var proshut = GetExecutable(ProshutPath);
             proshut.WorkingDirectory = dbFolder;
+            
+            Log?.Info($"Shutting down database server for {targetDbPath.PrettyQuote()}.");
+            
             proshut.TryExecute($"{dbPhysicalName} -by{(!string.IsNullOrEmpty(options) ? $" {options}" : string.Empty)}");
             
             if (GetBusyMode(targetDbPath) != DatabaseBusyMode.NotBusy) {
                 throw new UoeDatabaseOperationException(GetErrorFromProcessIo(proshut));
             }
+            
+            Log?.Debug(GetErrorFromProcessIo(proshut));
         }
 
         /// <summary>
@@ -427,16 +445,17 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var busyMode = GetBusyMode(targetDbPath);
             if (busyMode != DatabaseBusyMode.NotBusy) {
-                throw new UoeDatabaseOperationException($"The database is still in use : {busyMode}.");
+                throw new UoeDatabaseOperationException($"The database is still in use: {busyMode}.");
             }
 
             foreach (var file in Directory.EnumerateFiles(dbFolder, $"{dbPhysicalName}*", SearchOption.TopDirectoryOnly)) {
+                // TODO: restrict to possible db file extensions?
                 File.Delete(file);
             }
         }
 
         /// <summary>
-        /// Generate a .st file at the given location, create all the needed AREA found in the given .df
+        /// Generates a .st file at the given location, create all the needed AREA found in the given .df
         /// </summary>
         /// <param name="targetDbPath"></param>
         /// <param name="sourceDfPath"></param>
@@ -448,7 +467,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
             
             if (string.IsNullOrEmpty(sourceDfPath) || !File.Exists(sourceDfPath)) {
-                throw new UoeDatabaseOperationException($"The file path for data definition file .df does not exist : {sourceDfPath.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"The file path for data definition file .df does not exist: {sourceDfPath.PrettyQuote()}.");
             }
             
             // https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm/creating-a-structure-description-file.html
@@ -477,6 +496,8 @@ namespace Oetools.Utilities.Openedge.Database {
             } catch (Exception e) {
                 throw new UoeDatabaseOperationException($"Could not write .st file to {stPath.PrettyQuote()}", e);
             }
+            
+            Log?.Info($"Generated database physical structure file {stPath.PrettyQuote()} from schema definition file {sourceDfPath.PrettyQuote()}.");
 
             return stPath;
         }
@@ -494,7 +515,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
             
             if (string.IsNullOrEmpty(stFilePath) || !File.Exists(stFilePath)) {
-                throw new UoeDatabaseOperationException($"Invalid file path for source .st : {stFilePath.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"Invalid file path for source .st: {stFilePath.PrettyQuote()}.");
             }
 
             var newContent = new Regex("^(?<firstpart>\\w\\s+(\"[^\"]+\"(:\\d+)?(,\\d+)?(;\\d+)?)?\\s+)(?<path>\\S+|\"[^\"]+\")(?<extendTypeSize>(\\s+\\w+\\s+\\d+)?\\s*)$", RegexOptions.Multiline)
@@ -507,6 +528,8 @@ namespace Oetools.Utilities.Openedge.Database {
             }
             
             File.WriteAllText(stPath, newContent, Encoding);
+            
+            Log?.Info($"Copied database physical structure file to {stPath.PrettyQuote()}.");
 
             return stPath;
         }
@@ -622,13 +645,13 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseOperationException("The logical name of the database is null or empty.");
             }
             if (logicalName.Length > DbLogicalNameMaxLength) {
-                throw new UoeDatabaseOperationException($"The logical name of the database is too long (>{DbLogicalNameMaxLength}) : {logicalName.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"The logical name of the database is too long (>{DbLogicalNameMaxLength}): {logicalName.PrettyQuote()}.");
             }
             if (logicalName.Any(c => !c.IsAsciiLetter() && !char.IsDigit(c) && c != '_' && c != '-')) {
                 throw new UoeDatabaseOperationException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters) : {logicalName.PrettyQuote()}.");
             }
             if (!logicalName[0].IsAsciiLetter()) {
-                throw new UoeDatabaseOperationException($"The logical name of a database should start with a english letter : {logicalName.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"The logical name of a database should start with a english letter: {logicalName.PrettyQuote()}.");
             }
         }
         
@@ -661,6 +684,16 @@ namespace Oetools.Utilities.Openedge.Database {
         public static string GetValidPhysicalName(string input) {
             var output = GetValidLogicalName(input);
             return output.Length > DbPhysicalNameMaxLength ? output.Substring(0, DbPhysicalNameMaxLength) : output;
+        }
+
+        /// <summary>
+        /// Add the max connection try (-ct) parameter to a connection string.
+        /// </summary>
+        /// <param name="databaseConnectionString"></param>
+        /// <param name="maxCt"></param>
+        /// <returns></returns>
+        public static string AddMaxConnectionTry(string databaseConnectionString, int maxCt = 1) {
+            return databaseConnectionString?.Replace("-db", $"-ct {maxCt} -db");
         }
 
         private static string GetHostName() {
@@ -715,16 +748,16 @@ namespace Oetools.Utilities.Openedge.Database {
             }
             
             if (dbPhysicalName.Any(c => !c.IsAsciiLetter() && !char.IsDigit(c) && c != '_' && c != '-')) {
-                throw new UoeDatabaseOperationException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters) : {dbPhysicalName.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters): {dbPhysicalName.PrettyQuote()}.");
             }
             
             if (dbPhysicalName.Length > DbPhysicalNameMaxLength) {
-                throw new UoeDatabaseOperationException($"The physical name of the database is too long (>{DbPhysicalNameMaxLength}) : {dbPhysicalName.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"The physical name of the database is too long (>{DbPhysicalNameMaxLength}): {dbPhysicalName.PrettyQuote()}.");
             }
             
             // doesn't exist?
             if (needToExist && !File.Exists(Path.Combine(dbFolder, $"{dbPhysicalName}.db"))) {
-                throw new UoeDatabaseOperationException($"The target database doesn't exist, correct the target path : {dbPath.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"The target database doesn't exist, correct the target path: {dbPath.PrettyQuote()}.");
             }
         }
         

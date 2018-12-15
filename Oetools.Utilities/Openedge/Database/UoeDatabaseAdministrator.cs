@@ -19,6 +19,7 @@
 #endregion
 using System;
 using System.IO;
+using System.Text;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Execution;
@@ -28,16 +29,6 @@ namespace Oetools.Utilities.Openedge.Database {
     
     public class UoeDatabaseAdministrator : UoeDatabaseOperator, IDisposable {
         
-        /// <summary>
-        /// The temp folder to use when we need to write the openedge procedure for data administration
-        /// </summary>
-        public string TempFolder {
-            get => _tempFolder ?? (_tempFolder = Utils.CreateTempDirectory());
-            set => _tempFolder = value;
-        }
-
-        public UoeDatabaseAdministrator(string dlcPath) : base(dlcPath) { }
-
         private UoeProcessIo _progres;
         
         private string _procedurePath;
@@ -61,10 +52,71 @@ namespace Oetools.Utilities.Openedge.Database {
                 return _progres;
             }
         }
+        
+        /// <summary>
+        /// The temp folder to use when we need to write the openedge procedure for data administration
+        /// </summary>
+        public string TempFolder {
+            get => _tempFolder ?? (_tempFolder = Utils.CreateTempDirectory());
+            set => _tempFolder = value;
+        }
 
         /// <summary>
-        /// Generates a database from a .df (database definition) file
-        /// that database should not be used in production since it has all default configuration, its purpose is to exist for file compilation
+        /// Initialize a new instance.
+        /// </summary>
+        /// <param name="dlcPath"></param>
+        /// <param name="encoding"></param>
+        public UoeDatabaseAdministrator(string dlcPath, Encoding encoding = null) : base(dlcPath, encoding) {
+            
+        }
+        
+        public void Dispose() {
+            _progres?.Dispose();
+            _progres = null;
+            if (!string.IsNullOrEmpty(_procedurePath)) {
+                File.Delete(_procedurePath);
+            }
+        }
+
+        /// <summary>
+        /// Creates a new database.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="stFilePath"></param>
+        /// <param name="blockSize"></param>
+        /// <param name="codePage"></param>
+        /// <param name="newInstance"></param>
+        /// <param name="relativePath"></param>
+        /// <param name="dfFilePath"></param>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void CreateDatabase(string targetDbPath, string stFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true, string dfFilePath = null) {
+            // exists?
+            if (DatabaseExists(targetDbPath)) {
+                throw new UoeDatabaseOperationException($"The target database already exists, choose a new name or delete the existing database: {targetDbPath.PrettyQuote()}.");
+            }
+            
+            if (!string.IsNullOrEmpty(stFilePath)) {
+                CopyStructureFile(targetDbPath, stFilePath);
+            } else if (!string.IsNullOrEmpty(dfFilePath)) {
+                // generate a structure file from df?
+                stFilePath = GenerateStructureFileFromDf(targetDbPath, dfFilePath);
+            }
+
+            if (!string.IsNullOrEmpty(stFilePath)) {
+                ProstrctCreate(targetDbPath, stFilePath, blockSize);
+            }
+
+            Procopy(targetDbPath, blockSize, codePage, newInstance, relativePath);
+
+            // Load .df
+            if (!string.IsNullOrEmpty(dfFilePath)) {
+                LoadDf(targetDbPath, dfFilePath);
+            }
+        }
+
+        /// <summary>
+        /// Generates a database from a .df (database definition) file.
+        /// That database should not be used in production since it has all default configuration, its purpose is to exist for file compilation.
         /// </summary>
         /// <param name="targetDbPath"></param>
         /// <param name="dfFilePath"></param>
@@ -83,33 +135,32 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <returns></returns>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public void LoadDf(string targetDbPath, string dfFilePath) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string _, true);
 
             if (string.IsNullOrEmpty(dfFilePath)) {
                 throw new UoeDatabaseOperationException("The structure file path can't be null.");
             }
 
+            dfFilePath = dfFilePath.MakePathAbsolute();
+            
             if (!File.Exists(dfFilePath)) {
-                throw new UoeDatabaseOperationException($"The structure file does not exist : {dfFilePath.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"The structure file does not exist: {dfFilePath.PrettyQuote()}.");
             }
 
-            if (GetBusyMode(targetDbPath) != DatabaseBusyMode.NotBusy) {
-                throw new UoeDatabaseOperationException("The database is currently busy, shut it down before this operation.");
+            var getBusyMode = GetBusyMode(targetDbPath);
+            if (getBusyMode == DatabaseBusyMode.SingleUser) {
+                throw new UoeDatabaseOperationException("The database is currently busy in single user mode, kick the user or start the database for multi-user mode.");
             }
 
+            var connectionString = AddMaxConnectionTry(getBusyMode == DatabaseBusyMode.NotBusy ? GetSingleUserConnectionString(targetDbPath, "DICTDB") : GetMultiUserConnectionString(targetDbPath, logicalName: "DICTDB"));
+            
             Progres.WorkingDirectory = dbFolder;
+            
+            Log?.Info($"Loading schema definition file {dfFilePath.PrettyQuote()} in {targetDbPath.PrettyQuote()}.");
 
-            var executionOk = Progres.TryExecute($"-db {dbPhysicalName}.db -1 -ld DICTDB -p {ProcedurePath.CliQuoter()} -param {$"load-df|{dfFilePath.MakePathAbsolute()}".CliQuoter()}");
+            var executionOk = Progres.TryExecute($"{connectionString} -p {ProcedurePath.CliQuoter()} -param {$"load-df|{dfFilePath}".CliQuoter()}");
             if (!executionOk || Progres.BatchOutput.ToString().EndsWith("**ERROR")) {
                 throw new UoeDatabaseOperationException(Progres.BatchOutput.ToString());
-            }
-        }
-        
-        public void Dispose() {
-            _progres?.Dispose();
-            _progres = null;
-            if (!string.IsNullOrEmpty(_procedurePath)) {
-                File.Delete(_procedurePath);
             }
         }
     }

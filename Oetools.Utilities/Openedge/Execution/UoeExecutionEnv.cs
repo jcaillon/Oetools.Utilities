@@ -24,6 +24,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Openedge.Database;
 
 namespace Oetools.Utilities.Openedge.Execution {
     
@@ -57,7 +58,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         
         /// <inheritdoc cref="AUoeExecutionEnv.DatabaseConnectionString"/>
         public override string DatabaseConnectionString {
-            get => DatabaseConnectionStringAppendMaxTryOne ? _databaseConnectionString?.Replace("-db", "-ct 1 -db") : _databaseConnectionString;
+            get => DatabaseConnectionStringAppendMaxTryOne ? UoeDatabaseOperator.AddMaxConnectionTry(_databaseConnectionString) : _databaseConnectionString;
             set => _databaseConnectionString = value.CliCompactWhitespaces();
         }
 
@@ -149,7 +150,6 @@ namespace Oetools.Utilities.Openedge.Execution {
                 if (string.IsNullOrEmpty(CodePageName)) {
                     _codePageName = Utils.IsRuntimeWindowsPlatform ? UoeUtilities.GetGuiCodePageFromDlc(DlcDirectoryPath) : UoeUtilities.GetIoCodePageFromDlc(DlcDirectoryPath);
                 }
-
                 UoeUtilities.GetEncodingFromOpenedgeCodePage(CodePageName, out _ioEncoding);
             }
             return _ioEncoding;

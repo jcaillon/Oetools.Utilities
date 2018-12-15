@@ -146,9 +146,28 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
             copy.Prop6[0].Prop1 = "nice";
             Assert.AreEqual("nice", copy.Prop6[0].Prop1);
             Assert.AreEqual("cool1", instance.Prop6[0].Prop1);
+            
+            copy = new ObjDeepCopy();
+            instance.DeepCopy<IObjDeepCopy>(copy);
+            Assert.IsNull(copy.Prop1);
+            Assert.AreEqual(0, copy.Prop2);
+            Assert.IsNull(copy.Prop5);
+            Assert.IsNull(copy.Prop6);
+            Assert.IsNotNull(copy.Prop3);
+            Assert.AreEqual("cool6", copy.Prop3[0]);
+            Assert.AreEqual(null, copy.Prop3[1]);
+            Assert.AreEqual("cool7", copy.Prop3[2]);
+            Assert.IsNotNull(copy.Prop4);
+            Assert.AreEqual("cool8", copy.Prop4.Prop1);
+            Assert.AreEqual("cool9", copy.Prop4.Prop2);
+        }
+
+        private interface IObjDeepCopy {
+            string[] Prop3 { get; set; }
+            ObjDeepCopySub1 Prop4 { get; set; }
         }
         
-        private class ObjDeepCopy {
+        private class ObjDeepCopy : IObjDeepCopy {
             public string Prop1 { get; set; }
             public int Prop2 { get; set; }
             public string[] Prop3 { get; set; }
