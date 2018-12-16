@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (IArchiverArchive.cs) is part of Oetools.Utilities.
+// This file (IFileArchivedToDelete.cs) is part of Oetools.Utilities.
 // 
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,17 +18,13 @@
 // ========================================================================
 #endregion
 
-using System;
-using System.Collections.Generic;
-
 namespace Oetools.Utilities.Archive {
     
     /// <summary>
-    /// <para>
-    /// An archiver allows CRUD operation on an archive.
-    /// This is a full featured archiver.
-    /// </para>
+    /// Describes a file existing in an archive that needs to be checked (if it exists or not).
     /// </summary>
-    public interface IArchiverFullFeatured : IArchiver, IArchiverDelete, IArchiverExtract, IArchiverList, IArchiverMove, IArchiverExistenceCheck {
+    public interface IFileInArchiveToCheck : IFileArchivedBase {
+        
+        
     }
 }

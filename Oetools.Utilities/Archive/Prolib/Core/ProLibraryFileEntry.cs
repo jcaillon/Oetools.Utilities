@@ -123,7 +123,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             var initialOffset = reader.BaseStream.Position;
             RelativePathSize = reader.ReadByte();
             if (RelativePathSize > 0) {
-                RelativePath = Parent.CodePage.GetString(reader.ReadBytes(RelativePathSize));
+                RelativePath = Parent.CodePage.GetString(reader.ReadBytes(RelativePathSize)).ToCleanRelativePathWin();
             }
             Crc = reader.ReadUInt16Be();
             Offset = Parent.Is64Bits ? reader.ReadUInt64Be() : reader.ReadUInt32Be();

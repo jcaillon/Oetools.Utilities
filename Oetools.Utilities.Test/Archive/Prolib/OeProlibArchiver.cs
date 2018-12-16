@@ -216,7 +216,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
             return outputList;
         }
         
-        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        /// <inheritdoc />
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDeleteIn) {            
             var filesToDelete = filesToDeleteIn.ToList();
             filesToDelete.ForEach(f => f.Processed = false);

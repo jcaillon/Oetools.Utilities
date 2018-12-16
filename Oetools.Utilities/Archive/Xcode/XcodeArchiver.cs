@@ -50,6 +50,10 @@ namespace Oetools.Utilities.Archive.Xcode {
         
         /// <inheritdoc cref="IArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchiveIn) {
+            if (filesToArchiveIn == null) {
+                return 0;
+            }
+            
             var fileToArchive = filesToArchiveIn.ToList();
             fileToArchive.ForEach(f => f.Processed = false);
             

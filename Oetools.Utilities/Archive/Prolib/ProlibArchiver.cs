@@ -24,6 +24,7 @@ using System.IO;
 using System.Linq;
 using Oetools.Utilities.Archive.Prolib.Core;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Archive.Prolib {
     
@@ -56,6 +57,35 @@ namespace Oetools.Utilities.Archive.Prolib {
 
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
+        
+        /// <inheritdoc />
+        public int CheckFileSet(IEnumerable<IFileInArchiveToCheck> filesToCheck) {
+            int total = 0;
+            foreach (var groupedFiles in filesToCheck.ToNonNullEnumerable().GroupBy(f => f.ArchivePath)) {
+                try {
+                    _cancelToken?.ThrowIfCancellationRequested();
+                    HashSet<string> list = null;
+                    if (File.Exists(groupedFiles.Key)) {
+                        using (var proLibrary = new ProLibrary(groupedFiles.Key, _cancelToken)) {
+                            list = proLibrary.Files.Select(f => f.RelativePath).ToHashSet(new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+                        }
+                    }
+                    foreach (var file in groupedFiles) {
+                        if (list != null && list.Contains(file.PathInArchive.ToCleanRelativePathUnix())) {
+                            file.Processed = true;
+                            total++;
+                        } else {
+                            file.Processed = false;
+                        }
+                    }
+                } catch (OperationCanceledException) {
+                    throw;
+                } catch (Exception e) {
+                    throw new ArchiverException($"Failed to check files from {groupedFiles.Key}.", e);
+                }
+            }
+            return total;
+        }
         
         /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
@@ -102,6 +132,10 @@ namespace Oetools.Utilities.Archive.Prolib {
         }
         
         private int DoAction(IEnumerable<IFileArchivedBase> filesIn, Action action) {
+            if (filesIn == null) {
+                return 0;
+            }
+            
             var files = filesIn.ToList();
             files.ForEach(f => f.Processed = false);
             
@@ -127,7 +161,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                         proLibrary.OnProgress += OnProgressionEvent;
                         try {
                             foreach (var file in plGroupedFiles) {
-                                var fileRelativePath = file.PathInArchive.ToCleanRelativePathUnix();
+                                var fileRelativePath = file.PathInArchive;
                                 switch (action) {
                                     case Action.Archive:
                                         var fileToArchive = (IFileToArchive) file;
@@ -150,7 +184,7 @@ namespace Oetools.Utilities.Archive.Prolib {
                                         }
                                         break;
                                     case Action.Move:
-                                        if (proLibrary.MoveFile(fileRelativePath, ((IFileInArchiveToMove) file).NewRelativePathInArchive.ToCleanRelativePathUnix())) {
+                                        if (proLibrary.MoveFile(fileRelativePath, ((IFileInArchiveToMove) file).NewRelativePathInArchive)) {
                                             nbFilesProcessed++;
                                             file.Processed = true;
                                         }

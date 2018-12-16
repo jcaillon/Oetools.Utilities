@@ -178,35 +178,29 @@ namespace Oetools.Utilities.Lib {
                 return path;
             }
             path = path.Trim();
-            string newPath = null;
+            string newPath;
             bool isWindows = IsRuntimeWindowsPlatform;
             bool startDoubleSlash = false;
             if (isWindows) {
-                if (path.IndexOf('/') >= 0) {
-                    newPath = path.Replace('/', '\\');
-                }
-                startDoubleSlash = path.Length >= 2 && (newPath ?? path)[0] == '\\' && (newPath ?? path)[1] == '\\';
-                if ((newPath ?? path).Length > 0 && (newPath ?? path)[0] == '\\' && !startDoubleSlash) {
+                newPath = path.Replace('/', '\\');
+                startDoubleSlash = path.Length >= 2 && newPath[0] == '\\' && newPath[1] == '\\';
+                if (newPath.Length > 0 && newPath[0] == '\\' && !startDoubleSlash) {
                     // replace / by C:\
-                    newPath = $"{Path.GetFullPath(@"/")}{(newPath ?? path).Substring(1)}";
+                    newPath = $"{Path.GetFullPath(@"/")}{newPath.Substring(1)}";
                 }
             } else {
-                if (path.IndexOf('\\') >= 0) {
-                    newPath = path.Replace('\\', '/');
-                }
+                newPath = path.Replace('\\', '/');
             }
             // clean consecutive /
-            int idx;
+            int originalLength;
             do {
-                idx = (newPath ?? path).IndexOf($"{Path.DirectorySeparatorChar}{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
-                if (idx >= 0) {
-                    newPath = (newPath ?? path).Replace($"{Path.DirectorySeparatorChar}{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}");
-                }
-            } while (idx >= 0);
+                originalLength = newPath.Length;
+                newPath = newPath.Replace($"{Path.DirectorySeparatorChar}{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}");
+            } while (originalLength != newPath.Length);
             if (!string.IsNullOrEmpty(newPath) && startDoubleSlash) {
                 newPath = $"{Path.DirectorySeparatorChar}{newPath}";
             }
-            return (newPath ?? path).TrimEndDirectorySeparator();
+            return newPath.TrimEndDirectorySeparator();
         }
         
         /// <summary>
@@ -368,7 +362,7 @@ namespace Oetools.Utilities.Lib {
                 while ((line = reader.ReadLine()) != null) {
                     if (line.Length > 0) {
                         var idx = line.IndexOf('#');
-                        toApplyOnEachLine(i, idx > -1 ? line.Substring(0, idx) : (idx == 0 ? string.Empty : line));
+                        toApplyOnEachLine(i, idx > -1 ? line.Substring(0, idx) : idx == 0 ? string.Empty : line);
                     }
 
                     i++;

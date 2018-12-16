@@ -42,6 +42,20 @@ namespace Oetools.Utilities.Archive.Filesystem {
             return DoForFiles(filesToArchive, ActionType.Pack);
         }
 
+        /// <inheritdoc />
+        public int CheckFileSet(IEnumerable<IFileInArchiveToCheck> filesToCheck) {
+            int total = 0;
+            foreach (var fileToCheck in filesToCheck.ToNonNullEnumerable()) {
+                if (File.Exists(Path.Combine(fileToCheck.ArchivePath ?? "", fileToCheck.PathInArchive))) {
+                    fileToCheck.Processed = true;
+                    total++;
+                } else {
+                    fileToCheck.Processed = false;
+                }
+            }
+            return total;
+        }
+
         /// <inheritdoc cref="IArchiverList.ListFiles"/>
         public IEnumerable<IFileInArchive> ListFiles(string archivePath) {
             if (!Directory.Exists(archivePath)) {
@@ -76,6 +90,9 @@ namespace Oetools.Utilities.Archive.Filesystem {
         }
         
         private int DoForFiles(IEnumerable<IFileArchivedBase> filesIn, ActionType action) {
+            if (filesIn == null) {
+                return 0;
+            }
 
             var files = filesIn.ToList();
             files.ForEach(f => f.Processed = false);
@@ -134,7 +151,9 @@ namespace Oetools.Utilities.Archive.Filesystem {
                                                 while ((currentBlockSize = sourceFileStream.Read(buffer, 0, buffer.Length)) > 0) {
                                                     totalBytes += currentBlockSize;
                                                     dest.Write(buffer, 0, currentBlockSize);
-                                                    OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(file.ArchivePath, file.PathInArchive, Math.Round((totalFilesDone + (double) totalBytes / fileLength) / totalFiles * 100, 2)));
+                                                    if (totalBytes != fileLength) {
+                                                        OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(file.ArchivePath, file.PathInArchive, Math.Round((totalFilesDone + (double) totalBytes / fileLength) / totalFiles * 100, 2)));
+                                                    }
                                                     _cancelToken?.ThrowIfCancellationRequested();
                                                 }
                                             }

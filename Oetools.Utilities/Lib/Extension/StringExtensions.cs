@@ -267,8 +267,8 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="relativePath"></param>
         /// <returns></returns>
         public static bool ParseFtpAddress(this string ftpUri, out string ftpBaseUri, out string userName, out string passWord, out string host, out int port, out string relativePath) {
-            var match = FtpUriRegex.Match(ftpUri.Replace("\\", "/"));
-            if (match.Success) {
+            var match = FtpUriRegex?.Match(ftpUri.Replace("\\", "/"));
+            if (match != null && match.Success) {
                 ftpBaseUri = match.Groups[1].Value;
                 relativePath = match.Groups[6].Value;
                 port = 0;
@@ -291,15 +291,15 @@ namespace Oetools.Utilities.Lib.Extension {
                         int.TryParse(match.Groups[3].Value.Substring(1), out port);
                     }
                 }
-            } else {
-                ftpBaseUri = null;
-                relativePath = null;
-                userName = null;
-                passWord = null;
-                host = null;
-                port = 0;
+                return true;
             }
-            return match.Success;
+            ftpBaseUri = null;
+            relativePath = null;
+            userName = null;
+            passWord = null;
+            host = null;
+            port = 0;
+            return false;
         }
         
         /// <summary>

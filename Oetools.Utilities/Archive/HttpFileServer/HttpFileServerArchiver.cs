@@ -25,6 +25,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Lib.Http;
 
 namespace Oetools.Utilities.Archive.HttpFileServer {
@@ -63,21 +64,24 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
         
         /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
-            return DoAction(filesToArchive.ToList(), Action.Upload);
+            return DoAction(filesToArchive, Action.Upload);
         }
 
-        /// <inheritdoc cref="IArchiver.ExtractFileSet"/>
+        /// <inheritdoc />
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtract) {
-            return DoAction(filesToExtract.ToList(), Action.Download);
+            return DoAction(filesToExtract, Action.Download);
         }
 
-        /// <inheritdoc cref="IArchiver.DeleteFileSet"/>
+        /// <inheritdoc />
         public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDelete) {
-            return DoAction(filesToDelete.ToList(), Action.Delete);
+            return DoAction(filesToDelete, Action.Delete);
         }
         
         private int DoAction(IEnumerable<IFileArchivedBase> filesIn, Action action) {
-
+            if (filesIn == null) {
+                return 0;
+            }
+            
             var files = filesIn.ToList();
             
             // total size to handle

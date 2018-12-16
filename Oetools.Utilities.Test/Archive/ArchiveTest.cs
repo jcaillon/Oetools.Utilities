@@ -25,6 +25,7 @@ using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
+using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Test.Archive {
     
@@ -38,6 +39,7 @@ namespace Oetools.Utilities.Test.Archive {
             CreateArchive(archiver, listFiles);
             MoveInArchives(archiver, listFiles);
             ListArchive(archiver, listFiles);
+            CheckExistenceInArchive(archiver, listFiles);
             Extract(archiver, listFiles);
             DeleteFilesInArchive(archiver, listFiles);
             CheckForEmptyArchives(archiver, listFiles);
@@ -139,10 +141,28 @@ namespace Oetools.Utilities.Test.Archive {
             foreach (var groupedTheoreticalFiles in listFiles.GroupBy(f => f.ArchivePath)) {
                 var actualFiles = archiver.ListFiles(groupedTheoreticalFiles.Key).ToList();
                 foreach (var theoreticalFile in groupedTheoreticalFiles) {
-                    Assert.IsTrue(actualFiles.ToList().Exists(f => f.PathInArchive.Replace("/", "\\").Equals(theoreticalFile.PathInArchive)), $"Can't find file in list : {theoreticalFile.PathInArchive}");
+                    Assert.IsTrue(actualFiles.ToList().Exists(f => f.PathInArchive.ToCleanRelativePathUnix().Equals(theoreticalFile.PathInArchive.ToCleanRelativePathUnix())), $"Can't find file in list : {theoreticalFile.PathInArchive}");
                 }
                 Assert.AreEqual(groupedTheoreticalFiles.Count(), actualFiles.Count, $"Wrong number of files listed : {groupedTheoreticalFiles.Count()}!={actualFiles.Count}");
             }
+        }
+        
+        protected void CheckExistenceInArchive(IArchiverExistenceCheck archiver, List<FileInArchive> listFiles) {
+            listFiles.ForEach(f => f.Processed = false);
+            var modifiedList = listFiles.ToList();
+            modifiedList.Add(new FileInArchive {
+                ArchivePath = Path.Combine(listFiles.First().ArchivePath, "random"),
+                PathInArchive = listFiles.First().PathInArchive
+            });
+            modifiedList.Add(new FileInArchive {
+                ArchivePath = listFiles.First().ArchivePath,
+                PathInArchive = "random"
+            });
+            Assert.AreEqual(0, modifiedList.Count(f => f.Processed));
+            
+            Assert.AreEqual(listFiles.Count, archiver.CheckFileSet(modifiedList), "Incorrect number of existing files.");
+            Assert.AreEqual(listFiles.Count, modifiedList.Count(f => f.Processed), "Should only count existing files.");
+            Assert.AreEqual(2, modifiedList.Count(f => !f.Processed), "The 2 fake files do not exist.");
         }
 
         protected void Extract(IArchiverExtract archiverBasic, List<FileInArchive> listFiles) {
@@ -240,13 +260,13 @@ namespace Oetools.Utilities.Test.Archive {
                 new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file2.txt"),
                     ArchivePath = archivePath,
-                    PathInArchive = Path.Combine("subfolder1", "file2.txt"),
+                    PathInArchive = "subfolder1/file2.txt",
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "subfolder1", "file2.txt")
                 },
                 new FileInArchive {
                     SourcePath = Path.Combine(testFolder, "file3.txt"),
                     ArchivePath = archivePath,
-                    PathInArchive = Path.Combine("subfolder1", "bla bla", "file3.txt"),
+                    PathInArchive = "subfolder1\\bla bla/file3.txt",
                     ExtractionPath = Path.Combine(testFolder, "extract", Path.GetFileName(archivePath) ?? "", "subfolder1", "bla bla", "file3.txt")
                 }
             };

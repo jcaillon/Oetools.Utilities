@@ -19,9 +19,12 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using CabinetManager;
+using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Archive.Cab {
     
@@ -36,6 +39,33 @@ namespace Oetools.Utilities.Archive.Cab {
         
         internal CabArchiver() {
             _cabManager = CabManager.New();
+        }
+
+        /// <inheritdoc />
+        public int CheckFileSet(IEnumerable<IFileInArchiveToCheck> filesToCheck) {
+            int total = 0;
+            foreach (var groupedFiles in filesToCheck.ToNonNullEnumerable().GroupBy(f => f.ArchivePath)) {
+                try {
+                    _cancelToken?.ThrowIfCancellationRequested();
+                    HashSet<string> list = null;
+                    if (File.Exists(groupedFiles.Key)) {
+                        list = _cabManager.ListFiles(groupedFiles.Key).Select(f => f.RelativePathInCab.ToCleanRelativePathWin()).ToHashSet(new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+                    }
+                    foreach (var file in groupedFiles) {
+                        if (list != null && list.Contains(file.PathInArchive.ToCleanRelativePathWin())) {
+                            file.Processed = true;
+                            total++;
+                        } else {
+                            file.Processed = false;
+                        }
+                    }
+                } catch (OperationCanceledException) {
+                    throw;
+                } catch (Exception e) {
+                    throw new ArchiverException(e.Message, e);
+                }
+            }
+            return total;
         }
 
         /// <inheritdoc cref="ICabArchiver.SetCompressionLevel"/>
@@ -76,7 +106,7 @@ namespace Oetools.Utilities.Archive.Cab {
         public IEnumerable<IFileInArchive> ListFiles(string archivePath) {
             _cabManager.OnProgress += CabManagerOnProgress;
             try {
-                return _cabManager.ListFiles(archivePath).Select(f => new FileInCab(f.CabPath, f.RelativePathInCab, f.SizeInBytes, f.LastWriteTime));
+                return (_cabManager.ListFiles(archivePath)?.Select(f => new FileInCab(f.CabPath, f.RelativePathInCab.ToCleanRelativePathWin(), f.SizeInBytes, f.LastWriteTime))).ToNonNullEnumerable();
             } catch (OperationCanceledException) {
                 throw;
             } catch (Exception e) {
@@ -102,6 +132,10 @@ namespace Oetools.Utilities.Archive.Cab {
         }
 
         private int Do(IEnumerable<IFileArchivedBase> filesIn, Action action) {
+            if (filesIn == null) {
+                return 0;
+            }
+            
             var files = filesIn.ToList();
             files.ForEach(f => f.Processed = false);
             
@@ -112,19 +146,19 @@ namespace Oetools.Utilities.Archive.Cab {
 
                 switch (action) {
                     case Action.Archive:
-                        parameterFiles = files.Select(f => CabFile.NewToPack(f.ArchivePath, f.PathInArchive, ((IFileToArchive) f).SourcePath)).ToList();
+                        parameterFiles = files.Select(f => CabFile.NewToPack(f.ArchivePath, f.PathInArchive.ToCleanRelativePathWin(), ((IFileToArchive) f).SourcePath)).ToList();
                         nbFilesProcessed = _cabManager.PackFileSet(parameterFiles);
                         break;
                     case Action.Extract:
-                        parameterFiles = files.Select(f => CabFile.NewToExtract(f.ArchivePath, f.PathInArchive, ((IFileInArchiveToExtract) f).ExtractionPath)).ToList();
+                        parameterFiles = files.Select(f => CabFile.NewToExtract(f.ArchivePath, f.PathInArchive.ToCleanRelativePathWin(), ((IFileInArchiveToExtract) f).ExtractionPath)).ToList();
                         nbFilesProcessed = _cabManager.ExtractFileSet(parameterFiles);
                         break;
                     case Action.Delete:
-                        parameterFiles = files.Select(f => CabFile.NewToDelete(f.ArchivePath, f.PathInArchive)).ToList();
+                        parameterFiles = files.Select(f => CabFile.NewToDelete(f.ArchivePath, f.PathInArchive.ToCleanRelativePathWin())).ToList();
                         nbFilesProcessed = _cabManager.DeleteFileSet(parameterFiles);
                         break;
                     case Action.Move:
-                        parameterFiles = files.Select(f => CabFile.NewToMove(f.ArchivePath, f.PathInArchive, ((IFileInArchiveToMove) f).NewRelativePathInArchive)).ToList();
+                        parameterFiles = files.Select(f => CabFile.NewToMove(f.ArchivePath, f.PathInArchive.ToCleanRelativePathWin(), ((IFileInArchiveToMove) f).NewRelativePathInArchive)).ToList();
                         nbFilesProcessed = _cabManager.MoveFileSet(parameterFiles);
                         break;
                     default:

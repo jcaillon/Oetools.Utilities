@@ -54,8 +54,41 @@ namespace Oetools.Utilities.Archive.Zip {
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
+        /// <inheritdoc />
+        public int CheckFileSet(IEnumerable<IFileInArchiveToCheck> filesToCheck) {
+            int total = 0;
+            foreach (var groupedFiles in filesToCheck.ToNonNullEnumerable().GroupBy(f => f.ArchivePath)) {
+                try {
+                    _cancelToken?.ThrowIfCancellationRequested();
+                    HashSet<string> list = null;
+                    if (File.Exists(groupedFiles.Key)) {
+                        using (var archive = ZipFile.OpenRead(groupedFiles.Key)) {
+                            list = archive.Entries.Select(f => f.FullName.ToCleanRelativePathUnix()).ToHashSet(new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+                        }
+                    }
+                    foreach (var file in groupedFiles) {
+                        if (list != null && list.Contains(file.PathInArchive.ToCleanRelativePathUnix())) {
+                            file.Processed = true;
+                            total++;
+                        } else {
+                            file.Processed = false;
+                        }
+                    }
+                } catch (OperationCanceledException) {
+                    throw;
+                } catch (Exception e) {
+                    throw new ArchiverException($"Failed to check files from {groupedFiles.Key}.", e);
+                }
+            }
+            return total;
+        }
+        
         /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
+            if (filesToArchive == null) {
+                return 0;
+            }
+            
             var filesToPack = filesToArchive.ToList();
             filesToPack.ForEach(f => f.Processed = false);
             int totalFiles = filesToPack.Count;
@@ -71,7 +104,7 @@ namespace Oetools.Utilities.Archive.Zip {
                                 continue;
                             }
                             try {
-                                zip.CreateEntryFromFile(file.SourcePath, file.PathInArchive, _compressionLevel);
+                                zip.CreateEntryFromFile(file.SourcePath, file.PathInArchive.ToCleanRelativePathUnix(), _compressionLevel);
                             } catch (Exception e) {
                                 throw new ArchiverException($"Failed to pack {file.SourcePath.PrettyQuote()} into {zipGroupedFiles.Key.PrettyQuote()} and relative archive path {file.PathInArchive}.", e);
                             }
@@ -97,7 +130,7 @@ namespace Oetools.Utilities.Archive.Zip {
             using (var archive = ZipFile.OpenRead(archivePath)) {
                 return archive.Entries
                     .Select(entry => new FileInZip {
-                        PathInArchive = entry.FullName,
+                        PathInArchive = entry.FullName.ToCleanRelativePathUnix(),
                         SizeInBytes = (ulong) entry.Length,
                         LastWriteTime = entry.LastWriteTime.DateTime,
                         ArchivePath = archivePath
@@ -107,6 +140,10 @@ namespace Oetools.Utilities.Archive.Zip {
 
         /// <inheritdoc cref="IArchiverExtract.ExtractFileSet"/>
         public int ExtractFileSet(IEnumerable<IFileInArchiveToExtract> filesToExtractIn) {
+            if (filesToExtractIn == null) {
+                return 0;
+            }
+            
             var filesToExtract = filesToExtractIn.ToList();
             filesToExtract.ForEach(f => f.Processed = false);
             int totalFiles = filesToExtract.Count;
@@ -125,7 +162,7 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.OpenRead(zipGroupedFiles.Key)) {
                         foreach (var entry in zip.Entries) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.PathInArchive));
+                            var fileToExtract = zipGroupedFiles.FirstOrDefault(f => entry.FullName.ToCleanRelativePathUnix().EqualsCi(f.PathInArchive.ToCleanRelativePathUnix()));
                             if (fileToExtract != null) {
                                 try {
                                     entry.ExtractToFile(fileToExtract.ExtractionPath, true);
@@ -149,7 +186,11 @@ namespace Oetools.Utilities.Archive.Zip {
         }
 
         /// <inheritdoc cref="IArchiverDelete.DeleteFileSet"/>
-        public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDeleteIn) {            
+        public int DeleteFileSet(IEnumerable<IFileInArchiveToDelete> filesToDeleteIn) {     
+            if (filesToDeleteIn == null) {
+                return 0;
+            }
+
             var filesToDelete = filesToDeleteIn.ToList();
             filesToDelete.ForEach(f => f.Processed = false);
             int totalFiles = filesToDelete.Count;
@@ -162,7 +203,7 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, ZipArchiveMode.Update)) {
                         foreach (var entry in zip.Entries.ToList()) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToDelete = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.PathInArchive));
+                            var fileToDelete = zipGroupedFiles.FirstOrDefault(f => entry.FullName.ToCleanRelativePathUnix().EqualsCi(f.PathInArchive.ToCleanRelativePathUnix()));
                             if (fileToDelete != null) {
                                 try {
                                     entry.Delete();
@@ -187,6 +228,10 @@ namespace Oetools.Utilities.Archive.Zip {
         
         /// <inheritdoc cref="IArchiverMove.MoveFileSet"/>
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMoveIn) {
+            if (filesToMoveIn == null) {
+                return 0;
+            }
+
             var filesToMove = filesToMoveIn.ToList();
             filesToMove.ForEach(f => f.Processed = false);
             int totalFiles = filesToMove.Count;
@@ -202,7 +247,7 @@ namespace Oetools.Utilities.Archive.Zip {
                     using (var zip = ZipFile.Open(zipGroupedFiles.Key, ZipArchiveMode.Update)) {
                         foreach (var entry in zip.Entries.ToList()) {
                             _cancelToken?.ThrowIfCancellationRequested();
-                            var fileToMove = zipGroupedFiles.FirstOrDefault(f => entry.FullName.PathEquals(f.PathInArchive));
+                            var fileToMove = zipGroupedFiles.FirstOrDefault(f => entry.FullName.ToCleanRelativePathUnix().EqualsCi(f.PathInArchive.ToCleanRelativePathUnix()));
                             if (fileToMove != null) {
                                 try {
                                     var exportPath = Path.Combine(tempPath, "temp");

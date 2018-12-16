@@ -24,6 +24,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge;
 
@@ -159,6 +160,8 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <param name="relativePathInPl"></param>
         /// <exception cref="ProLibraryException"></exception>
         public void AddExternalFile(string sourcePath, string relativePathInPl) {
+            relativePathInPl = relativePathInPl.ToCleanRelativePathUnix();
+            
             if (Files.Count + 1 > ushort.MaxValue) {
                 throw new ProLibraryException($"The prolib would exceed the maximum number of files in a single file: {ushort.MaxValue}.");
             }
@@ -189,6 +192,8 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <param name="extractionPath"></param>
         /// <returns>true if the file was actually extracted, false if it does not exist</returns>
         public bool ExtractToFile(string relativePathInPl, string extractionPath) {
+            relativePathInPl = relativePathInPl.ToCleanRelativePathUnix();
+            
             var fileToExtract = Files.FirstOrDefault(file => file.RelativePath.Equals(relativePathInPl, StringComparison.OrdinalIgnoreCase));
             if (fileToExtract == null) {
                 return false;
@@ -232,6 +237,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <param name="relativePathInPl"></param>
         /// <returns></returns>
         public bool DeleteFile(string relativePathInPl) {
+            relativePathInPl = relativePathInPl.ToCleanRelativePathUnix();
             return Files.RemoveAll(f => f.RelativePath.Equals(relativePathInPl, StringComparison.OrdinalIgnoreCase)) > 0;
         }
 
@@ -242,6 +248,8 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <param name="newRelativePathInPl"></param>
         /// <returns></returns>
         public bool MoveFile(string relativePathInPl, string newRelativePathInPl) {
+            relativePathInPl = relativePathInPl.ToCleanRelativePathUnix();
+            newRelativePathInPl = newRelativePathInPl.ToCleanRelativePathUnix();
             var fileToMove = Files.FirstOrDefault(file => file.RelativePath.Equals(relativePathInPl, StringComparison.OrdinalIgnoreCase));
             if (fileToMove == null) {
                 return false;
