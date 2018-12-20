@@ -19,7 +19,6 @@
 #endregion
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using Oetools.Utilities.Lib;
 
@@ -53,15 +52,6 @@ namespace Oetools.Utilities.Openedge.Execution {
         public bool CanUseNoSplash { get; set; }
         
         /// <summary>
-        /// Whether or not we should try to hide the prowin.exe executable from the task bar on windows.
-        /// </summary>
-        /// <remarks>
-        /// For unknown reasons, the prowin.exe executable started in batch mode (-b) systematically creates a new window. That window is hidden but it still appears in the taskbar. Weirdly enough, starting prowin.exe without the -b parameter does not show ny window, but we need the batch mode to correctly redirect runtime errors (otherwise it should show the errors in an alert-box).
-        /// As a workaround, we wait for the prowin.exe to start and to create its window and then we hide it using widows API.
-        /// </remarks>
-        public bool TryToHideFromTaskBar { get; set; } = true;
-        
-        /// <summary>
         /// The complete start parameters used
         /// </summary>
         public string StartParametersUsed { get; private set; }
@@ -79,17 +69,6 @@ namespace Oetools.Utilities.Openedge.Execution {
             UseCharacterMode = useCharacterModeOfProgress;
             CanUseNoSplash = canUseNoSplash ?? UoeUtilities.CanProVersionUseNoSplashParameter(UoeUtilities.GetProVersionFromDlc(DlcPath));
             ExecutablePath = UoeUtilities.GetProExecutableFromDlc(DlcPath, UseCharacterMode);
-        }
-
-        protected override void ExecuteAsyncProcess(string arguments = null, bool silent = true) {
-            base.ExecuteAsyncProcess(arguments, silent);
-            if (Utils.IsRuntimeWindowsPlatform && silent && !UseCharacterMode && TryToHideFromTaskBar) {
-                while (!HideProcessFromTaskBar(_process.Id) && _process.TotalProcessorTime.TotalMilliseconds < 2000) {
-                    if (WaitUntilProcessExits(50)) {
-                        break;
-                    }
-                }
-            }
         }
 
         /// <inheritdoc />
@@ -145,44 +124,6 @@ namespace Oetools.Utilities.Openedge.Execution {
             } catch (Exception) {
                 // if it fails it is not really a problem
             }
-        }
-        
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr FindWindowEx(IntPtr parentHandle, IntPtr childAfter, string className,  string windowTitle);
-
-        [DllImport("user32.dll", SetLastError=true)]
-        static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-
-        [DllImport("user32.dll")]
-        static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-        
-        // ReSharper disable once InconsistentNaming
-        private const int GWL_EX_STYLE = -20;
-
-        // ReSharper disable once InconsistentNaming
-        private const int WS_EX_APPWINDOW = 0x00040000;
-
-        // ReSharper disable once InconsistentNaming
-        private const int WS_EX_TOOLWINDOW = 0x00000080;
-        
-        [DllImport("user32.dll", EntryPoint = "ShowWindow", SetLastError = true)]
-        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-        
-        private bool HideProcessFromTaskBar(int procId) {
-            var hWnd = IntPtr.Zero;
-            do {
-                hWnd = FindWindowEx(IntPtr.Zero, hWnd, UoeConstants.ProwinWindowClass, null);
-                GetWindowThreadProcessId(hWnd, out var hWndProcessId);
-                if (hWndProcessId == procId) {
-                    SetWindowLong(hWnd, GWL_EX_STYLE, (GetWindowLong(hWnd, GWL_EX_STYLE) | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW);
-                    ShowWindow(hWnd, 0);
-                    return true;
-                }
-            } while(hWnd != IntPtr.Zero);	
-            return false;
         }
         
     }

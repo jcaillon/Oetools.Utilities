@@ -453,7 +453,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        ///     Allows to tranform a matching string using **, * and ? (wildcards) into a valid regex expression
+        ///     Allows to transform a matching string using **, * and ? (wildcards) into a valid regex expression
         ///     it escapes regex special char so it will work as you expect!
         ///     Ex: foo*.xls? will become ^foo.*\.xls.$
         ///     - ** matches any char any nb of time (greedy match! allows to do stuff like C:\((**))((*)).txt)

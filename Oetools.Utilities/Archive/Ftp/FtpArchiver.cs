@@ -257,7 +257,12 @@ namespace Oetools.Utilities.Archive.Ftp {
                     _cancelToken?.ThrowIfCancellationRequested();
                     
                     var ftp = FtpsClient.Instance.Get(uri);
-                    ConnectOrReconnectFtp(ftp, userName, passWord, host, port);
+                    try {
+                        ConnectOrReconnectFtp(ftp, userName, passWord, host, port);
+                    } catch (ArchiverException) {
+                        // do not throw exception when we can't connect to the server
+                        continue;
+                    }
 
                     foreach (var file in ftpGroupedFiles) {
                         _cancelToken?.ThrowIfCancellationRequested();

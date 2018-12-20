@@ -283,6 +283,8 @@ namespace Oetools.Utilities.Test.Lib {
         [DataRow(@"c\folder/file.ext", @"c/((folder/((**))file.ext))", true)]
         [DataRow(@"c\folder/file.ext", @"((**))\((fo((ld))er))/**file**", true)]
         [DataRow(@"c\folder/file.ext", @"**/*/**", true)]
+        [DataRow(@"/folder/sub/file.ext", @"/**/file.ext", true)]
+        [DataRow(@"/file.ext", @"/**/file.ext", false)]
         [DataRow(@"file.ext", @"**/*/**/*", false)]
         [DataRow(@"file.ext", null, false)]
         [DataRow(@"file.ext", @"", false)]

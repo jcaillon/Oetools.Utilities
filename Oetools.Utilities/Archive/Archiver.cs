@@ -30,9 +30,9 @@ using Oetools.Utilities.Archive.Zip;
 namespace Oetools.Utilities.Archive {
     
     /// <summary>
-    /// An archiver allows CRUD operation on an archive, see <see cref="New"/> method to get an instance.
+    /// An archiver allows CRUD operation on an archive.
     /// </summary>
-    public class Archiver {
+    public static class Archiver {
 
         /// <summary>
         /// Get a new instance of an archiver.

@@ -27,7 +27,6 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database;
-using Oetools.Utilities.Openedge.Exceptions;
 using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 

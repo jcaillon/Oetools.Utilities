@@ -253,6 +253,9 @@ namespace Oetools.Utilities.Openedge.Execution {
             SetPreprocessedVar("DbConnectionRequired", NeedDatabaseConnection.ToString());
             SetPreprocessedVar("PreExecutionProgramPath", Env.PreExecutionProgramPath.ProPreProcStringify());
             SetPreprocessedVar("PostExecutionProgramPath", Env.PostExecutionProgramPath.ProPreProcStringify());
+            var userCharacterModeOfProgress = ForceCharacterModeUse || Env.UseProgressCharacterMode && !RequiresGraphicalMode;
+            SetPreprocessedVar("TryToHideProcessFromTaskBarOnWindows", (Utils.IsRuntimeWindowsPlatform && SilentExecution && !userCharacterModeOfProgress && Env.TryToHideProcessFromTaskBarOnWindows).ToString());
+            
 
             // prepare the .p runner
             var runnerProgram = new StringBuilder();
@@ -281,10 +284,9 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
 
             // start the process
-            _process = new UoeProcessIo(Env.DlcDirectoryPath, ForceCharacterModeUse || Env.UseProgressCharacterMode && !RequiresGraphicalMode, Env.CanProVersionUseNoSplash) {
+            _process = new UoeProcessIo(Env.DlcDirectoryPath, userCharacterModeOfProgress, Env.CanProVersionUseNoSplash) {
                 WorkingDirectory = _processStartDir,
-                RedirectedOutputEncoding = Env.GetIoEncoding(),
-                TryToHideFromTaskBar = Env.TryToHideProcessFromTaskBarOnWindows
+                RedirectedOutputEncoding = Env.GetIoEncoding()
             };
             _process.OnProcessExit += ProcessOnExited;
             _process.ExecuteAsync(_exeParameters.ToString(), SilentExecution);

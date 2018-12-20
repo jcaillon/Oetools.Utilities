@@ -15,7 +15,12 @@ This file was created with the 3P :  https://jcaillon.github.io/3P/
     &SCOPED-DEFINE DbConnectionRequired FALSE
     &SCOPED-DEFINE PreExecutionProgramPath ""
     &SCOPED-DEFINE PostExecutionProgramPath ""
+    &SCOPED-DEFINE TryToHideProcessFromTaskBarOnWindows FALSE
 &ENDIF
+
+&SCOPED-DEFINE GWL_EX_STYLE -20
+&SCOPED-DEFINE WS_EX_APPWINDOW 262144
+&SCOPED-DEFINE WS_EX_TOOLWINDOW 128
 
 /* ***************************  Definitions  ************************** */
 
@@ -61,6 +66,34 @@ PROCEDURE main PRIVATE:
         SESSION:DEBUG-ALERT = TRUE.
         SESSION:SUPPRESS-WARNINGS = FALSE.
     END.
+
+    &IF {&TryToHideProcessFromTaskBarOnWindows} &THEN
+        IF OPSYS = "WIN32" THEN DO:
+            DEFINE VARIABLE li_pid AS INTEGER NO-UNDO.
+            DEFINE VARIABLE li_hwnd AS INTEGER NO-UNDO.
+            DEFINE VARIABLE li_foundPid AS INTEGER NO-UNDO.
+            DEFINE VARIABLE li_styles AS INTEGER NO-UNDO.
+
+            RUN GetCurrentProcessId (OUTPUT li_pid).
+
+            ASSIGN li_hwnd = 0.
+
+            findHandleLoop:
+            DO WHILE TRUE:
+                RUN FindWindowExA (INPUT 0, INPUT li_hwnd, INPUT "ProMainWin", INPUT 0, OUTPUT li_hwnd).
+                IF li_hwnd = 0 THEN
+                    LEAVE findHandleLoop.
+                RUN GetWindowThreadProcessId (INPUT li_hwnd, OUTPUT li_foundPid).
+                IF li_foundPid = li_pid THEN DO:
+                    RUN GetWindowLongA (INPUT li_hwnd, INPUT {&GWL_EX_STYLE}, OUTPUT li_styles).
+                    RUN SetWindowLongA (INPUT li_hwnd, INPUT {&GWL_EX_STYLE}, INPUT li_styles - {&WS_EX_APPWINDOW} + {&WS_EX_TOOLWINDOW}, OUTPUT li_styles).
+                    /* I did not find another way to actually not show this windows in the taskbar other than that... */
+                    RUN Sleep (INPUT 100).
+                    LEAVE findHandleLoop.
+                END.
+            END.
+        END.
+    &ENDIF
 
     /* Assign the PROPATH here (maximum length is 31990 and the file shouldn't contain more!) */
     &IF {&PropathFilePath} > "" &THEN
@@ -145,6 +178,40 @@ PROCEDURE main PRIVATE:
 
     RETURN "".
 
+END PROCEDURE.
+
+PROCEDURE GetCurrentProcessId EXTERNAL "kernel32.dll":
+    DEFINE RETURN PARAMETER ppid AS LONG NO-UNDO.
+END PROCEDURE.
+
+PROCEDURE GetWindowThreadProcessId EXTERNAL "user32.dll":
+    DEFINE INPUT PARAMETER phwnd AS LONG NO-UNDO.
+    DEFINE OUTPUT PARAMETER pid AS LONG NO-UNDO.
+END PROCEDURE.
+
+PROCEDURE FindWindowExA EXTERNAL "user32.dll":
+    DEFINE INPUT  PARAMETER hWndParent AS LONG.
+    DEFINE INPUT  PARAMETER hWndChildAfter AS LONG.
+    DEFINE INPUT  PARAMETER lpszClass AS CHARACTER.
+    DEFINE INPUT  PARAMETER lpszWindow AS LONG.
+    DEFINE RETURN PARAMETER intHandle AS LONG.
+END PROCEDURE.
+
+PROCEDURE GetWindowLongA EXTERNAL "user32.dll":
+    DEFINE INPUT  PARAMETER phwnd AS LONG.
+    DEFINE INPUT  PARAMETER cindex AS LONG.
+    DEFINE RETURN PARAMETER currentlong AS LONG.
+END PROCEDURE.
+
+PROCEDURE SetWindowLongA EXTERNAL "user32.dll":
+    DEFINE INPUT  PARAMETER phwnd AS LONG.
+    DEFINE INPUT  PARAMETER cindex AS LONG.
+    DEFINE INPUT  PARAMETER newlong AS LONG.
+    DEFINE RETURN PARAMETER oldlong AS LONG.
+END PROCEDURE.
+
+PROCEDURE Sleep EXTERNAL "kernel32.dll" :
+    DEFINE INPUT PARAMETER dwMilliseconds AS LONG.
 END PROCEDURE.
 
 
