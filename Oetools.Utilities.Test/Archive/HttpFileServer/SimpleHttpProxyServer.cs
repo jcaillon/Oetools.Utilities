@@ -57,7 +57,11 @@ namespace Oetools.Utilities.Test.Archive.HttpFileServer {
             httpRequest.Timeout = Timeout.Infinite;
             httpRequest.ReadWriteTimeout = Timeout.Infinite;
             httpRequest.Expect = null;
-            httpRequest.ServicePoint.Expect100Continue = false;
+            try {
+                httpRequest.ServicePoint.Expect100Continue = false;
+            } catch (PlatformNotSupportedException) {
+                // ignored
+            }
 
             httpRequest.Method = request.HttpMethod;
 

@@ -244,15 +244,51 @@ namespace Oetools.Utilities.Lib.Extension {
             return text.Replace("~~", "~").Replace("\"\"", "\"").Replace("~\\", "\\").Replace("~{", "{").Replace("~n", "\n").Replace("~r", "\r").Replace("~t", "\t");
         }
 
-        private static Regex _regex;
+        private static Regex _ftpRegex;
+        private static Regex FtpUriRegex => _ftpRegex ?? (_ftpRegex = new Regex(@"^(ftps?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?)(\/.*)$", RegexOptions.Compiled));
 
-        private static Regex FtpUriRegex => _regex ?? (_regex = new Regex(@"^(ftps?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?)(\/.*)$", RegexOptions.Compiled));
+        private static Regex _httpRegex;
+        private static Regex HttpUriRegex => _httpRegex ?? (_httpRegex = new Regex(@"^https?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?", RegexOptions.Compiled));
         
         /// <summary>
-        ///     Returns true if the ftp uri is valid
+        /// Parses the given HTTP URI into strings
         /// </summary>
-        public static bool IsValidFtpAddress(this string ftpUri) {
-            return FtpUriRegex.Match(ftpUri.Replace("\\", "/")).Success;
+        /// <param name="httpUri"></param>
+        /// <param name="userName"></param>
+        /// <param name="passWord"></param>
+        /// <param name="host"></param>
+        /// <param name="port"></param>
+        /// <returns></returns>
+        public static bool ParseHttpAddress(this string httpUri, out string userName, out string passWord, out string host, out int port) {
+            var match = HttpUriRegex?.Match(httpUri.Replace("\\", "/"));
+            if (match != null && match.Success) {
+                port = 0;
+                if (match.Groups[3].Success) {
+                    userName = match.Groups[1].Value;
+                    if (match.Groups[2].Success && !string.IsNullOrEmpty(match.Groups[2].Value)) {
+                        passWord = match.Groups[2].Value.Substring(1);
+                    } else {
+                        passWord = null;
+                    }
+                    host = match.Groups[3].Value.Substring(1);
+                    if (string.IsNullOrEmpty(match.Groups[4].Value) || !int.TryParse(match.Groups[4].Value.Substring(1), out port)) {
+                        port = 0;
+                    }
+                } else {
+                    userName = null;
+                    passWord = null;
+                    host = match.Groups[1].Value;
+                    if (string.IsNullOrEmpty(match.Groups[2].Value) || !int.TryParse(match.Groups[2].Value.Substring(1), out port)) {
+                        port = 0;
+                    }
+                }
+                return true;
+            }
+            userName = null;
+            passWord = null;
+            host = null;
+            port = 0;
+            return false;
         }
 
         /// <summary>

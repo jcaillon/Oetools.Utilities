@@ -135,6 +135,22 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         }
         
         [TestMethod]
+        [DataRow(@"https:\\user:pwd@localhost:666\my\path", "user", "pwd", "localhost", 666, true)]
+        [DataRow(@"http://user:pwd@localhost:666", "user", "pwd", "localhost", 666, true)]
+        [DataRow(@"http://user@localhost:666\", "user", null, "localhost", 666, true)]
+        [DataRow(@"http://localhost:666", null, null, "localhost", 666, true)]
+        [DataRow(@"http://localhost:666/", null, null, "localhost", 666, true)]
+        [DataRow(@"http://localhost/", null, null, "localhost", 0, true)]
+        [DataRow(@"httpa://localhost/", null, null, null, 0, false)]
+        public void ParseHttpAddress(string input, string euserName, string epassWord, string ehost, int eport, bool ok) {
+            Assert.AreEqual(ok, input.ParseHttpAddress(out var name, out var passWord, out var host, out var port));
+            Assert.AreEqual(euserName, name);
+            Assert.AreEqual(epassWord, passWord);
+            Assert.AreEqual(ehost, host);
+            Assert.AreEqual(eport, port);
+        }
+        
+        [TestMethod]
         [DataRow(@"    ", @"")]
         [DataRow(null, @"")]
         [DataRow(" mot     \t deux \n\r\n\rtrois     end     \t", @"mot deux trois end")]

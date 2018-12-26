@@ -137,7 +137,10 @@ namespace Oetools.Utilities.Lib.Http {
         /// <param name="baseUrl"></param>
         /// <returns></returns>
         public HttpRequest UseBaseUrl(string baseUrl) {
-            _baseUrl = baseUrl.TrimEndDirectorySeparator();
+            _baseUrl = baseUrl?.TrimEndDirectorySeparator();
+            if (!string.IsNullOrEmpty(_baseUrl)) {
+                _baseUrl += '/';
+            }
             return this;
         }
 
@@ -379,7 +382,16 @@ namespace Oetools.Utilities.Lib.Http {
         }
         
         protected HttpWebRequest CreateRequest(HttpRequestMethod method, string relativePath) {
-            var httpRequest = WebRequest.CreateHttp($"{_baseUrl}/{WebUtility.UrlEncode(relativePath.TrimStartDirectorySeparator())}");
+            string url;
+            if (relativePath.StartsWith("http://") || relativePath.StartsWith("https://")) {
+                url = relativePath;
+            } else {
+                url = $"{_baseUrl ?? ""}{relativePath.TrimStart('/')}";
+            }
+            if (string.IsNullOrEmpty(url)) {
+                throw new NullReferenceException("Url can't be null or empty.");
+            }
+            var httpRequest = WebRequest.CreateHttp(url);
             
             httpRequest.ReadWriteTimeout = _readWriteTimeOut;
             httpRequest.Timeout = _timeOut;
@@ -403,17 +415,27 @@ namespace Oetools.Utilities.Lib.Http {
 
             if (!_expectContinue) {
                 httpRequest.Expect = null;
-                httpRequest.ServicePoint.Expect100Continue = false;
+                try {
+                    httpRequest.ServicePoint.Expect100Continue = false;
+                } catch (PlatformNotSupportedException) {
+                    // ignored
+                }
             }
 
             foreach (var kpv in _headersKeyValue) {
-                switch (kpv.Key) {
+                switch (kpv.Key.ToLower()) {
                     case "content-type":
                         httpRequest.ContentType = kpv.Value;
                         break;
                     case "keep-alive":
                         bool.TryParse(kpv.Value, out bool vBool);
                         httpRequest.KeepAlive = vBool;
+                        break;
+                    case "accept":
+                        httpRequest.Accept = kpv.Value;
+                        break;
+                    case "user-agent":
+                        httpRequest.UserAgent = kpv.Value;
                         break;
                     default:
                         httpRequest.Headers[kpv.Key] = kpv.Value;
