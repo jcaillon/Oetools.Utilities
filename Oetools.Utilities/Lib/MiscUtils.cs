@@ -61,15 +61,5 @@ namespace Oetools.Utilities.Lib {
             }
         }
 
-        private static string _runningAssemblyProductVersion;
-        
-        public static string RunningAssemblyProductVersion => _runningAssemblyProductVersion ?? (_runningAssemblyProductVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion);
-        
-        private static string _runningAssemblyFileVersion;
-        
-        public static string RunningAssemblyFileVersion => _runningAssemblyFileVersion ?? (_runningAssemblyFileVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion);
-
-        public static bool IsRunningAssemblyPreRelease => RunningAssemblyProductVersion.Contains("-");
-
     }
 }
