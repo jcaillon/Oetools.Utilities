@@ -317,6 +317,10 @@ namespace Oetools.Utilities.Lib.Http {
                         progress?.Invoke(new HttpProgress(false, totalLength, totalDone, nbBytesRead));
                         _cancelToken?.ThrowIfCancellationRequested();
                     }
+
+                    if (totalLength > 0 && totalDone != totalLength) {
+                        throw new Exception($"File download failed, {totalDone} bytes read but {totalLength} bytes were expected.");
+                    }
                 }
             }
 

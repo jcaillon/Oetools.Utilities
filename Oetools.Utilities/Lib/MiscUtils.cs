@@ -18,6 +18,9 @@
 // ========================================================================
 #endregion
 
+using System.Diagnostics;
+using System.Reflection;
+
 #if !WINDOWSONLYBUILD
 using System.Runtime.InteropServices;
 #endif
@@ -57,6 +60,16 @@ namespace Oetools.Utilities.Lib {
 #endif
             }
         }
+
+        private static string _runningAssemblyProductVersion;
         
+        public static string RunningAssemblyProductVersion => _runningAssemblyProductVersion ?? (_runningAssemblyProductVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion);
+        
+        private static string _runningAssemblyFileVersion;
+        
+        public static string RunningAssemblyFileVersion => _runningAssemblyFileVersion ?? (_runningAssemblyFileVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion);
+
+        public static bool IsRunningAssemblyPreRelease => RunningAssemblyProductVersion.Contains("-");
+
     }
 }
