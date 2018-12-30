@@ -37,7 +37,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
-        /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
+        /// <inheritdoc cref="IArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
             return DoForFiles(filesToArchive, ActionType.Pack);
         }

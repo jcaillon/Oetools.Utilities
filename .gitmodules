@@ -1,0 +1,3 @@
+[submodule "CabinetManager"]
+	path = CabinetManager
+	url = ../CabinetManager.git

@@ -62,7 +62,7 @@ namespace Oetools.Utilities.Archive.HttpFileServer {
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
         
-        /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
+        /// <inheritdoc cref="IArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
             return DoAction(filesToArchive, Action.Upload);
         }

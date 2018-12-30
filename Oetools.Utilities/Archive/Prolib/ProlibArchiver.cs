@@ -87,7 +87,7 @@ namespace Oetools.Utilities.Archive.Prolib {
             return total;
         }
         
-        /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
+        /// <inheritdoc cref="IArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
             return DoAction(filesToArchive, Action.Archive);
         }

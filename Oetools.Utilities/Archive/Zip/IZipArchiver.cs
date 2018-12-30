@@ -22,7 +22,7 @@ namespace Oetools.Utilities.Archive.Zip {
     public interface IZipArchiver : IArchiverFullFeatured {
         
         /// <summary>
-        /// Sets the compression level to use for the next <see cref="IArchiverBasic.ArchiveFileSet"/> process.
+        /// Sets the compression level to use for the next <see cref="IArchiver.ArchiveFileSet"/> process.
         /// </summary>
         /// <param name="archiveCompressionLevel"></param>
         void SetCompressionLevel(ArchiveCompressionLevel archiveCompressionLevel);

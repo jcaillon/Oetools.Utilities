@@ -94,7 +94,7 @@ namespace Oetools.Utilities.Archive.Cab {
             _cabManager.SetCancellationToken(_cancelToken);
         }
 
-        /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
+        /// <inheritdoc cref="IArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
             return Do(filesToArchive, Action.Archive);
         }

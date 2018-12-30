@@ -79,7 +79,7 @@ namespace Oetools.Utilities.Archive.Ftp {
             return total;
         }
         
-        /// <inheritdoc cref="IArchiverBasic.ArchiveFileSet"/>
+        /// <inheritdoc cref="IArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
             if (filesToArchive == null) {
                 return 0;
