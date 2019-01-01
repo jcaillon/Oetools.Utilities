@@ -56,7 +56,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             // create .df
             var dfPath = Path.Combine(TestFolder, "ref.df");
-            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING\n");
 
             using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
                 dataAdmin.LoadSchemaDefinition(Path.Combine(TestFolder, "ref.db"), dfPath);
@@ -75,7 +75,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             // create .df
             var dfPath = Path.Combine(TestFolder, "ref2.df");
-            File.WriteAllText(dfPath, "ADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10");
+            File.WriteAllText(dfPath, "ADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n");
 
             Exception ex = null;
             try {
@@ -101,7 +101,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             // create .df
             var dfPath = Path.Combine(TestFolder, "ref.df");
-            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING\n");
 
             using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
                 dataAdmin.CreateDatabase(Path.Combine(TestFolder, "created2.db"), dataAdmin.CreateStandardStructureFile(Path.Combine(TestFolder, "created2.db")), DatabaseBlockSize.S2048, null, true, true, dfPath);
@@ -118,7 +118,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             // create .df
             var dfPath = Path.Combine(TestFolder, "compil.df");
-            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING\n");
 
             using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
                 dataAdmin.CreateCompilationDatabaseFromDf(Path.Combine(TestFolder, "compil.db"), dfPath);
@@ -135,7 +135,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             // create .df
             var dfPath = Path.Combine(TestFolder, "dumpdf_in.df");
-            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING\n");
 
             using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
                 var dbPath = Path.Combine(TestFolder, "dumpdf_in.db");
@@ -159,9 +159,9 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             // create .df
             var prevDfPath = Path.Combine(TestFolder, "df_previous.df");
-            File.WriteAllText(prevDfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD FIELD \"field2\" OF \"table1\" AS character \n  DESCRIPTION \"field two\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 3\n  MAX-WIDTH 16\n  ORDER 20\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+            File.WriteAllText(prevDfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD FIELD \"field2\" OF \"table1\" AS character \n  DESCRIPTION \"field two\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 3\n  MAX-WIDTH 16\n  ORDER 20\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING\n");
             var newDfPath = Path.Combine(TestFolder, "df_new.df");
-            File.WriteAllText(newDfPath, "ADD SEQUENCE \"sequence2\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD FIELD \"field3\" OF \"table1\" AS character \n  DESCRIPTION \"field three\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 3\n  MAX-WIDTH 16\n  ORDER 20\n\nADD TABLE \"table2\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table two\"\n  DUMP-NAME \"table2\"\n\nADD FIELD \"field1\" OF \"table2\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+            File.WriteAllText(newDfPath, "ADD SEQUENCE \"sequence2\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD FIELD \"field3\" OF \"table1\" AS character \n  DESCRIPTION \"field three\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 3\n  MAX-WIDTH 16\n  ORDER 20\n\nADD TABLE \"table2\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table two\"\n  DUMP-NAME \"table2\"\n\nADD FIELD \"field1\" OF \"table2\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING\n");
 
             using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
                 var dfPathOut = Path.Combine(TestFolder, "inc_out.df");
@@ -185,6 +185,80 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                 // for sequences, they are still dropped/added
                 Assert.IsTrue(incrementalContent.Contains("DROP SEQUENCE \"sequence1\""));
                 Assert.IsTrue(incrementalContent.Contains("ADD SEQUENCE \"sequence2\""));
+
+            }
+
+        }
+
+        [TestMethod]
+        public void SequenceData() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            // create .df
+            var dfPath = Path.Combine(TestFolder, "seqdata.df");
+            File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD SEQUENCE \"sequence2\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n");
+
+            using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
+                var dbPath = Path.Combine(TestFolder, "seqdata.db");
+                dataAdmin.CreateCompilationDatabaseFromDf(dbPath, dfPath);
+                Assert.IsTrue(dataAdmin.GetBusyMode(dbPath).Equals(DatabaseBusyMode.NotBusy));
+
+                var sequenceDataFilePath = Path.Combine(TestFolder, "dumpseqdata.d");
+
+                // load seq
+                File.WriteAllText(sequenceDataFilePath, "0 \"sequence1\" 20\n");
+                dataAdmin.LoadSequenceData(dbPath, sequenceDataFilePath);
+
+                // dump seq
+                File.Delete(sequenceDataFilePath);
+                dataAdmin.DumpSequenceData(dbPath, sequenceDataFilePath);
+
+                Assert.IsTrue(File.Exists(sequenceDataFilePath));
+                var dataContent = File.ReadAllText(sequenceDataFilePath);
+                Assert.IsTrue(dataContent.Contains("\"sequence1\" 20"));
+                Assert.IsTrue(dataContent.Contains("\"sequence2\" 0"));
+            }
+
+        }
+
+        [TestMethod]
+        public void Data() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            // create .df
+            var dfPath = Path.Combine(TestFolder, "data.df");
+            File.WriteAllText(dfPath, "ADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD FIELD \"field2\" OF \"table1\" AS integer \n  DESCRIPTION \"field two\"\n  FORMAT \"9\"\n  INITIAL 0\n  POSITION 3\n  ORDER 20\n");
+
+            using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
+                var dbPath = Path.Combine(TestFolder, "data.db");
+                dataAdmin.CreateCompilationDatabaseFromDf(dbPath, dfPath);
+                Assert.IsTrue(dataAdmin.GetBusyMode(dbPath).Equals(DatabaseBusyMode.NotBusy));
+
+                var dataDirectory = Path.Combine(TestFolder, "data");
+                Directory.CreateDirectory(dataDirectory);
+                try {
+                    var table1Path = Path.Combine(dataDirectory, "table1.d");
+                    // load data
+                    File.WriteAllText(table1Path, "\"value1\" 1\n\"value2\" 2\n");
+                    dataAdmin.LoadData(dbPath, dataDirectory);
+
+                    // dump seq
+                    File.Delete(table1Path);
+                    dataAdmin.DumpData(dbPath, dataDirectory);
+
+                    Assert.IsTrue(File.Exists(table1Path));
+                    var dataContent = File.ReadAllText(table1Path);
+                    Assert.IsTrue(dataContent.Contains("\"value1\" 1"));
+                    Assert.IsTrue(dataContent.Contains("\"value2\" 2"));
+
+                } finally {
+                    Directory.Delete(dataDirectory, true);
+                }
+
 
             }
 
