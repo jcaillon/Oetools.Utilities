@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -412,6 +413,80 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
+        /// Returns a connection string to use to connect to the given database.
+        /// Use this method when the state of the database is unknown and we need o connect to it whether in single or multi user mode.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="logicalName"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public string GetConnectionString(string targetDbPath, string logicalName = null) {
+            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            if (GetBusyMode(targetDbPath) == DatabaseBusyMode.NotBusy) {
+                return GetSingleUserConnectionString(targetDbPath, logicalName);
+            }
+            var logFilePath = Path.Combine(dbFolder, $"{dbPhysicalName}.lg");
+            Log?.Debug($"Reading database log file to figure out the connection string: {logFilePath.PrettyQuote()}.");
+            ReadLogFile(logFilePath, out string hostName, out string serviceName);
+            if (string.IsNullOrEmpty(serviceName) || serviceName.Equals("0", StringComparison.Ordinal)) {
+                serviceName = null;
+                hostName = null;
+            }
+            return GetMultiUserConnectionString(targetDbPath, hostName, serviceName, logicalName);
+        }
+
+        /// <summary>
+        /// Reads information from a database log file.
+        /// </summary>
+        /// <param name="logFilePath"></param>
+        /// <param name="hostName"></param>
+        /// <param name="serviceName"></param>
+        internal static void ReadLogFile(string logFilePath, out string hostName, out string serviceName) {
+            // read the log file in reverse order, trying to get the hostname and service name used to start the database.
+            hostName = null;
+            serviceName = null;
+            if (!File.Exists(logFilePath)) {
+                return;
+            }
+            foreach (var line in new ReverseLineReader(logFilePath, Encoding.ASCII)) {
+                if (string.IsNullOrEmpty(line)) {
+                    continue;
+                }
+                var idx = line.IndexOf('(');
+                var proNumber = idx > 0 && line.Length > idx + 6 ? line.Substring(idx + 1, 4) : null;
+                switch (proNumber) {
+                    case "4261":
+                        // BROKER  0: (4261)  Host Name (-H): localhost
+                        idx = line.IndexOf(':', idx + 6);
+                        hostName = idx > 0 && line.Length > idx ? line.Substring(idx + 1).Trim() : null;
+                        // If not -H was specified when starting the db, the -H will equal to the current hostname.
+                        // But you can't connect with this hostname so we correct it here.
+                        if (!string.IsNullOrEmpty(hostName) && hostName.Equals(GetHostName(), StringComparison.OrdinalIgnoreCase)) {
+                            hostName = "localhost";
+                        }
+                        return;
+                    case "4262":
+                        // BROKER  0: (4262)  Service Name (-S): 0
+                        idx = line.IndexOf(':', idx + 6);
+                        serviceName = idx > 0 && line.Length > idx ? line.Substring(idx + 1).Trim() : null;
+                        continue;
+                    default:
+                        continue;
+                }
+            }
+        }
+
+        private static string GetHostName() {
+            try {
+                var hostname = Dns.GetHostName();
+                Dns.GetHostEntry(hostname);
+                return hostname;
+            } catch (Exception) {
+                return "localhost";
+            }
+        }
+
+        /// <summary>
         /// Shutdown a database started in multi user mode
         /// </summary>
         /// <param name="targetDbPath"></param>
@@ -446,6 +521,8 @@ namespace Oetools.Utilities.Openedge.Database {
             if (busyMode != DatabaseBusyMode.NotBusy) {
                 throw new UoeDatabaseOperationException($"The database is still in use: {busyMode}.");
             }
+
+            Log?.Info($"Deleting database files for {targetDbPath.PrettyQuote()}.");
 
             foreach (var file in Directory.EnumerateFiles(dbFolder, $"{dbPhysicalName}*", SearchOption.TopDirectoryOnly)) {
                 // TODO: restrict to possible db file extensions?
@@ -610,11 +687,11 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Returns the multi user connection string to use to connect to a locally hosted database
         /// </summary>
         /// <param name="targetDbPath"></param>
-        /// <param name="serviceName"></param>
         /// <param name="hostname"></param>
+        /// <param name="serviceName"></param>
         /// <param name="logicalName"></param>
         /// <returns></returns>
-        public static string GetMultiUserConnectionString(string targetDbPath, string serviceName = null, string hostname = null, string logicalName = null) {
+        public static string GetMultiUserConnectionString(string targetDbPath, string hostname = null, string serviceName = null, string logicalName = null) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
             if (serviceName == null) {
                 return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db").CliQuoter()} -ld {logicalName ?? dbPhysicalName}";
@@ -720,7 +797,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseOperationException("Invalid path, can't be null.");
             }
 
-            dbFolder = Path.GetDirectoryName(dbPath);
+            dbFolder = Path.GetDirectoryName(dbPath.MakePathAbsolute());
 
             if (string.IsNullOrEmpty(dbFolder)) {
                 throw new UoeDatabaseOperationException("Database folder can't be null.");

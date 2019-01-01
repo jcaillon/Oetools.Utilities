@@ -27,6 +27,7 @@ using Oetools.Utilities.Resources;
 
 namespace Oetools.Utilities.Openedge.Database {
 
+    //TODO: make it cancellable!
     public class UoeDatabaseAdministrator : UoeDatabaseOperator, IDisposable {
 
         private UoeProcessIo _progres;
@@ -38,7 +39,7 @@ namespace Oetools.Utilities.Openedge.Database {
             get {
                 if (_procedurePath == null) {
                     _procedurePath = Path.Combine(TempFolder, $"db_admin_{Path.GetRandomFileName()}.p");
-                    File.WriteAllText(ProcedurePath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"database_administrator.p"), Encoding);
+                    File.WriteAllText(ProcedurePath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_database_administrator.p"), Encoding);
                 }
                 return _procedurePath;
             }
@@ -137,77 +138,43 @@ namespace Oetools.Utilities.Openedge.Database {
         public void LoadSchemaDefinition(string targetDbPath, string dfFilePath) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string _, true);
 
-            if (string.IsNullOrEmpty(dfFilePath)) {
-                throw new UoeDatabaseOperationException("The schema definition file path can't be null.");
-            }
-
-            dfFilePath = dfFilePath.MakePathAbsolute();
-
+            dfFilePath = dfFilePath?.MakePathAbsolute();
             if (!File.Exists(dfFilePath)) {
                 throw new UoeDatabaseOperationException($"The schema definition file does not exist: {dfFilePath.PrettyQuote()}.");
             }
 
-            var getBusyMode = GetBusyMode(targetDbPath);
-            if (getBusyMode == DatabaseBusyMode.SingleUser) {
-                throw new UoeDatabaseOperationException("The database is currently busy in single user mode, kick the user or start the database for multi-user mode.");
-            }
-
-            var connectionString = AddMaxConnectionTry(getBusyMode == DatabaseBusyMode.NotBusy ? GetSingleUserConnectionString(targetDbPath, "DICTDB") : GetMultiUserConnectionString(targetDbPath, logicalName: "DICTDB"));
-
-            Progres.WorkingDirectory = dbFolder;
-
             Log?.Info($"Loading schema definition file {dfFilePath.PrettyQuote()} in {targetDbPath.PrettyQuote()}.");
 
-            var executionOk = Progres.TryExecute($"{connectionString} -p {ProcedurePath.CliQuoter()} -param {$"load-df|{dfFilePath}".CliQuoter()}");
-            var output = Progres.BatchOutput.ToString();
-            if (!executionOk || !output.EndsWith("OK")) {
-                throw new UoeDatabaseOperationException(Progres.BatchOutput.ToString());
-            }
-            if (output.Length > 4) {
-                Log?.Warn($"Message when loading the definition schema:\n{output.Substring(0, output.Length - 4)}");
-            }
+            var connectionString = AddMaxConnectionTry(GetConnectionString(targetDbPath, "DICTDB"));
+
+            StartDataAdministratorProgram($"{connectionString} -param {$"load-df|{dfFilePath}".CliQuoter()}", dbFolder);
         }
 
         /// <summary>
         /// Dump a .df from a database.
         /// </summary>
         /// <param name="targetDbPath">Path to the target database.</param>
-        /// <param name="dfFilePath">Path to the .df file to write.</param>
+        /// <param name="dfDumpFilePath">Path to the .df file to write.</param>
+        /// <param name="tableName"></param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void DumpSchemaDefinition(string targetDbPath, string dfFilePath) {
+        public void DumpSchemaDefinition(string targetDbPath, string dfDumpFilePath, string tableName = "ALL") {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string _, true);
 
-            if (string.IsNullOrEmpty(dfFilePath)) {
+            if (string.IsNullOrEmpty(dfDumpFilePath)) {
                 throw new UoeDatabaseOperationException("The definition file path can't be null.");
             }
-
-            dfFilePath = dfFilePath.MakePathAbsolute();
-
-            var dir = Path.GetDirectoryName(dfFilePath);
+            dfDumpFilePath = dfDumpFilePath.MakePathAbsolute();
+            var dir = Path.GetDirectoryName(dfDumpFilePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
             }
 
-            var getBusyMode = GetBusyMode(targetDbPath);
-            if (getBusyMode == DatabaseBusyMode.SingleUser) {
-                throw new UoeDatabaseOperationException("The database is currently busy in single user mode, kick the user or start the database for multi-user mode.");
-            }
+            Log?.Info($"Dumping schema definition to file {dfDumpFilePath.PrettyQuote()} from {targetDbPath.PrettyQuote()}.");
 
-            var connectionString = AddMaxConnectionTry(getBusyMode == DatabaseBusyMode.NotBusy ? GetSingleUserConnectionString(targetDbPath, "DICTDB") : GetMultiUserConnectionString(targetDbPath, logicalName: "DICTDB"));
+            var connectionString = AddMaxConnectionTry(GetConnectionString(targetDbPath, "DICTDB"));
 
-            Progres.WorkingDirectory = dbFolder;
-
-            Log?.Info($"Dumping schema definition to file {dfFilePath.PrettyQuote()} from {targetDbPath.PrettyQuote()}.");
-
-            var executionOk = Progres.TryExecute($"{connectionString} -p {ProcedurePath.CliQuoter()} -param {$"dump-df|{dfFilePath}".CliQuoter()}");
-            var output = Progres.BatchOutput.ToString();
-            if (!executionOk || !output.EndsWith("OK")) {
-                throw new UoeDatabaseOperationException(Progres.BatchOutput.ToString());
-            }
-            if (output.Length > 4) {
-                Log?.Warn($"Message when dumping the definition schema:\n{output.Substring(0, output.Length - 4)}");
-            }
+            StartDataAdministratorProgram($"{connectionString} -param {$"dump-df|{dfDumpFilePath}".CliQuoter()}|{tableName}", dbFolder);
         }
 
         /// <inheritdoc cref="DumpIncrementalSchemaDefinition"/>
@@ -216,43 +183,24 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         /// <param name="beforeDbPath"></param>
         /// <param name="afterDbPath"></param>
-        /// <param name="incDfPath"></param>
+        /// <param name="incDfDumpFilePath"></param>
         /// <param name="renameFilePath"></param>
         /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void DumpIncrementalSchemaDefinitionFromDatabases(string beforeDbPath, string afterDbPath, string incDfPath, string renameFilePath = null) {
-            GetDatabaseFolderAndName(beforeDbPath, out string _, out string _, true);
-            GetDatabaseFolderAndName(afterDbPath, out string _, out string _, true);
-
-            var getBusyMode = GetBusyMode(beforeDbPath);
-            if (getBusyMode == DatabaseBusyMode.SingleUser) {
-                throw new UoeDatabaseOperationException("The previous database is currently busy in single user mode, kick the user or start the database for multi-user mode.");
+        public void DumpIncrementalSchemaDefinitionFromDatabases(string beforeDbPath, string afterDbPath, string incDfDumpFilePath, string renameFilePath = null) {
+            Log?.Info($"Dumping incremental schema definition to file {incDfDumpFilePath.PrettyQuote()} from {beforeDbPath.PrettyQuote()} (old) and {afterDbPath.PrettyQuote()} (new).");
+            if (!string.IsNullOrEmpty(renameFilePath)) {
+                Log?.Info($"Using rename file {renameFilePath.PrettyQuote()}.");
             }
-            var connectionString = AddMaxConnectionTry(getBusyMode == DatabaseBusyMode.NotBusy ? GetSingleUserConnectionString(beforeDbPath, "before") : GetMultiUserConnectionString(beforeDbPath, logicalName: "before"));
 
-
-            getBusyMode = GetBusyMode(afterDbPath);
-            if (getBusyMode == DatabaseBusyMode.SingleUser) {
-                throw new UoeDatabaseOperationException("The new database is currently busy in single user mode, kick the user or start the database for multi-user mode.");
-            }
-            connectionString += $" {AddMaxConnectionTry(getBusyMode == DatabaseBusyMode.NotBusy ? GetSingleUserConnectionString(afterDbPath, "after") : GetMultiUserConnectionString(afterDbPath, logicalName: "after"))}";
-
-            var dir = Path.GetDirectoryName(incDfPath);
+            incDfDumpFilePath = incDfDumpFilePath.MakePathAbsolute();
+            var dir = Path.GetDirectoryName(incDfDumpFilePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
             }
 
-            Progres.WorkingDirectory = TempFolder;
+            var connectionString = $"{AddMaxConnectionTry(GetConnectionString(beforeDbPath, "before"))} {AddMaxConnectionTry(GetConnectionString(afterDbPath, "after"))}";
 
-            Log?.Info($"Dumping incremental schema definition to file {incDfPath.PrettyQuote()} from {beforeDbPath.PrettyQuote()} (before) and {afterDbPath.PrettyQuote()} (after).");
-
-            var executionOk = Progres.TryExecute($"{connectionString} -p {ProcedurePath.CliQuoter()} -param {$"dump-inc|{incDfPath}|{renameFilePath ?? ""}".CliQuoter()}");
-            var output = Progres.BatchOutput.ToString();
-            if (!executionOk || !output.EndsWith("OK")) {
-                throw new UoeDatabaseOperationException(Progres.BatchOutput.ToString());
-            }
-            if (output.Length > 4) {
-                Log?.Warn($"Message when dumping the incremental definition schema:\n{output.Substring(0, output.Length - 4)}");
-            }
+            StartDataAdministratorProgram($"{connectionString} -param {$"dump-inc|{incDfDumpFilePath}|{renameFilePath ?? ""}".CliQuoter()}");
         }
 
         /// <summary>
@@ -269,9 +217,9 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </remarks>
         /// <param name="beforeDfPath"></param>
         /// <param name="afterDfPath"></param>
-        /// <param name="incDfPath"></param>
+        /// <param name="incDfDumpFilePath"></param>
         /// <param name="renameFilePath"></param>
-        public void DumpIncrementalSchemaDefinition(string beforeDfPath, string afterDfPath, string incDfPath, string renameFilePath = null) {
+        public void DumpIncrementalSchemaDefinition(string beforeDfPath, string afterDfPath, string incDfDumpFilePath, string renameFilePath = null) {
             var tempFolder = Path.Combine(TempFolder, Path.GetRandomFileName());
             Directory.CreateDirectory(tempFolder);
             try {
@@ -279,9 +227,117 @@ namespace Oetools.Utilities.Openedge.Database {
                 var newDbPath = Path.Combine(tempFolder, "dbnew.db");
                 CreateCompilationDatabaseFromDf(previousDbPath, beforeDfPath);
                 CreateCompilationDatabaseFromDf(newDbPath, afterDfPath);
-                DumpIncrementalSchemaDefinitionFromDatabases(previousDbPath, newDbPath, incDfPath, renameFilePath);
+                DumpIncrementalSchemaDefinitionFromDatabases(previousDbPath, newDbPath, incDfDumpFilePath, renameFilePath);
             } finally {
                 Directory.Delete(tempFolder, true);
+            }
+        }
+
+        /// <summary>
+        /// Dump the value of each sequence of a database.
+        /// </summary>
+        /// <param name="targetDbPath">Path to the target database.</param>
+        /// <param name="dumpFilePath">Path to the sequence data file to write.</param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void DumpSequenceData(string targetDbPath, string dumpFilePath) {
+            if (string.IsNullOrEmpty(dumpFilePath)) {
+                throw new UoeDatabaseOperationException("The sequence data file path can't be null.");
+            }
+            dumpFilePath = dumpFilePath.MakePathAbsolute();
+            var dir = Path.GetDirectoryName(dumpFilePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+                Directory.CreateDirectory(dir);
+            }
+
+            Log?.Info($"Dumping sequence data to file {dumpFilePath.PrettyQuote()} from {targetDbPath.PrettyQuote()}.");
+
+            var connectionString = AddMaxConnectionTry(GetConnectionString(targetDbPath, "DICTDB"));
+
+            StartDataAdministratorProgram($"{connectionString} -param {$"dump-seq|{dumpFilePath}".CliQuoter()}");
+        }
+
+        /// <summary>
+        /// Load the value of each sequence of a database.
+        /// </summary>
+        /// <param name="targetDbPath">Path to the target database.</param>
+        /// <param name="sequenceDataFilePath">Path to the sequence data file to read.</param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void LoadSequenceData(string targetDbPath, string sequenceDataFilePath) {
+            sequenceDataFilePath = sequenceDataFilePath?.MakePathAbsolute();
+            if (!File.Exists(sequenceDataFilePath)) {
+                throw new UoeDatabaseOperationException($"The sequence data file does not exist: {sequenceDataFilePath.PrettyQuote()}.");
+            }
+
+            Log?.Info($"Loading sequence data from file {sequenceDataFilePath.PrettyQuote()} to {targetDbPath.PrettyQuote()}.");
+
+            var connectionString = AddMaxConnectionTry(GetConnectionString(targetDbPath, "DICTDB"));
+
+            StartDataAdministratorProgram($"{connectionString} -param {$"load-seq|{sequenceDataFilePath}".CliQuoter()}");
+        }
+
+        /// <summary>
+        /// Dump database data in .d file (plain text). Each table data is written in the corresponding "table.d" file.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="dumpDirectoryPath"></param>
+        /// <param name="tableName"></param>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void DumpData(string targetDbPath, string dumpDirectoryPath, string tableName = "ALL") {
+            if (string.IsNullOrEmpty(dumpDirectoryPath)) {
+                throw new UoeDatabaseOperationException("The data dump directory path can't be null.");
+            }
+            dumpDirectoryPath = dumpDirectoryPath.MakePathAbsolute();
+            if (!string.IsNullOrEmpty(dumpDirectoryPath) && !Directory.Exists(dumpDirectoryPath)) {
+                Directory.CreateDirectory(dumpDirectoryPath);
+            }
+
+            Log?.Info($"Dumping data to directory {dumpDirectoryPath.PrettyQuote()} from {targetDbPath.PrettyQuote()}.");
+
+            var connectionString = AddMaxConnectionTry(GetConnectionString(targetDbPath, "DICTDB"));
+
+            StartDataAdministratorProgram($"{connectionString} -param {$"dump-d|{dumpDirectoryPath}|{tableName}".CliQuoter()}");
+        }
+
+        /// <summary>
+        /// Load database data from .d files (plain text). Each table data is read from the corresponding "table.d" file.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="dataDirectoryPath"></param>
+        /// <param name="tableName"></param>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void LoadData(string targetDbPath, string dataDirectoryPath, string tableName = "ALL") {
+            dataDirectoryPath = dataDirectoryPath?.MakePathAbsolute();
+            if (!Directory.Exists(dataDirectoryPath)) {
+                throw new UoeDatabaseOperationException($"The data directory does not exist: {dataDirectoryPath.PrettyQuote()}.");
+            }
+
+            Log?.Info($"Loading data from directory {dataDirectoryPath.PrettyQuote()} to {targetDbPath.PrettyQuote()}.");
+
+            var connectionString = AddMaxConnectionTry(GetConnectionString(targetDbPath, "DICTDB"));
+
+            StartDataAdministratorProgram($"{connectionString} -param {$"load-d|{dataDirectoryPath}|{tableName}".CliQuoter()}");
+        }
+
+        private void StartDataAdministratorProgram(string parameters, string workingDirectory = null) {
+            Progres.WorkingDirectory = workingDirectory ?? TempFolder;
+            var executionOk = Progres.TryExecute($"-p {ProcedurePath.CliQuoter()} {parameters}");
+            var batchModeOutput = new StringBuilder();
+            foreach (var s in Progres.ErrorOutputArray.ToNonNullEnumerable()) {
+                batchModeOutput.AppendLine(s.Trim());
+            }
+            batchModeOutput.TrimEnd();
+            foreach (var s in Progres.StandardOutputArray.ToNonNullEnumerable()) {
+                batchModeOutput.AppendLine(s.Trim());
+            }
+            batchModeOutput.TrimEnd();
+            var output = batchModeOutput.ToString();
+            if (!executionOk || !output.EndsWith("OK")) {
+                throw new UoeDatabaseOperationException(Progres.BatchOutput.ToString());
+            }
+            if (output.Length > 4) {
+                Log?.Warn($"Warning messages published during the process:\n{output.Substring(0, output.Length - 4)}");
             }
         }
     }

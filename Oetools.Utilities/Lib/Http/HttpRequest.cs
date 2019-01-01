@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (WebServiceJson.cs) is part of 3P.
-// 
+//
 // 3P is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // 3P is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with 3P. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -31,7 +31,7 @@ using System.Text;
 using System.Threading;
 
 namespace Oetools.Utilities.Lib.Http {
-    
+
     /// <summary>
     /// Handles http requests.
     /// </summary>
@@ -40,11 +40,11 @@ namespace Oetools.Utilities.Lib.Http {
         private const int DefaultBufferSize = 64 * 1024;
         private const string AuthorizationHeader = "Authorization";
         private const string ProxyAuthorizationHeader = "Proxy-Authorization";
-        
+
         private string _baseUrl;
 
         private int _bufferSize = DefaultBufferSize;
-        
+
         private int _timeOut = Timeout.Infinite;
         private int _readWriteTimeOut = Timeout.Infinite;
 
@@ -52,12 +52,12 @@ namespace Oetools.Utilities.Lib.Http {
         private NetworkCredential _basicCredential;
         private Dictionary<string, string> _headersKeyValue = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private string _proxyAuthorizationHeader;
-        private string _userAgent = $"{nameof(HttpRequest)}/{typeof(HttpRequest).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion}";
+        private string _userAgent = $"{nameof(HttpRequest)}/{typeof(HttpRequest).Assembly.GetName().Version}";
 
         private CancellationToken? _cancelToken;
-        
+
         private bool _expectContinue = false;
-        
+
         /// <summary>
         /// Constructor.
         /// </summary>
@@ -79,7 +79,7 @@ namespace Oetools.Utilities.Lib.Http {
         /// <param name="bypassProxyOnLocal"></param>
         /// <param name="sendProxyAuthorizationBeforeServerChallenge">Send the proxy-authorization header before the 407 challenge from the proxy server.</param>
         public HttpRequest UseProxy(string address, string userName = null, string userPassword = null, bool bypassProxyOnLocal = false, bool sendProxyAuthorizationBeforeServerChallenge = true) {
-            _proxyAuthorizationHeader = !sendProxyAuthorizationBeforeServerChallenge ? null : $"{HttpAuthorizationType.Basic} {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{userPassword}"))}";           
+            _proxyAuthorizationHeader = !sendProxyAuthorizationBeforeServerChallenge ? null : $"{HttpAuthorizationType.Basic} {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{userPassword}"))}";
             _proxy = string.IsNullOrEmpty(address) ? null : new WebProxy(address) {
                 UseDefaultCredentials = false,
                 BypassProxyOnLocal = bypassProxyOnLocal,
@@ -180,7 +180,7 @@ namespace Oetools.Utilities.Lib.Http {
             }
             return this;
         }
-        
+
         /// <summary>
         /// Clear all the headers defined.
         /// </summary>
@@ -201,7 +201,7 @@ namespace Oetools.Utilities.Lib.Http {
             _basicCredential = string.IsNullOrEmpty(userName) ? null : new NetworkCredential(userName, userPassword);
             if (sendAuthorizationBeforeServerChallenge) {
                 UseHeader(AuthorizationHeader, $"{HttpAuthorizationType.Basic} {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{userName}:{userPassword}"))}");
-            }            
+            }
             return this;
         }
 
@@ -236,7 +236,7 @@ namespace Oetools.Utilities.Lib.Http {
             } catch (Exception e) {
                 throw new Exception("The input and/or output objects are not serializable. Use the attributes [DataContract] and [DataMember].", e);
             }
-            
+
             void ModifyRequest(HttpWebRequest request) {
                 request.ContentType = "application/json; charset=utf-8";
             }
@@ -266,7 +266,7 @@ namespace Oetools.Utilities.Lib.Http {
                     responseEncoding = Encoding.UTF8;
                 }
             }
-            
+
             var outputObject = default(TOutput);
             void ReadDownStream(Stream downStream) {
                 if (Equals(responseEncoding, Encoding.UTF8)) {
@@ -281,7 +281,7 @@ namespace Oetools.Utilities.Lib.Http {
             }
 
             var outputResponse = Execute(method, relativePath, ModifyRequest, input != null ? WriteToUpStream : (Action<Stream>) null, HandleResponse, ReadDownStream);
-            
+
             output = outputObject;
 
             return outputResponse;
@@ -295,7 +295,7 @@ namespace Oetools.Utilities.Lib.Http {
         /// <param name="progress"></param>
         /// <returns></returns>
         public HttpResponse DownloadFile(string relativePath, string downloadFilePath, Action<HttpProgress> progress = null) {
-            
+
             var dir = Path.GetDirectoryName(downloadFilePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
@@ -305,7 +305,7 @@ namespace Oetools.Utilities.Lib.Http {
             void HandleResponse(HttpWebResponse response) {
                 totalLength = response.ContentLength;
             }
-            
+
             void ReadDownStream(Stream downStream) {
                 using (var fileStream = File.OpenWrite(downloadFilePath)) {
                     byte[] buffer = new byte[_bufferSize];
@@ -352,7 +352,7 @@ namespace Oetools.Utilities.Lib.Http {
         /// <returns></returns>
         public HttpResponse PutFile(string relativePath, string localFilePath, Action<HttpProgress> progress = null) {
             var totalLength = new FileInfo(localFilePath).Length;
-            
+
             void ModifyRequest(HttpWebRequest request) {
                 request.ContentType = "application/octet-stream";
                 //request.ContentLength = totalLength;
@@ -384,7 +384,7 @@ namespace Oetools.Utilities.Lib.Http {
         public HttpResponse DeleteFile(string relativePath) {
             return Execute(HttpRequestMethod.Delete, relativePath);
         }
-        
+
         protected HttpWebRequest CreateRequest(HttpRequestMethod method, string relativePath) {
             string url;
             if (relativePath.StartsWith("http://") || relativePath.StartsWith("https://")) {
@@ -396,7 +396,7 @@ namespace Oetools.Utilities.Lib.Http {
                 throw new NullReferenceException("Url can't be null or empty.");
             }
             var httpRequest = WebRequest.CreateHttp(url);
-            
+
             httpRequest.ReadWriteTimeout = _readWriteTimeOut;
             httpRequest.Timeout = _timeOut;
             httpRequest.PreAuthenticate = true;
@@ -448,12 +448,12 @@ namespace Oetools.Utilities.Lib.Http {
             }
 
             httpRequest.Method = method.ToString().ToUpper(CultureInfo.InvariantCulture);
-            
+
             return httpRequest;
         }
 
         protected HttpResponse Execute(HttpRequestMethod method, string relativePath, Action<HttpWebRequest> modifyRequest = null, Action<Stream> writeToUpStream = null, Action<HttpWebResponse> handleResponse = null, Action<Stream> readDownStream = null) {
-            
+
             var output = new HttpResponse();
 
             try {
@@ -462,7 +462,7 @@ namespace Oetools.Utilities.Lib.Http {
                 using (_cancelToken?.Register(() => {
                     httpRequest.Abort();
                 })) {
-                    
+
                     modifyRequest?.Invoke(httpRequest);
 
                     // write to upstream
@@ -493,11 +493,11 @@ namespace Oetools.Utilities.Lib.Http {
                     output.StatusDescription = hwr.StatusDescription;
                 }
             }
-            
+
             if (!(output.Exception is OperationCanceledException) && (_cancelToken?.IsCancellationRequested ?? false)) {
                 output.Exception = new OperationCanceledException();
             }
-            
+
             return output;
         }
 
