@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeExecution.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -29,12 +29,12 @@ using Oetools.Utilities.Openedge.Execution.Exceptions;
 using Oetools.Utilities.Resources;
 
 namespace Oetools.Utilities.Openedge.Execution {
-    
+
     /// <summary>
     ///     Base class for all the progress execution (i.e. when we need to start a prowin process and do something)
     /// </summary>
     public abstract class UoeExecution : IDisposable {
-        
+
         /// <summary>
         ///     The action to execute just after the end of a prowin process
         /// </summary>
@@ -59,11 +59,16 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Set the openedge working directory (would default to <see cref="ExecutionTemporaryDirectory"/>)
         /// </summary>
         public string WorkingDirectory { get; set; }
-        
+
         /// <summary>
-        ///     Environment to use
+        /// Environment to use
         /// </summary>
         public AUoeExecutionEnv Env { get; }
+
+        /// <summary>
+        /// Cancellation token.
+        /// </summary>
+        public CancellationToken? CancelToken { get; set; }
 
         /// <summary>
         ///     set to true if a the execution process has been killed
@@ -77,7 +82,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// You can check <see cref="HandledExceptions"/> to get the errors.
         /// </summary>
         public bool ExecutionHandledExceptions => HandledExceptions != null && HandledExceptions.Count > 0;
-        
+
         /// <summary>
         /// Set to true if the process failed to go to the end or didn't event start,
         /// if this is true, you should be really worried because something is wrong with the internal
@@ -114,22 +119,22 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Temporary directory used for the execution
         /// </summary>
         public string ExecutionTemporaryDirectory => _tempDir;
-        
+
         /// <summary>
         /// if the exe should be executed silently (hidden) or not
         /// </summary>
         protected virtual bool SilentExecution => true;
-        
+
         /// <summary>
         /// can only be executed with the gui version of progres (e.g. windows only)
         /// </summary>
         protected virtual bool RequiresGraphicalMode => false;
-        
+
         /// <summary>
         /// forces to use the character mode of progres (imcompatible with <see cref="RequiresGraphicalMode"/>
         /// </summary>
         protected virtual bool ForceCharacterModeUse => false;
-        
+
         protected readonly Dictionary<string, string> PreprocessedVars;
 
         /// <summary>
@@ -166,7 +171,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected bool _executed;
 
         protected bool _eventPublished;
-        
+
         /// <summary>
         /// The process is considered to be running when it is <see cref="Started"/> and not <see cref="Ended"/>
         /// </summary>
@@ -193,7 +198,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         public UoeExecution(AUoeExecutionEnv env) {
             Env = env;
             PreprocessedVars = new Dictionary<string, string>();
-            
+
             // unique temporary folder
             _tempDir = Path.Combine(Env.TempDirectory, $"exec_{Utils.GetRandomName()}");
             _errorLogPath = Path.Combine(_tempDir, "run.errors");
@@ -202,7 +207,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             _runnerPath = Path.Combine(_tempDir, $"run_{DateTime.Now:HHmmssfff}.p");
             _processStartDir = _tempDir;
         }
-        
+
         /// <summary>
         /// Starts the execution
         /// </summary>
@@ -255,7 +260,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             SetPreprocessedVar("PostExecutionProgramPath", Env.PostExecutionProgramPath.ProPreProcStringify());
             var userCharacterModeOfProgress = ForceCharacterModeUse || Env.UseProgressCharacterMode && !RequiresGraphicalMode;
             SetPreprocessedVar("TryToHideProcessFromTaskBarOnWindows", (Utils.IsRuntimeWindowsPlatform && SilentExecution && !userCharacterModeOfProgress && Env.TryToHideProcessFromTaskBarOnWindows).ToString());
-            
+
 
             // prepare the .p runner
             var runnerProgram = new StringBuilder();
@@ -286,11 +291,11 @@ namespace Oetools.Utilities.Openedge.Execution {
             // start the process
             _process = new UoeProcessIo(Env.DlcDirectoryPath, userCharacterModeOfProgress, Env.CanProVersionUseNoSplash) {
                 WorkingDirectory = _processStartDir,
-                RedirectedOutputEncoding = Env.GetIoEncoding()
+                RedirectedOutputEncoding = Env.GetIoEncoding(),
+                CancelToken = CancelToken
             };
             _process.OnProcessExit += ProcessOnExited;
             _process.ExecuteAsync(_exeParameters.ToString(), SilentExecution);
-
         }
 
         /// <summary>
@@ -361,18 +366,18 @@ namespace Oetools.Utilities.Openedge.Execution {
                 throw new UoeExecutionException("This process has already been executed, you can't start it again.");
             }
             _executed = true;
-            
+
             if (!Directory.Exists(Env.DlcDirectoryPath)) {
                 throw new UoeExecutionParametersException($"Can not start an execution, the DLC directory does not exist : {Env.DlcDirectoryPath.PrettyQuote()}.");
             }
         }
-        
+
         /// <summary>
         /// Method that appends the program_to_run procedure to the runned .p file
         /// </summary>
         /// <param name="runnerProgram"></param>
         protected virtual void AppendProgramToRun(StringBuilder runnerProgram) {}
-        
+
         /// <summary>
         ///     Extra stuff to do before executing
         /// </summary>
@@ -393,7 +398,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             else
                 PreprocessedVars[key] = value;
         }
-        
+
         /// <summary>
         ///     Called by the process's thread when it is over, execute the ProcessOnExited event
         /// </summary>
@@ -410,6 +415,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected virtual void GetProcessResults() {
             Ended = true;
             ExecutionTimeSpan = TimeSpan.FromMilliseconds(DateTime.Now.Subtract(StartDateTime ?? DateTime.Now).TotalMilliseconds);
+            HasBeenKilled = HasBeenKilled || _process.Killed;
 
             // if the db log file exists, then the connect statement failed
             if (File.Exists(_dbErrorLogPath)) {
@@ -481,7 +487,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <summary>
-        ///     publish the end of execution events
+        /// publish the end of execution events
         /// </summary>
         protected void PublishEndEvents() {
             // end of successful/unsuccessful execution action
@@ -503,7 +509,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
             _eventPublished = true;
         }
-        
+
         private string ProgramProgressRun => OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution.p");
 
     }

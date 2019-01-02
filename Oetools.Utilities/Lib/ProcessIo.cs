@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ProcessIo.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -21,22 +21,23 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
 
     public class ProcessIo {
-        
+
         /// <summary>
         /// The full path to the executable used
         /// </summary>
         public string ExecutablePath { get; set; }
-        
+
         /// <summary>
         /// Subscribe to this event called when the process exits
         /// </summary>
         public event EventHandler<EventArgs> OnProcessExit;
-        
+
         /// <summary>
         /// The working directory to use for this process
         /// </summary>
@@ -53,6 +54,11 @@ namespace Oetools.Utilities.Lib {
         public virtual Encoding RedirectedOutputEncoding { get; set; }
 
         /// <summary>
+        /// Cancellation token.
+        /// </summary>
+        public CancellationToken? CancelToken { get; set; }
+
+        /// <summary>
         /// Standard output, to be called after the process exits
         /// </summary>
         public StringBuilder StandardOutput {
@@ -67,7 +73,7 @@ namespace Oetools.Utilities.Lib {
                 return _standardOutput;
             }
         }
-        
+
         private StringBuilder _errorOutput;
 
         /// <summary>
@@ -85,9 +91,9 @@ namespace Oetools.Utilities.Lib {
                 return _errorOutput;
             }
         }
-        
+
         private StringBuilder _batchModeOutput;
-        
+
         /// <summary>
         /// Returns all the messages sent to the standard or error output, should be used once the process has exited
         /// </summary>
@@ -112,7 +118,7 @@ namespace Oetools.Utilities.Lib {
                 return _batchModeOutput;
             }
         }
-        
+
         /// <summary>
         /// Standard output, to be called after the process exits
         /// </summary>
@@ -124,7 +130,7 @@ namespace Oetools.Utilities.Lib {
         public List<string> ErrorOutputArray { get; private set; } = new List<string>();
 
         private int? _exitCode;
-        
+
         /// <summary>
         /// Exit code of the process
         /// </summary>
@@ -139,22 +145,23 @@ namespace Oetools.Utilities.Lib {
             set { _exitCode = value; }
         }
 
-        
+
         /// <summary>
         /// Whether or not this process has been killed
         /// </summary>
         public bool Killed { get; private set; }
 
         protected ProcessStartInfo _startInfo;
-        
+
         protected Process _process;
 
         private StringBuilder _standardOutput;
 
         private bool _exitedEventPublished;
+        private CancellationTokenRegistration? _cancelRegistration;
 
         /// <summary>
-        ///     Constructor
+        /// Constructor
         /// </summary>
         public ProcessIo(string executablePath) {
             ExecutablePath = executablePath;
@@ -189,6 +196,7 @@ namespace Oetools.Utilities.Lib {
         protected virtual void ExecuteAsyncProcess(string arguments = null, bool silent = true) {
             PrepareStart(arguments, silent);
 
+            _cancelRegistration = CancelToken?.Register(OnCancellation);
             _process.Start();
 
             if (RedirectOutput) {
@@ -197,6 +205,10 @@ namespace Oetools.Utilities.Lib {
                 _process.BeginOutputReadLine();
                 _process.BeginErrorReadLine();
             }
+        }
+
+        private void OnCancellation() {
+            Kill();
         }
 
         /// <summary>
@@ -306,6 +318,7 @@ namespace Oetools.Utilities.Lib {
                 // this boolean does not seem useful but i have seen weird behaviors where the
                 // exited event is called twice when we WaitForExit(), better safe than sorry
                 _exitedEventPublished = true;
+                _cancelRegistration?.Dispose();
                 OnProcessExit?.Invoke(sender, e);
             }
         }

@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeExecutionParallelCompile.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -26,7 +26,7 @@ using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Openedge.Execution {
-    
+
     public class UoeExecutionParallelCompile : UoeExecutionCompile {
 
         public int MaxNumberOfProcesses { get; set; } = 1;
@@ -48,13 +48,13 @@ namespace Oetools.Utilities.Openedge.Execution {
         public int NumberOfProcessesRunning => _processes.Count(p => p.Started && !p.Ended);
 
         private UoeExecution _firstProcessWithExceptions;
-        
+
         private static object _lock = new object();
 
         private List<UoeExecutionCompile> _processes = new List<UoeExecutionCompile>();
-        
+
         public UoeExecutionParallelCompile(AUoeExecutionEnv env) : base(env) {}
-        
+
         public override void Dispose() {
             try {
                 foreach (var proc in _processes) {
@@ -77,17 +77,17 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected override void StartInternal() {
             CheckParameters();
-            
+
             // ensure that each process will at least take in 10 files, starting a new process for 1 file to compile isn't efficient!
             var numberOfProcesses = Math.Min(MaxNumberOfProcesses, NumberOfFilesToCompile / MinimumNumberOfFilesPerProcess);
             numberOfProcesses = Math.Max(numberOfProcesses, 1);
 
             var fileLists = new List<PathList<UoeFileToCompile>>();
             var currentProcess = 0;
-            
+
             // foreach, sorted from the biggest (in size) to the smallest file
             foreach (var file in FilesToCompile.OrderByDescending(compile => compile.FileSize)) {
-                
+
                 // create a new process when needed
                 if (currentProcess >= fileLists.Count) {
                     fileLists.Add(new PathList<UoeFileToCompile>());
@@ -121,7 +121,8 @@ namespace Oetools.Utilities.Openedge.Execution {
                     CompileUseXmlXref = CompileUseXmlXref,
                     WorkingDirectory = WorkingDirectory,
                     StopOnCompilationError = StopOnCompilationError,
-                    StopOnCompilationWarning = StopOnCompilationWarning
+                    StopOnCompilationWarning = StopOnCompilationWarning,
+                    CancelToken = CancelToken
                 };
                 exec.OnExecutionException += OnProcessExecutionException;
                 exec.OnExecutionEnd += OnProcessExecutionEnd;
@@ -188,7 +189,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
             return exited;
         }
-        
+
         private void OnProcessExecutionException(UoeExecution obj) {
             if (_firstProcessWithExceptions == null) {
                 _firstProcessWithExceptions = obj;
@@ -203,13 +204,13 @@ namespace Oetools.Utilities.Openedge.Execution {
             try {
                 if (obj is UoeExecutionCompile compilation) {
                     CompiledFiles.TryAddRange(compilation.CompiledFiles);
-                }        
+                }
             } catch (Exception e) {
                 HandledExceptions.Add(new UoeExecutionException("Error when checking the compilation results.", e));
             } finally {
                 Monitor.Exit(_lock);
             }
-            
+
             // only do the rest when reaching the last process
             if (NumberOfProcessesRunning > 0) {
                 return;
@@ -229,7 +230,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 HandledExceptions.AddRange(_processes.SelectMany(p => p.HandledExceptions).Where(e => !(e is UoeExecutionKilledException)));
                 DatabaseConnectionFailed = _processes.Exists(p => p.DatabaseConnectionFailed);
                 ExecutionFailed = _processes.Exists(p => p.ExecutionFailed);
-                
+
                 // we clear all the killed exception because if one process fails, we kill the others
                 // The only killed exception that matter is on the first process that failed with exceptions
                 if (_firstProcessWithExceptions != null && _firstProcessWithExceptions.ExecutionHandledExceptions && _firstProcessWithExceptions.HandledExceptions.Any(e => e is UoeExecutionKilledException)) {

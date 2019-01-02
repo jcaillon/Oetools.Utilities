@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeExecutionTest.cs) is part of Oetools.Utilities.Test.
-// 
+//
 // Oetools.Utilities.Test is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities.Test is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -31,27 +31,27 @@ using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Test.Openedge.Execution {
-    
+
     [TestClass]
     public class UoeExecutionTest {
-        
+
         private static string _testFolder;
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeExecutionTest)));
 
         [ClassInitialize]
-        public static void Init(TestContext context) {           
+        public static void Init(TestContext context) {
             Cleanup();
             Directory.CreateDirectory(TestFolder);
         }
-        
+
         [ClassCleanup]
         public static void Cleanup() {
             if (Directory.Exists(TestFolder)) {
                 Directory.Delete(TestFolder, true);
             }
         }
-        
+
         [TestMethod]
         public void OeExecution_Expect_Exception() {
             if (GetEnvExecution(out UoeExecutionEnv env2 )) {
@@ -68,7 +68,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 });
             }
         }
-        
+
         [TestMethod]
         [DataRow(false, "gui")]
         [DataRow(true, "tty")]
@@ -89,7 +89,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         }
 
         private int _iOeExecutionTestEvents;
-        
+
         [TestMethod]
         public void OeExecution_Test_Events() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
@@ -121,8 +121,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             env.Dispose();
         }
-        
-        
+
+
         [TestMethod]
         public void OeExecution_Test_WaitFor_with_cancel_source() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
@@ -132,30 +132,31 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             using (var exec = new UoeExecutionCustomTest(env)) {
                 exec.ProgramContent = "PAUSE 100.";
                 exec.Start();
-                var cancel = new CancellationTokenSource();
-                exec.WaitForExecutionEnd(500);
-                Assert.IsNull(exec.ExecutionTimeSpan, "the execution isn't over");
-                exec.WaitForExecutionEnd(500, cancel.Token);
-                Assert.IsNull(exec.ExecutionTimeSpan, "the execution still isn't over");
-                Task.Factory.StartNew(() => {
-                    Thread.Sleep(500);
-                    cancel.Cancel();
-                });
-                var d = DateTime.Now;
-                exec.WaitForExecutionEnd(3000, cancel.Token);
-                Assert.IsNull(exec.ExecutionTimeSpan, "the execution still isn't over");
-                Assert.IsTrue(DateTime.Now.Subtract(d).TotalMilliseconds < 1500, "it should have waited for the cancel and not for 3000ms (note that it has a rough precision...)");
+                using (var cancel = new CancellationTokenSource()) {
+                    exec.WaitForExecutionEnd(500);
+                    Assert.IsNull(exec.ExecutionTimeSpan, "the execution isn't over");
+                    exec.WaitForExecutionEnd(500, cancel.Token);
+                    Assert.IsNull(exec.ExecutionTimeSpan, "the execution still isn't over");
+                    Task.Factory.StartNew(() => {
+                        Thread.Sleep(500);
+                        cancel.Cancel();
+                    });
+                    var d = DateTime.Now;
+                    exec.WaitForExecutionEnd(3000, cancel.Token);
+                    Assert.IsNull(exec.ExecutionTimeSpan, "the execution still isn't over");
+                    Assert.IsTrue(DateTime.Now.Subtract(d).TotalMilliseconds < 1500, "it should have waited for the cancel and not for 3000ms (note that it has a rough precision...)");
+                }
                 exec.KillProcess();
                 exec.WaitForExecutionEnd();
                 Assert.IsTrue(exec.HasBeenKilled, "has been killed");
                 Assert.IsInstanceOfType(exec.HandledExceptions[0], typeof(UoeExecutionKilledException));
-                
+
                 // the end event executed correctly even if the process has been killed
                 Assert.IsNotNull(exec.ExecutionTimeSpan);
             }
             env.Dispose();
         }
-        
+
         private int _iOeExecutionTestKilledEvents;
 
         [TestMethod]
@@ -178,14 +179,47 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.HasBeenKilled, "has been killed");
                 Assert.IsTrue(exec.ExecutionFailed, "has failed");
                 Assert.IsInstanceOfType(exec.HandledExceptions[0], typeof(UoeExecutionKilledException));
-                
+
                 // the end event executed correctly even if the process has been killed
                 Assert.IsNotNull(exec.ExecutionTimeSpan);
                 Assert.AreEqual(1, _iOeExecutionTestKilledEvents);
             }
             env.Dispose();
         }
-        
+
+        private int _iOeExecutionTestCancelledEvents;
+
+        [TestMethod]
+        public void OeExecution_Test_Cancelled() {
+            if (!GetEnvExecution(out UoeExecutionEnv env)) {
+                return;
+            }
+            env.UseProgressCharacterMode = true;
+            using (var exec = new UoeExecutionCustomTest(env)) {
+                exec.ProgramContent = "PAUSE 100.";
+                _iOeExecutionTestCancelledEvents = 0;
+                using (var cancelSource = new CancellationTokenSource()) {
+                    exec.CancelToken = cancelSource.Token;
+                    exec.OnExecutionEnd += execution => _iOeExecutionTestCancelledEvents++;
+                    exec.Start();
+                    Task.Factory.StartNew(() => {
+                        Thread.Sleep(1000);
+                        cancelSource.Cancel();
+                    });
+                    exec.WaitForExecutionEnd();
+                }
+                Assert.IsTrue(exec.ExecutionHandledExceptions, "has exceptions");
+                Assert.IsTrue(exec.HasBeenKilled, "has been killed");
+                Assert.IsTrue(exec.ExecutionFailed, "has failed");
+                Assert.IsInstanceOfType(exec.HandledExceptions[0], typeof(UoeExecutionKilledException));
+
+                // the end event executed correctly even if the process has been killed
+                Assert.IsNotNull(exec.ExecutionTimeSpan);
+                Assert.AreEqual(1, _iOeExecutionTestCancelledEvents);
+            }
+            env.Dispose();
+        }
+
         [TestMethod]
         [DataRow(true)]
         [DataRow(false)]
@@ -218,7 +252,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.ExecutionHandledExceptions, "has exceptions 1");
                 Assert.IsFalse(exec.ExecutionFailed, "failed to execute 1");
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is UoeExecutionOpenedgeException e1 && e1.ErrorMessage.Equals("oups")), "HandledExceptions 1");
-                
+
             }
             using (var exec = new UoeExecutionCustomTest(env)) {
                 // runtime error (this won't work in non batch mode)
@@ -247,14 +281,14 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             env.Dispose();
         }
-        
+
         [TestMethod]
         public void OeExecution_Test_DbConnection_ok() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;
             }
             env.UseProgressCharacterMode = true;
-            
+
             // generate temp base
             var db = new UoeDatabaseOperator(env.DlcDirectoryPath);
             var dbPn = "test1.db";
@@ -262,14 +296,14 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             db.ProstrctCreate(Path.Combine(TestFolder, dbPn), stPath, DatabaseBlockSize.S1024);
             db.Procopy(Path.Combine(TestFolder, dbPn), DatabaseBlockSize.S1024);
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, dbPn)));
-            
+
             // generate temp base
             var dbPn2 = "test2.db";
             stPath = db.CreateStandardStructureFile(Path.Combine(TestFolder, dbPn2));
             db.ProstrctCreate(Path.Combine(TestFolder, dbPn2), stPath, DatabaseBlockSize.S1024);
             db.Procopy(Path.Combine(TestFolder, dbPn2), DatabaseBlockSize.S1024);
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, dbPn2)));
-            
+
             // try if connected well and can manage aliases
             env.DatabaseConnectionString = $"{UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn))} {UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn2))}";
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
@@ -300,17 +334,17 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             env.Dispose();
         }
-        
+
         [TestMethod]
         public void OeExecution_Test_DbConnection_fail() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;
             }
             env.UseProgressCharacterMode = true;
-            
+
             // try if connected well and can manage aliases
             env.DatabaseConnectionString = UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, "random.db"));
-            
+
             using (var exec = new UoeExecutionCustomTest(env)) {
                 exec.NeedDatabaseConnection = true;
                 exec.Start();
@@ -318,7 +352,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.ExecutionFailed, "failed");
                 Assert.IsTrue(exec.ExecutionHandledExceptions, "ex");
                 Assert.IsTrue(exec.DatabaseConnectionFailed, "no connection");
-                
+
             }
             using (var exec = new UoeExecutionCustomTest(env)) {
                 exec.NeedDatabaseConnection = false;
@@ -330,7 +364,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             env.Dispose();
         }
-        
+
         [TestMethod]
         public void OeExecution_Test_CmdLineOptions() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
@@ -347,7 +381,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             env.Dispose();
         }
-        
+
         [TestMethod]
         public void OeExecution_Test_Propath() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
@@ -365,7 +399,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             env.Dispose();
         }
-        
+
         [TestMethod]
         public void OeExecution_Test_Ini() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
@@ -386,7 +420,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             env.Dispose();
         }
-        
+
         [TestMethod]
         public void OeExecution_Test_PrePostExecutionProgramPath() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
@@ -412,7 +446,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
             env.Dispose();
         }
-        
+
         [TestMethod]
         public void OeExecution_Test_WorkingDirectory() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
@@ -443,11 +477,11 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
 
         private class UoeExecutionCustomTest : UoeExecution {
-            
+
             public string ProgramContent { get; set; }
-            
+
             public string Output => _process.BatchOutput.ToString();
-            
+
             public UoeExecutionCustomTest(AUoeExecutionEnv env) : base(env) { }
 
             protected override void AppendProgramToRun(StringBuilder runnerProgram) {

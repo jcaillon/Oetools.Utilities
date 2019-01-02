@@ -243,6 +243,85 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         }
 
         [TestMethod]
+        public void TruncateLog() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            var db = new UoeDatabaseOperator(dlcPath);
+            var dbPath = Path.Combine(TestFolder, "trunclog.db");
+            db.Procopy(dbPath);
+            Assert.IsTrue(File.Exists(dbPath));
+
+            db.TruncateLog(dbPath);
+
+            db.ProServe(dbPath);
+
+            var oldSize = new FileInfo(Path.Combine(TestFolder, "trunclog.lg")).Length;
+            db.TruncateLog(dbPath);
+            var newSize = new FileInfo(Path.Combine(TestFolder, "trunclog.lg")).Length;
+
+            Assert.AreNotEqual(oldSize, newSize);
+
+            var cs = db.GetConnectionString(dbPath);
+            Assert.IsTrue(!cs.Contains("-1") && !cs.Contains("-H"), $"Should have multi user connection string without hostname: {cs.PrettyQuote()}.");
+
+            db.Proshut(dbPath);
+        }
+
+        [TestMethod]
+        public void BinaryDumpLoadIdxRebuild() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            // create .df
+            var dfPath = Path.Combine(TestFolder, "bindb.df");
+            File.WriteAllText(dfPath, "ADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD FIELD \"field2\" OF \"table1\" AS integer \n  DESCRIPTION \"field two\"\n  FORMAT \"9\"\n  INITIAL 0\n  POSITION 3\n  ORDER 20\n");
+
+            using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
+                var dbPath = Path.Combine(TestFolder, "bindb.db");
+                dataAdmin.CreateCompilationDatabaseFromDf(dbPath, dfPath);
+                Assert.IsTrue(dataAdmin.GetBusyMode(dbPath).Equals(DatabaseBusyMode.NotBusy));
+
+                var dataDirectory = Path.Combine(TestFolder, "bindb_data");
+                Directory.CreateDirectory(dataDirectory);
+                try {
+                    var table1Path = Path.Combine(dataDirectory, "table1.d");
+                    // load data
+                    File.WriteAllText(table1Path, "\"value1\" 1\n\"value2\" 2\n");
+                    dataAdmin.LoadData(dbPath, dataDirectory);
+                    File.Delete(table1Path);
+
+                    // dump binary
+                    dataAdmin.DumpBinaryData(dbPath, "table1", dataDirectory);
+                    var binDataFilePath = Path.Combine(dataDirectory, "table1.bd");
+                    Assert.IsTrue(File.Exists(binDataFilePath));
+
+                    // recreate db
+                    dataAdmin.Delete(dbPath);
+                    dataAdmin.CreateCompilationDatabaseFromDf(dbPath, dfPath);
+
+                    // load binary
+                    dataAdmin.LoadBinaryData(dbPath, binDataFilePath);
+
+                    // rebuild index
+                    dataAdmin.RebuildIndexes(dbPath, "table table1");
+
+                    // dump data
+                    dataAdmin.DumpData(dbPath, dataDirectory, "table1");
+                    Assert.IsTrue(File.Exists(table1Path));
+                    var dataContent = File.ReadAllText(table1Path);
+                    Assert.IsTrue(dataContent.Contains("\"value1\" 1"));
+
+                } finally {
+                    Directory.Delete(dataDirectory, true);
+                }
+            }
+
+        }
+
+        [TestMethod]
         public void GetConnectionString() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;

@@ -26,6 +26,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 
@@ -33,6 +34,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
     /// <summary>
     /// Allows to interact with an openedge database at a file system level : create/start/shutdown and so on...
+    /// TODO: -C bulkload
     /// </summary>
     public class UoeDatabaseOperator {
 
@@ -49,7 +51,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// Returns the output value of the last operation done
         /// </summary>
-        public string LastOperationOutput => _lastUsedProcess?.BatchOutput?.ToString();
+        public string LastOperationOutput => GetBatchOutputFromProcessIo(_lastUsedProcess);
 
         private ProcessIo _lastUsedProcess;
 
@@ -58,46 +60,22 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// Returns the path to _dbutil (or null if not found in the dlc folder)
         /// </summary>
-        private string DbUtilPath {
-            get {
-                string exeName = Utils.IsRuntimeWindowsPlatform ? "_dbutil.exe" : "_dbutil";
-                var outputPath = Path.Combine(DlcPath, "bin", exeName);
-                return File.Exists(outputPath) ? outputPath : null;
-            }
-        }
+        private string DbUtilPath => Utils.IsRuntimeWindowsPlatform ? "_dbutil.exe" : "_dbutil";
 
         /// <summary>
         /// Returns the path to _proutil (or null if not found in the dlc folder)
         /// </summary>
-        private string ProUtilPath {
-            get {
-                string exeName = Utils.IsRuntimeWindowsPlatform ? "_proutil.exe" : "_proutil";
-                var outputPath = Path.Combine(DlcPath, "bin", exeName);
-                return File.Exists(outputPath) ? outputPath : null;
-            }
-        }
+        private string ProUtilPath => Utils.IsRuntimeWindowsPlatform ? "_proutil.exe" : "_proutil";
 
         /// <summary>
         /// Returns the path to _mprosrv (or null if not found in the dlc folder)
         /// </summary>
-        private string ProservePath {
-            get {
-                string exeName = Utils.IsRuntimeWindowsPlatform ? "_mprosrv.exe" : "_mprosrv";
-                var outputPath = Path.Combine(DlcPath, "bin", exeName);
-                return File.Exists(outputPath) ? outputPath : null;
-            }
-        }
+        private string ProservePath => Utils.IsRuntimeWindowsPlatform ? "_mprosrv.exe" : "_mprosrv";
 
         /// <summary>
         /// Returns the path to _mprshut (or null if not found in the dlc folder)
         /// </summary>
-        private string ProshutPath {
-            get {
-                string exeName = Utils.IsRuntimeWindowsPlatform ? "_mprshut.exe" : "_mprshut";
-                var outputPath = Path.Combine(DlcPath, "bin", exeName);
-                return File.Exists(outputPath) ? outputPath : null;
-            }
-        }
+        private string ProshutPath => Utils.IsRuntimeWindowsPlatform ? "_mprshut.exe" : "_mprshut";
 
         /// <summary>
         /// The encoding to use for I/O of the openedge executables.
@@ -108,6 +86,11 @@ namespace Oetools.Utilities.Openedge.Database {
         /// A logger.
         /// </summary>
         public ILog Log { get; set; }
+
+        /// <summary>
+        /// Cancellation token.
+        /// </summary>
+        public CancellationToken? CancelToken { get; set; }
 
         /// <summary>
         /// New database utility.
@@ -126,6 +109,117 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
+        /// Truncates the log file. If the database is started, it will re-log the database startup parameters to the log file.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void TruncateLog(string targetDbPath) {
+            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+
+            var dbUtil = GetExecutable(DbUtilPath);
+            dbUtil.WorkingDirectory = dbFolder;
+
+            var online = GetBusyMode(targetDbPath) == DatabaseBusyMode.MultiUser ? " -online" : "";
+
+            try {
+                dbUtil.Execute($"prolog {dbPhysicalName}{online}");
+            } catch(Exception) {
+                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(dbUtil));
+            }
+        }
+
+        /// <summary>
+        /// Dump binary data for the given table.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="dumpDirectoryPath"></param>
+        /// <param name="options"></param>
+        /// <param name="tableName"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void DumpBinaryData(string targetDbPath, string tableName, string dumpDirectoryPath, string options = null) {
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+
+            if (string.IsNullOrEmpty(dumpDirectoryPath)) {
+                throw new UoeDatabaseOperationException("The data dump directory path can't be null.");
+            }
+            dumpDirectoryPath = dumpDirectoryPath.MakePathAbsolute();
+            if (!string.IsNullOrEmpty(dumpDirectoryPath) && !Directory.Exists(dumpDirectoryPath)) {
+                Directory.CreateDirectory(dumpDirectoryPath);
+            }
+
+            Log?.Info($"Dumping binary data of table {tableName} to directory {dumpDirectoryPath.PrettyQuote()} from {targetDbPath.PrettyQuote()}.");
+
+            var proUtil = GetExecutable(ProUtilPath);
+            proUtil.WorkingDirectory = dbFolder;
+
+            var executionOk = proUtil.TryExecute($"{dbPhysicalName} -C dump {tableName} {dumpDirectoryPath.CliQuoter()} {options}");
+            var batchOutput = GetBatchOutputFromProcessIo(proUtil);
+            if (!executionOk || !batchOutput.Contains("(6254)")) {
+                // Binary Dump complete. (6254)
+                throw new UoeDatabaseOperationException(batchOutput);
+            }
+
+            Log?.Debug(batchOutput);
+        }
+
+        /// <summary>
+        /// Load binary data to the given database.
+        /// The index of the loaded tables should be rebuilt afterward.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="options"></param>
+        /// <param name="binDataFilePath"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void LoadBinaryData(string targetDbPath, string binDataFilePath, string options = null) {
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+
+            binDataFilePath = binDataFilePath?.MakePathAbsolute();
+            if (!File.Exists(binDataFilePath)) {
+                throw new UoeDatabaseOperationException($"The binary data file does not exist: {binDataFilePath.PrettyQuote()}.");
+            }
+
+            Log?.Info($"Loading binary data from {binDataFilePath.PrettyQuote()} to {targetDbPath.PrettyQuote()}.");
+
+            var proUtil = GetExecutable(ProUtilPath);
+            proUtil.WorkingDirectory = dbFolder;
+
+            var executionOk = proUtil.TryExecute($"{dbPhysicalName} -C load {binDataFilePath.CliQuoter()} {options}");
+            var batchOutput = GetBatchOutputFromProcessIo(proUtil);
+            if (!executionOk || !batchOutput.Contains("(6256)")) {
+                // Binary Load complete. (6256)
+                throw new UoeDatabaseOperationException(batchOutput);
+            }
+
+            Log?.Debug(batchOutput);
+        }
+
+        /// <summary>
+        /// Rebuild the indexed of a database. By default, rebuilds all the active indexes.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void RebuildIndexes(string targetDbPath, string options = "activeindexes") {
+            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+
+            var proUtil = GetExecutable(ProUtilPath);
+            proUtil.WorkingDirectory = dbFolder;
+
+            var executionOk = proUtil.TryExecute($"{dbPhysicalName} -C idxbuild {options}");
+            var batchOutput = GetBatchOutputFromProcessIo(proUtil);
+            if (!executionOk || !batchOutput.Contains("(11465)")|| !batchOutput.Contains(" 0 err")) {
+                // 1 indexes were rebuilt. (11465)
+                throw new UoeDatabaseOperationException(batchOutput);
+            }
+
+            Log?.Debug(batchOutput);
+        }
+
+        /// <summary>
         /// Perform a prostrct create operation
         /// </summary>
         /// <param name="targetDbPath">Path to the target database</param>
@@ -134,18 +228,13 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <returns></returns>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public void ProstrctCreate(string targetDbPath, string structureFilePath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
 
             if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
                 blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
             }
 
-            if (string.IsNullOrEmpty(structureFilePath)) {
-                throw new UoeDatabaseOperationException("The structure file path can't be null.");
-            }
-
-            structureFilePath = structureFilePath.MakePathAbsolute();
-
+            structureFilePath = structureFilePath?.MakePathAbsolute();
             if (!File.Exists(structureFilePath)) {
                 throw new UoeDatabaseOperationException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
             }
@@ -159,11 +248,12 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Creating database structure for {targetDbPath.PrettyQuote()} from {structureFilePath.PrettyQuote()} with block size {blockSize.ToString().Substring(1)}.");
 
-            if (!dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)}")) {
-                throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
+            var executionOk = dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)}");
+            if (!executionOk) {
+                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(dbUtil));
             }
 
-            Log?.Debug(GetErrorFromProcessIo(dbUtil));
+            Log?.Debug(GetBatchOutputFromProcessIo(dbUtil));
         }
 
 
@@ -176,17 +266,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="relativePath">Use -relativepath in procopy command</param>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public void Procopy(string targetDbPath, string sourceDbPath, bool newInstance = true, bool relativePath = true) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
-            GetDatabaseFolderAndName(sourceDbPath, out string sourceDbFolder, out string sourceDbPhysicalName);
-
-            if (string.IsNullOrEmpty(sourceDbPath)) {
-                throw new UoeDatabaseOperationException("The source database can't be null.");
-            }
-
-            sourceDbPath = Path.Combine(sourceDbFolder, $"{sourceDbPhysicalName}.db").MakePathAbsolute();
-            if (!File.Exists(sourceDbPath)) {
-                throw new UoeDatabaseOperationException($"Could not find the procopy source database: {sourceDbPath.PrettyQuote()}.");
-            }
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            sourceDbPath = GetDatabaseFolderAndName(sourceDbPath, out string _, out string _, true);
 
             if (!Directory.Exists(dbFolder)) {
                 Directory.CreateDirectory(dbFolder);
@@ -197,12 +278,14 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Copying database {sourceDbPath.PrettyQuote()} to {targetDbPath.PrettyQuote()}.");
 
-            if (!dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}") || !dbUtil.BatchOutput.ToString().Contains("(1365)")) {
+            var executionOk = dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")}");
+            var batchOutput = GetBatchOutputFromProcessIo(dbUtil);
+            if (!executionOk || !batchOutput.Contains("(1365)")) {
                 // db copied from C:\progress\client\v117x_dv\dlc\empty1. (1365)
-                throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
+                throw new UoeDatabaseOperationException(batchOutput);
             }
 
-            Log?.Debug(GetErrorFromProcessIo(dbUtil));
+            Log?.Debug(batchOutput);
         }
 
         /// <summary>
@@ -229,9 +312,9 @@ namespace Oetools.Utilities.Openedge.Database {
                 emptyDbFolder = DlcPath;
             }
 
-            var sourceDbPath = Path.Combine(emptyDbFolder, $"empty{(int) blockSize}").MakePathAbsolute();
+            var sourceDbPath = Path.Combine(emptyDbFolder, $"empty{(int) blockSize}.db").MakePathAbsolute();
 
-            if (!File.Exists($"{sourceDbPath}.db")) {
+            if (!File.Exists(sourceDbPath)) {
                 throw new UoeDatabaseOperationException($"Could not find the procopy source database: {sourceDbPath.PrettyQuote()}.");
             }
 
@@ -268,19 +351,21 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="targetDbPath"></param>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public void ProstrctRepair(string targetDbPath) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
 
             Log?.Info($"Repairing database structure of {targetDbPath.PrettyQuote()}.");
 
-            if (!dbUtil.TryExecute($"prostrct repair {dbPhysicalName}") || !dbUtil.BatchOutput.ToString().Contains("(13485)")) {
+            var executionOk = dbUtil.TryExecute($"prostrct repair {dbPhysicalName}");
+            var batchOutput = GetBatchOutputFromProcessIo(dbUtil);
+            if (!executionOk || !batchOutput.Contains("(13485)")) {
                 // repair of *** ended. (13485)
-                throw new UoeDatabaseOperationException(GetErrorFromProcessIo(dbUtil));
+                throw new UoeDatabaseOperationException(batchOutput);
             }
 
-            Log?.Debug(GetErrorFromProcessIo(dbUtil));
+            Log?.Debug(batchOutput);
         }
 
         /// <summary>
@@ -330,7 +415,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <exception cref="UoeDatabaseOperationException"></exception>
         /// <returns>start parameters string</returns>
         public string ProServe(string targetDbPath, string hostname, string serviceName, int? nbUsers = null, string options = null) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
             if (nbUsers != null) {
                 var mn = 1;
@@ -398,10 +483,10 @@ namespace Oetools.Utilities.Openedge.Database {
             try {
                 proUtil.Execute($"{dbPhysicalName} -C busy");
             } catch(Exception) {
-                throw new UoeDatabaseOperationException(GetErrorFromProcessIo(proUtil));
+                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(proUtil));
             }
 
-            var output = proUtil.BatchOutput.ToString();
+            var output = GetBatchOutputFromProcessIo(proUtil);
             switch (output) {
                 case string _ when output.Contains("(276)"):
                     return DatabaseBusyMode.MultiUser;
@@ -421,7 +506,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <returns></returns>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public string GetConnectionString(string targetDbPath, string logicalName = null) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
             if (GetBusyMode(targetDbPath) == DatabaseBusyMode.NotBusy) {
                 return GetSingleUserConnectionString(targetDbPath, logicalName);
             }
@@ -493,7 +578,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="options"></param>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public void Proshut(string targetDbPath, string options = null) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
             var proshut = GetExecutable(ProshutPath);
             proshut.WorkingDirectory = dbFolder;
@@ -503,19 +588,19 @@ namespace Oetools.Utilities.Openedge.Database {
             proshut.TryExecute($"{dbPhysicalName} -by{(!string.IsNullOrEmpty(options) ? $" {options}" : string.Empty)}");
 
             if (GetBusyMode(targetDbPath) != DatabaseBusyMode.NotBusy) {
-                throw new UoeDatabaseOperationException(GetErrorFromProcessIo(proshut));
+                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(proshut));
             }
 
-            Log?.Debug(GetErrorFromProcessIo(proshut));
+            Log?.Debug(GetBatchOutputFromProcessIo(proshut));
         }
 
         /// <summary>
-        /// Deletes the database, expects the database to be stopped first
+        /// Deletes the database, expects the database to be stopped first. Does not delete the .st file.
         /// </summary>
         /// <param name="targetDbPath"></param>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public void Delete(string targetDbPath) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
             var busyMode = GetBusyMode(targetDbPath);
             if (busyMode != DatabaseBusyMode.NotBusy) {
@@ -525,6 +610,9 @@ namespace Oetools.Utilities.Openedge.Database {
             Log?.Info($"Deleting database files for {targetDbPath.PrettyQuote()}.");
 
             foreach (var file in Directory.EnumerateFiles(dbFolder, $"{dbPhysicalName}*", SearchOption.TopDirectoryOnly)) {
+                if (file.EndsWith(".df")) {
+                    continue;
+                }
                 // TODO: restrict to possible db file extensions?
                 File.Delete(file);
             }
@@ -540,8 +628,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public string GenerateStructureFileFromDf(string targetDbPath, string sourceDfPath) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
 
-            var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
-
+            sourceDfPath = sourceDfPath?.MakePathAbsolute();
             if (string.IsNullOrEmpty(sourceDfPath) || !File.Exists(sourceDfPath)) {
                 throw new UoeDatabaseOperationException($"The file path for data definition file .df does not exist: {sourceDfPath.PrettyQuote()}.");
             }
@@ -562,6 +649,8 @@ namespace Oetools.Utilities.Openedge.Database {
                     areaAdded.Add(areaName.Groups[1].Value);
                 }
             }
+
+            var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
 
             if (!Directory.Exists(dbFolder)) {
                 Directory.CreateDirectory(dbFolder);
@@ -692,9 +781,9 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="logicalName"></param>
         /// <returns></returns>
         public static string GetMultiUserConnectionString(string targetDbPath, string hostname = null, string serviceName = null, string logicalName = null) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string _, out string dbPhysicalName);
             if (serviceName == null) {
-                return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db").CliQuoter()} -ld {logicalName ?? dbPhysicalName}";
+                return $"-db {targetDbPath.CliQuoter()} -ld {logicalName ?? dbPhysicalName}";
             }
             return $"-db {dbPhysicalName} -ld {logicalName ?? dbPhysicalName} -N TCP -H {hostname ?? "localhost"} -S {serviceName}";
         }
@@ -707,8 +796,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <returns></returns>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public static string GetSingleUserConnectionString(string targetDbPath, string logicalName = null) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
-            return $"-db {Path.Combine(dbFolder, $"{dbPhysicalName}.db")} -ld {logicalName ?? dbPhysicalName} -1";
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string _, out string dbPhysicalName);
+            return $"-db {targetDbPath.CliQuoter()} -ld {logicalName ?? dbPhysicalName} -1";
         }
 
         /// <summary>
@@ -772,32 +861,31 @@ namespace Oetools.Utilities.Openedge.Database {
             return databaseConnectionString?.Replace("-db", $"-ct {maxCt} -db");
         }
 
-        protected ProcessIo GetExecutable(string path) {
-            if (!_processIos.ContainsKey(path)) {
-                if (string.IsNullOrEmpty(path)) {
-                    throw new ArgumentException("Path can't be null.");
+        protected ProcessIo GetExecutable(string exeName) {
+            if (!_processIos.ContainsKey(exeName)) {
+                var outputPath = Path.Combine(DlcPath, "bin", exeName);
+                if (!File.Exists(outputPath)) {
+                    throw new ArgumentException($"The openedge tool {exeName} does not exist in the expected path: {outputPath.PrettyQuote()}.");
                 }
 
-                if (!File.Exists(path)) {
-                    throw new ArgumentException($"Invalid path {path.PrettyQuote()}.");
-                }
-
-                _processIos.Add(path, new ProcessIo(path) {
-                    RedirectedOutputEncoding = Encoding
+                _processIos.Add(exeName, new ProcessIo(outputPath) {
+                    RedirectedOutputEncoding = Encoding,
+                    CancelToken = CancelToken
                 });
             }
 
-            _lastUsedProcess = _processIos[path];
+            _lastUsedProcess = _processIos[exeName];
             return _lastUsedProcess;
         }
 
         /// <exception cref="UoeDatabaseOperationException"></exception>
-        protected static void GetDatabaseFolderAndName(string dbPath, out string dbFolder, out string dbPhysicalName, bool needToExist = false) {
+        protected static string GetDatabaseFolderAndName(string dbPath, out string dbFolder, out string dbPhysicalName, bool needToExist = false) {
             if (string.IsNullOrEmpty(dbPath)) {
                 throw new UoeDatabaseOperationException("Invalid path, can't be null.");
             }
 
-            dbFolder = Path.GetDirectoryName(dbPath.MakePathAbsolute());
+            dbPath = dbPath.MakePathAbsolute();
+            dbFolder = Path.GetDirectoryName(dbPath);
 
             if (string.IsNullOrEmpty(dbFolder)) {
                 throw new UoeDatabaseOperationException("Database folder can't be null.");
@@ -808,6 +896,10 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             dbPhysicalName = Path.GetFileName(dbPath);
+
+            if (string.IsNullOrEmpty(dbPhysicalName)) {
+                throw new UoeDatabaseOperationException($"The physical name of the database is empty: {dbPath.PrettyQuote()}.");
+            }
 
             if (dbPhysicalName.EndsWith(".db")) {
                 dbPhysicalName = dbPhysicalName.Substring(0, dbPhysicalName.Length - 3);
@@ -823,12 +915,23 @@ namespace Oetools.Utilities.Openedge.Database {
 
             // doesn't exist?
             if (needToExist && !File.Exists(Path.Combine(dbFolder, $"{dbPhysicalName}.db"))) {
-                throw new UoeDatabaseOperationException($"The target database doesn't exist, correct the target path: {dbPath.PrettyQuote()}.");
+                throw new UoeDatabaseOperationException($"The database doesn't exist, correct the path: {dbPath.PrettyQuote()}.");
             }
+
+            return Path.Combine(dbFolder, $"{dbPhysicalName}.db");
         }
 
-        protected static string GetErrorFromProcessIo(ProcessIo pro) {
-            return $"{pro.BatchOutput.Trim()}";
+        protected static string GetBatchOutputFromProcessIo(ProcessIo pro) {
+            var batchModeOutput = new StringBuilder();
+            foreach (var s in pro.ErrorOutputArray.ToNonNullEnumerable()) {
+                batchModeOutput.AppendLine(s.Trim());
+            }
+            batchModeOutput.TrimEnd();
+            foreach (var s in pro.StandardOutputArray.ToNonNullEnumerable()) {
+                batchModeOutput.AppendLine(s.Trim());
+            }
+            batchModeOutput.TrimEnd();
+            return batchModeOutput.ToString();
         }
 
     }

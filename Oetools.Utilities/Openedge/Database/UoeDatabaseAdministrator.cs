@@ -27,7 +27,9 @@ using Oetools.Utilities.Resources;
 
 namespace Oetools.Utilities.Openedge.Database {
 
-    //TODO: make it cancellable!
+    /// <summary>
+    /// Administrate an openedge database.
+    /// </summary>
     public class UoeDatabaseAdministrator : UoeDatabaseOperator, IDisposable {
 
         private UoeProcessIo _progres;
@@ -48,7 +50,10 @@ namespace Oetools.Utilities.Openedge.Database {
         private UoeProcessIo Progres {
             get {
                 if (_progres == null) {
-                    _progres = new UoeProcessIo(DlcPath, true);
+                    _progres = new UoeProcessIo(DlcPath, true) {
+                        CancelToken = CancelToken,
+                        RedirectedOutputEncoding = Encoding
+                    };
                 }
                 return _progres;
             }
@@ -136,7 +141,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <returns></returns>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public void LoadSchemaDefinition(string targetDbPath, string dfFilePath) {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string _, true);
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string _, true);
 
             dfFilePath = dfFilePath?.MakePathAbsolute();
             if (!File.Exists(dfFilePath)) {
@@ -159,7 +164,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <returns></returns>
         /// <exception cref="UoeDatabaseOperationException"></exception>
         public void DumpSchemaDefinition(string targetDbPath, string dfDumpFilePath, string tableName = "ALL") {
-            GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string _, true);
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string _, true);
 
             if (string.IsNullOrEmpty(dfDumpFilePath)) {
                 throw new UoeDatabaseOperationException("The definition file path can't be null.");
@@ -323,16 +328,7 @@ namespace Oetools.Utilities.Openedge.Database {
         private void StartDataAdministratorProgram(string parameters, string workingDirectory = null) {
             Progres.WorkingDirectory = workingDirectory ?? TempFolder;
             var executionOk = Progres.TryExecute($"-p {ProcedurePath.CliQuoter()} {parameters}");
-            var batchModeOutput = new StringBuilder();
-            foreach (var s in Progres.ErrorOutputArray.ToNonNullEnumerable()) {
-                batchModeOutput.AppendLine(s.Trim());
-            }
-            batchModeOutput.TrimEnd();
-            foreach (var s in Progres.StandardOutputArray.ToNonNullEnumerable()) {
-                batchModeOutput.AppendLine(s.Trim());
-            }
-            batchModeOutput.TrimEnd();
-            var output = batchModeOutput.ToString();
+            var output = GetBatchOutputFromProcessIo(Progres);
             if (!executionOk || !output.EndsWith("OK")) {
                 throw new UoeDatabaseOperationException(Progres.BatchOutput.ToString());
             }
