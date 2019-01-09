@@ -239,6 +239,8 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseOperationException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
             }
 
+            CreateExtentsDirectories(structureFilePath);
+
             if (!Directory.Exists(dbFolder)) {
                 Directory.CreateDirectory(dbFolder);
             }
@@ -275,6 +277,9 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
+
+            var structureFilePath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
+            CreateExtentsDirectories(structureFilePath);
 
             Log?.Info($"Copying database {sourceDbPath.PrettyQuote()} to {targetDbPath.PrettyQuote()}.");
 
@@ -335,7 +340,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             try {
-                File.WriteAllText(stPath, "#\nb .\n#\nd \"Schema Area\":6,32;1 .\n#\nd \"Data Area\":7,256;1 .\n#\nd \"Index Area\":8,1;1 .", Encoding.ASCII);
+                File.WriteAllText(stPath, $"#\nb .\n#\nd \"Schema Area\":6,{(Utils.IsRuntimeWindowsPlatform ? 32 : 64).ToString()};1 .\n#\nd \"Data Area\":7,32;1 .\n#\nd \"Index Area\":8,32;1 .", Encoding.ASCII);
             } catch (Exception e) {
                 throw new UoeDatabaseOperationException($"Could not write .st file to {stPath.PrettyQuote()}.", e);
             }
@@ -607,14 +612,102 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseOperationException($"The database is still in use: {busyMode}.");
             }
 
-            Log?.Info($"Deleting database files for {targetDbPath.PrettyQuote()}.");
+            var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
+            if (File.Exists(stPath)) {
+                Log?.Info($"Deleting database files for {targetDbPath.PrettyQuote()} using the content of {dbPhysicalName}.st.");
 
-            foreach (var file in Directory.EnumerateFiles(dbFolder, $"{dbPhysicalName}*", SearchOption.TopDirectoryOnly)) {
-                if (file.EndsWith(".df")) {
+                foreach (var file in ListDatabaseFiles(stPath)) {
+                    Log?.Debug($"Deleting: {file.PrettyQuote()}.");
+                    File.Delete(file);
+                }
+            } else {
+                var fileRegex = new Regex($"{dbPhysicalName}(_[0-9]+)?\\.([abdt][0-9]+|lk|lic|lg|db)^");
+                foreach (var file in Directory.EnumerateFiles(dbFolder, $"{dbPhysicalName}*", SearchOption.TopDirectoryOnly)) {
+                    if (fileRegex.IsMatch(file)) {
+                        Log?.Debug($"Deleting: {file.PrettyQuote()}.");
+                        File.Delete(file);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates the necessary directories to create the extents listed in the .st file.
+        /// </summary>
+        /// <param name="stPath"></param>
+        public void CreateExtentsDirectories(string stPath) {
+            foreach (var file in ListDatabaseFiles(stPath, false)) {
+                var dir = Path.GetDirectoryName(file);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+                    Log?.Debug($"Creating directory: {file.PrettyQuote()}.");
+                    Directory.CreateDirectory(dir);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get a list of files used by the database described by the given .st path.
+        /// </summary>
+        /// <param name="stPath"></param>
+        /// <param name="filesMustExist"></param>
+        /// <returns></returns>
+        public IEnumerable<String> ListDatabaseFiles(string stPath, bool filesMustExist = true) {
+            var dbFolder = Path.GetDirectoryName(stPath);
+            var dbPhysicalName = Path.GetFileNameWithoutExtension(stPath);
+
+            var stRegex = new Regex(@"^(?<type>[abdt])(?<areainfo>\s""(?<areaname>[\w\s]+)""(:(?<areanum>[0-9]+))?(,(?<recsPerBlock>[0-9]+))?(;(?<blksPerCluster>[0-9]+))?)?\s((?<path>[^\s""!]+)|!""(?<pathquoted>[^""]+)"")(\s(?<extentType>[f|v])\s(?<extentSize>[0-9]+))?", RegexOptions.Multiline);
+
+            foreach (var ext in new List<string> { "lk", "lic", "lg", "db" }) {
+                var path = Path.ChangeExtension(stPath, ext);
+                if (!filesMustExist || File.Exists(path)) {
+                    yield return path;
+                }
+            }
+
+            if (string.IsNullOrEmpty(stPath) || !File.Exists(stPath)) {
+                yield break;
+            }
+
+            var areas = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
+
+            var areaNumAuto = 6;
+            foreach (Match match in stRegex.Matches(File.ReadAllText(stPath))) {
+                var directory = match.Groups["pathquoted"].Value;
+                if (string.IsNullOrEmpty(directory)) {
+                    directory = match.Groups["path"].Value;
+                }
+
+                if (string.IsNullOrEmpty(directory)) {
                     continue;
                 }
-                // TODO: restrict to possible db file extensions?
-                File.Delete(file);
+                directory = directory.MakePathAbsolute(dbFolder);
+
+                var areaType = match.Groups["type"].Value;
+                var isSchemaOrData = areaType == "d";
+                var areaName = match.Groups["areaname"].Value;
+
+                var areaId = $"{areaType}{areaName}{match.Groups["areanum"].Value}";
+                if (!areas.ContainsKey(areaId)) {
+                    areas.Add(areaId, 1);
+                    if (isSchemaOrData) {
+                        areaNumAuto++;
+                    }
+                } else {
+                    areas[areaId]++;
+                }
+
+                var areaNum = match.Groups["areanum"].Success ? int.Parse(match.Groups["areanum"].Value) : areaNumAuto;
+                if (areaName.Equals("Schema Area", StringComparison.CurrentCultureIgnoreCase)) {
+                    areaNum = 6;
+                }
+
+                var suffix = isSchemaOrData && areaNum > 6 ? $"_{areaNum}" : "";
+                var fileName = $"{dbPhysicalName}{suffix}.{areaType}{areas[areaId]}";
+                var filePath = directory.EndsWith(fileName, StringComparison.OrdinalIgnoreCase) ? directory : Path.Combine(directory, fileName);
+
+                if (!filesMustExist || File.Exists(filePath)) {
+                    yield return filePath;
+                }
             }
         }
 
@@ -639,6 +732,7 @@ namespace Oetools.Utilities.Openedge.Database {
             // blksPerCluster = (1 | 8 | 64 | 512)
             // extentType = f | v
             // size = numeric value > 32
+            // @"^(?<type>[abdt])(?<areainfo>\s""(?<areaname>[\w\s]+)""(:(?<areanum>[0-9]+))?(,(?<recsPerBlock>[0-9]+))?(;(?<blksPerCluster>[0-9]+))?)?\s((?<path>[^\s""!]+)|!""(?<pathquoted>[^""]+)"")(\s(?<extentType>[f|v])\s(?<extentSize>[0-9]+))?"
 
             var stContent = new StringBuilder("b .\n");
             stContent.Append("d \"Schema Area\" .\n");
@@ -783,8 +877,10 @@ namespace Oetools.Utilities.Openedge.Database {
         public static string GetMultiUserConnectionString(string targetDbPath, string hostname = null, string serviceName = null, string logicalName = null) {
             targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string _, out string dbPhysicalName);
             if (serviceName == null) {
+                // self service (shared memory) mode.
                 return $"-db {targetDbPath.CliQuoter()} -ld {logicalName ?? dbPhysicalName}";
             }
+            // network mode.
             return $"-db {dbPhysicalName} -ld {logicalName ?? dbPhysicalName} -N TCP -H {hostname ?? "localhost"} -S {serviceName}";
         }
 

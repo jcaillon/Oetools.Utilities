@@ -350,6 +350,62 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         }
 
         [TestMethod]
+        public void Delete() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            var db = new UoeDatabaseOperator(dlcPath);
+
+            var deleteDir = Path.Combine(TestFolder, "delete");
+            Directory.CreateDirectory(deleteDir);
+
+            File.WriteAllText(Path.Combine(deleteDir, "test1.st"), @"
+b .
+d ""Schema Area"":6,32;1 .
+d ""Data Area"":7,32;1 .
+d ""Index Area"":8,32;8 .
+d ""Data Area2"":9,32;8 .
+d ""Data Area3"":12,32;8 .
+");
+            db.ProstrctCreate(Path.Combine(deleteDir, "test1.db"), Path.Combine(deleteDir, "test1.st"));
+
+            Assert.AreEqual(9, Directory.EnumerateFiles(deleteDir, "*", SearchOption.TopDirectoryOnly).Count());
+
+            db.Delete(Path.Combine(deleteDir, "test1.db"));
+
+            Assert.AreEqual(1, Directory.EnumerateFiles(deleteDir, "*", SearchOption.TopDirectoryOnly).Count());
+
+            File.WriteAllText(Path.Combine(deleteDir, "test1.st"), @"
+b ./2
+a ./3 f 1024
+a ./3 f 1024
+a !""./3"" f 1024
+t . f 4096
+d ""Employee"",32 ./1/emp f 1024
+d ""Employee"",32 ./1/emp
+d ""Inventory"",32 ./1/inv f 1024
+d ""Inventory"",32 ./1/inv
+d ""Cust_Data"",32;64 ./1/cust f 1024
+d ""Cust_Data"",32;64 ./1/cust
+d ""Cust_Index"",32;8 ./1/cust
+d ""Order"",32;64 ./1/ord f 1024
+d ""Order"",32;64 ./1/ord
+d ""Misc"",32 !""./1/misc data"" f 1024
+d ""Misc"",32 !""./1/misc data""
+d ""schema Area"" .
+");
+
+            db.ProstrctCreate(Path.Combine(deleteDir, "test1.db"), Path.Combine(deleteDir, "test1.st"));
+
+            Assert.AreEqual(20, Directory.EnumerateFiles(deleteDir, "*", SearchOption.AllDirectories).Count());
+
+            db.Delete(Path.Combine(deleteDir, "test1.db"));
+
+            Assert.AreEqual(1, Directory.EnumerateFiles(deleteDir, "*", SearchOption.AllDirectories).Count());
+        }
+
+        [TestMethod]
         public void Tests_on_base_ref() {
             Procopy_existing_db();
             ProstrctRepair_ok();
