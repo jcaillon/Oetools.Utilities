@@ -35,6 +35,7 @@ namespace Oetools.Utilities.Openedge {
         public const string ProwinWindowClass = "ProMainWin";
 
         public const string OeDlcEnvVar = "DLC";
+        public const string OeDlcAlternativeEnvVar = "OE_DLC";
 
         public const int MaximumCharacterLength = 31990;
         public const int MaximumPropathLength = 31990;

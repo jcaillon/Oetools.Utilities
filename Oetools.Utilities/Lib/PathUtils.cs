@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (PathUtils.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -33,12 +33,31 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     public static partial class Utils {
 
+        /// <summary>
+        /// Returns the home directory on windows (the user directory) and linux (/home/user).
+        /// </summary>
+        /// <returns></returns>
+        public static string GetHomeDirectory() {
+            var homePath = Environment.GetEnvironmentVariable("HOME");
+            if (string.IsNullOrEmpty(homePath) && IsRuntimeWindowsPlatform) {
+                homePath = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%");
+                if (string.IsNullOrEmpty(homePath)) {
+                    homePath = Directory.GetParent(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)).FullName;
+                    if (Environment.OSVersion.Version.Major >= 6) {
+                        homePath = Directory.GetParent(homePath).ToString();
+                    }
+                }
+            }
+            return homePath;
+        }
+
+
         public static PathList<T> ToFileList<T>(this IEnumerable<T> list) where T : IPathListItem {
             var output = new PathList<T>();
             output.TryAddRange(list);
             return output;
         }
-        
+
         /// <summary>
         /// Returns true if two path are equals
         /// </summary>
@@ -51,10 +70,10 @@ namespace Oetools.Utilities.Lib {
             }
             return path.Equals(path2, StringComparison.OrdinalIgnoreCase);
         }
-        
+
         /// <summary>
         /// Test if two paths are on the same drive (for instance D:\folder and D:\file.ext are on the same drive D:),
-        /// if we have no way of knowing (for instance, if 
+        /// if we have no way of knowing (for instance, if
         /// </summary>
         /// <param name="path1"></param>
         /// <param name="path2"></param>
@@ -74,7 +93,7 @@ namespace Oetools.Utilities.Lib {
             }
             return path1[0] == path2[0];
         }
-        
+
         /// <summary>
         /// Make sure to trim the ending "\" or "/"
         /// </summary>
@@ -84,7 +103,7 @@ namespace Oetools.Utilities.Lib {
             }
             return path[path.Length - 1] == '\\' || path[path.Length - 1] == '/' ? path.TrimEnd('\\', '/') : path;
         }
-        
+
         /// <summary>
         /// Make sure to trim the starting "\" or "/"
         /// </summary>
@@ -107,7 +126,7 @@ namespace Oetools.Utilities.Lib {
             }
             return Path.Combine(currentDirectory ?? Directory.GetCurrentDirectory(), path);
         }
-        
+
         /// <summary>
         ///     Replaces all invalid characters found in the provided name
         /// </summary>
@@ -117,14 +136,14 @@ namespace Oetools.Utilities.Lib {
         public static string ToValidLocalFileName(this string fileName, char replacementChar = '_') {
             return ReplaceAllChars(fileName, Path.GetInvalidFileNameChars(), replacementChar);
         }
-        
+
         private static string ReplaceAllChars(string str, char[] oldChars, char newChar) {
             var sb = new StringBuilder(str);
             foreach (var c in oldChars)
                 sb.Replace(c, newChar);
             return sb.ToString();
         }
-        
+
         /// <summary>
         /// Transforms an absolute path into a relative one
         /// </summary>
@@ -138,7 +157,7 @@ namespace Oetools.Utilities.Lib {
             var relative = absolute.Replace(pathToDelete, "");
             return relative.Length == absolute.Length ? absolute : relative.TrimStartDirectorySeparator();
         }
-        
+
         /// <summary>
         /// Gets a messy path (can be valid or not) and returns a cleaned path, trimming ending dir sep char.
         /// Uses windows style separator.
@@ -152,7 +171,7 @@ namespace Oetools.Utilities.Lib {
             var newPath = path.Trim().TrimStartDirectorySeparator().ToCleanPath();
             return Path.DirectorySeparatorChar == '\\' ? newPath : newPath.Replace('/', '\\');
         }
-        
+
         /// <summary>
         /// Gets a messy path (can be valid or not) and returns a cleaned path, trimming ending dir sep char.
         /// Uses unix style separator.
@@ -166,7 +185,7 @@ namespace Oetools.Utilities.Lib {
             var newPath = path.Trim().TrimStartDirectorySeparator().ToCleanPath();
             return Path.DirectorySeparatorChar == '/' ? newPath : newPath.Replace('\\', '/');
         }
-        
+
         /// <summary>
         /// Gets a messy path (can be valid or not) and returns a cleaned path, trimming ending dir sep char
         /// TODO : also replace stuff like /./ or /../
@@ -202,7 +221,7 @@ namespace Oetools.Utilities.Lib {
             }
             return newPath.TrimEndDirectorySeparator();
         }
-        
+
         /// <summary>
         /// Read all the text of a file in one go, same as File.ReadAllText expect it's truly a read only function
         /// </summary>
@@ -292,7 +311,7 @@ namespace Oetools.Utilities.Lib {
                         folderStack.Push(dir);
                     }
                     yield return dir;
-                }                
+                }
             }
         }
 
@@ -397,7 +416,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Returns a random file name (can be used for folder aswell) 
+        /// Returns a random file name (can be used for folder aswell)
         /// </summary>
         /// <returns></returns>
         public static string GetRandomName() {
@@ -427,7 +446,7 @@ namespace Oetools.Utilities.Lib {
             }
             return outputDirectory;
         }
-        
+
         /// <summary>
         ///     Allows to test if a string matches one of the listOfPattern (wildcards) in the list of patterns,
         ///     Ex : "file.xml".TestAgainstListOfPatterns("*.xls;*.com;*.xml") return true
@@ -483,7 +502,7 @@ namespace Oetools.Utilities.Lib {
                 ;
             return $"^{pattern}$";
         }
-        
+
         /// <summary>
         /// - Test if the path wild card has correct matches &lt; &gt; place holders
         /// - Test if the path contains any invalid characters
@@ -537,6 +556,6 @@ namespace Oetools.Utilities.Lib {
                 }
             }
         }
-        
+
     }
 }

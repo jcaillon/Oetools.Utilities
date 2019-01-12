@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeUtilities.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -30,7 +30,7 @@ using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Openedge {
     public static class UoeUtilities {
-        
+
         /// <summary>
         /// Reads an openedge log file (that should contain the FILEID trace type) and output all the files
         /// that were opened during the log session
@@ -41,7 +41,7 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="currentDirectory"></param>
         /// <returns></returns>
         public static HashSet<string> GetReferencedFilesFromFileIdLog(string filePath, Encoding encoding, string currentDirectory) {
-            
+
             // we want to read this kind of line :
             // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID   Open E:\Common\CommonObj.i ID=33
             // [17/04/09@16:44:14.372+0200] P-009532 T-007832 2 4GL FILEID   Open E:\Common space\CommonObji.cls ID=33
@@ -121,7 +121,7 @@ namespace Oetools.Utilities.Openedge {
                             break;
                         // static reference
                         case "REFERENCE":
-                            // "file.p" "file.p" line REFERENCE random.table1 
+                            // "file.p" "file.p" line REFERENCE random.table1
                             if (reader.MoveToNextRecordField() && reader.RecordFieldNumber == 4) {
                                 foundRef = reader.RecordValue;
                             }
@@ -132,8 +132,8 @@ namespace Oetools.Utilities.Openedge {
                         case "SHR-WORKFILE":
                         case "SHR-WORKTABLE":
                             // "file.p" "file.p" line SHR-WORKFILE WORKtable2 LIKE random.table1
-                            if (reader.MoveToNextRecordField() && reader.RecordFieldNumber == 4 && 
-                                reader.MoveToNextRecordField() && reader.RecordFieldNumber == 5 && 
+                            if (reader.MoveToNextRecordField() && reader.RecordFieldNumber == 4 &&
+                                reader.MoveToNextRecordField() && reader.RecordFieldNumber == 5 &&
                                 reader.MoveToNextRecordField() && reader.RecordFieldNumber == 6) {
                                 foundRef = reader.RecordValue;
                             }
@@ -156,7 +156,7 @@ namespace Oetools.Utilities.Openedge {
         /// </summary>
         /// <returns></returns>
         public static string GetDlcPathFromEnv() {
-            return Environment.GetEnvironmentVariable(UoeConstants.OeDlcEnvVar) ?? throw new UoeDlcNotFoundException($"Can't find the openedge installation directory ({UoeConstants.OeDlcEnvVar}).");
+            return Environment.GetEnvironmentVariable(UoeConstants.OeDlcAlternativeEnvVar) ?? Environment.GetEnvironmentVariable(UoeConstants.OeDlcEnvVar) ?? throw new UoeDlcNotFoundException($"Can't find the openedge installation directory ({UoeConstants.OeDlcEnvVar}).");
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace Oetools.Utilities.Openedge {
                     }
                 }
             }
-            
+
             return outputMessage;
         }
 
@@ -227,7 +227,7 @@ namespace Oetools.Utilities.Openedge {
                 return string.Format("{0}{1}{2}", cat != null ? $"({cat}) " : "", Description, KnowledgeBase.Length > 2 ? $" ({KnowledgeBase.StripQuotes()})" : "");
             }
         }
-        
+
         /// <summary>
         /// Returns the openedge version currently installed
         /// </summary>
@@ -271,7 +271,7 @@ namespace Oetools.Utilities.Openedge {
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Returns the openedge name of an encoding.
         /// </summary>
@@ -289,7 +289,7 @@ namespace Oetools.Utilities.Openedge {
             }
             return output;
         }
-        
+
         /// <summary>
         /// Returns the codepage used by a progress session for the graphical client.
         /// </summary>
@@ -305,7 +305,7 @@ namespace Oetools.Utilities.Openedge {
             }
             return null;
         }
-        
+
         /// <summary>
         /// Returns the codepage used by a progress session for all file/console I/O.
         /// </summary>
@@ -316,7 +316,7 @@ namespace Oetools.Utilities.Openedge {
             Match match = null;
             if (File.Exists(startupFilePath)) {
                 var matches = new Regex(@"(-cpterm|-stream|-cpstream) ([\w-]+)(\s|$)").Matches(File.ReadAllText(startupFilePath));
-                
+
                 if (matches.Count == 1) {
                     match = matches[0];
                 } else if (matches.Count == 2) {

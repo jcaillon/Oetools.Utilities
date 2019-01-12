@@ -120,7 +120,11 @@ namespace Oetools.Utilities.Openedge.Database {
             var dbUtil = GetExecutable(DbUtilPath);
             dbUtil.WorkingDirectory = dbFolder;
 
-            var online = GetBusyMode(targetDbPath) == DatabaseBusyMode.MultiUser ? " -online" : "";
+            string online =  null;
+            if (GetBusyMode(targetDbPath) == DatabaseBusyMode.MultiUser) {
+                online = " -online";
+                Log?.Debug("The database is served for multi-users, using the `-online` option.");
+            }
 
             try {
                 dbUtil.Execute($"prolog {dbPhysicalName}{online}");
@@ -220,14 +224,15 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Perform a prostrct create operation
+        /// Creates a void OpenEdge database from a previously defined structure description (.st) file.
         /// </summary>
         /// <param name="targetDbPath">Path to the target database</param>
         /// <param name="structureFilePath">Path to the .st file, a prostrct create will be executed with it to create the database</param>
         /// <param name="blockSize">Block size for the database prostrct create</param>
+        /// <param name="extra"></param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void ProstrctCreate(string targetDbPath, string structureFilePath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform) {
+        public void ProstrctCreate(string targetDbPath, string structureFilePath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string extra = null) {
             targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName);
 
             if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
@@ -250,7 +255,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Creating database structure for {targetDbPath.PrettyQuote()} from {structureFilePath.PrettyQuote()} with block size {blockSize.ToString().Substring(1)}.");
 
-            var executionOk = dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)}");
+            var executionOk = dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)} {extra}");
             if (!executionOk) {
                 throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(dbUtil));
             }
@@ -258,6 +263,87 @@ namespace Oetools.Utilities.Openedge.Database {
             Log?.Debug(GetBatchOutputFromProcessIo(dbUtil));
         }
 
+        /// <summary>
+        /// Creates a structure description (.st) file for an OpenEdge database.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="extra"></param>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void ProstrctList(string targetDbPath, string extra = null) {
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+
+            var dbUtil = GetExecutable(DbUtilPath);
+            dbUtil.WorkingDirectory = dbFolder;
+
+            Log?.Info($"Creating structure file for the database {targetDbPath.PrettyQuote()}.");
+
+            var executionOk = dbUtil.TryExecute($"prostrct list {dbPhysicalName} {extra}");
+            if (!executionOk) {
+                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(dbUtil));
+            }
+
+            Log?.Debug(GetBatchOutputFromProcessIo(dbUtil));
+        }
+
+        /// <summary>
+        /// Updates a database's control information (.db file) after an extent is moved or renamed.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="extra"></param>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void ProstrctRepair(string targetDbPath, string extra = null) {
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+
+            var dbUtil = GetExecutable(DbUtilPath);
+            dbUtil.WorkingDirectory = dbFolder;
+
+            Log?.Info($"Repairing database structure of {targetDbPath.PrettyQuote()}.");
+
+            var executionOk = dbUtil.TryExecute($"prostrct repair {dbPhysicalName} {extra}");
+            var batchOutput = GetBatchOutputFromProcessIo(dbUtil);
+            if (!executionOk || !batchOutput.Contains("(13485)")) {
+                // repair of *** ended. (13485)
+                throw new UoeDatabaseOperationException(batchOutput);
+            }
+
+            Log?.Debug(batchOutput);
+        }
+
+        /// <summary>
+        /// Appends the files from a new structure description (.st) file to a database.
+        /// </summary>
+        /// <param name="targetDbPath"></param>
+        /// <param name="structureFilePath"></param>
+        /// <param name="extra"></param>
+        /// <exception cref="UoeDatabaseOperationException"></exception>
+        public void ProstrctAdd(string targetDbPath, string structureFilePath, string extra = null) {
+            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
+
+            structureFilePath = structureFilePath?.MakePathAbsolute();
+            if (!File.Exists(structureFilePath)) {
+                throw new UoeDatabaseOperationException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
+            }
+
+            string qualifier = "add";
+            if (GetBusyMode(targetDbPath) == DatabaseBusyMode.MultiUser) {
+                qualifier = "addonline";
+                Log?.Debug($"The database is served for multi-users, using the `{qualifier}` qualifier.");
+            }
+
+            var dbUtil = GetExecutable(DbUtilPath);
+            dbUtil.WorkingDirectory = dbFolder;
+
+            Log?.Info($"Appending new extents from {structureFilePath.PrettyQuote()} to the database structure of {targetDbPath.PrettyQuote()}.");
+
+            var executionOk = dbUtil.TryExecute($"prostrct {qualifier} {dbPhysicalName} {structureFilePath.CliQuoter()} {extra}");
+            var batchOutput = GetBatchOutputFromProcessIo(dbUtil);
+            if (!executionOk || batchOutput.Contains("(12867)")) {
+                // prostrct add FAILED. (12867)
+                throw new UoeDatabaseOperationException(batchOutput);
+            }
+
+            Log?.Debug(batchOutput);
+        }
 
         /// <summary>
         /// Performs a procopy operation
@@ -348,29 +434,6 @@ namespace Oetools.Utilities.Openedge.Database {
             Log?.Info($"Created standard structure file {stPath.PrettyQuote()}.");
 
             return stPath;
-        }
-
-        /// <summary>
-        /// Prostrct repair operation
-        /// </summary>
-        /// <param name="targetDbPath"></param>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void ProstrctRepair(string targetDbPath) {
-            targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
-
-            var dbUtil = GetExecutable(DbUtilPath);
-            dbUtil.WorkingDirectory = dbFolder;
-
-            Log?.Info($"Repairing database structure of {targetDbPath.PrettyQuote()}.");
-
-            var executionOk = dbUtil.TryExecute($"prostrct repair {dbPhysicalName}");
-            var batchOutput = GetBatchOutputFromProcessIo(dbUtil);
-            if (!executionOk || !batchOutput.Contains("(13485)")) {
-                // repair of *** ended. (13485)
-                throw new UoeDatabaseOperationException(batchOutput);
-            }
-
-            Log?.Debug(batchOutput);
         }
 
         /// <summary>
@@ -613,22 +676,18 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             var stPath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
-            if (File.Exists(stPath)) {
-                Log?.Info($"Deleting database files for {targetDbPath.PrettyQuote()} using the content of {dbPhysicalName}.st.");
-
-                foreach (var file in ListDatabaseFiles(stPath)) {
-                    Log?.Debug($"Deleting: {file.PrettyQuote()}.");
-                    File.Delete(file);
-                }
-            } else {
-                var fileRegex = new Regex($"{dbPhysicalName}(_[0-9]+)?\\.([abdt][0-9]+|lk|lic|lg|db)^");
-                foreach (var file in Directory.EnumerateFiles(dbFolder, $"{dbPhysicalName}*", SearchOption.TopDirectoryOnly)) {
-                    if (fileRegex.IsMatch(file)) {
-                        Log?.Debug($"Deleting: {file.PrettyQuote()}.");
-                        File.Delete(file);
-                    }
-                }
+            if (!File.Exists(stPath)) {
+                Log?.Debug($"The structure file does not exist, creating it: {stPath.PrettyQuote()}");
+                ProstrctList(targetDbPath);
             }
+
+            Log?.Info($"Deleting database files for {targetDbPath.PrettyQuote()} using the content of {dbPhysicalName}.st.");
+
+            foreach (var file in ListDatabaseFiles(stPath)) {
+                Log?.Debug($"Deleting: {file.PrettyQuote()}.");
+                File.Delete(file);
+            }
+
         }
 
         /// <summary>

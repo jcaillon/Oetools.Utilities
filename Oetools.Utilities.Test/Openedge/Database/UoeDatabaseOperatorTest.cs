@@ -372,6 +372,7 @@ d ""Data Area3"":12,32;8 .
 
             Assert.AreEqual(9, Directory.EnumerateFiles(deleteDir, "*", SearchOption.TopDirectoryOnly).Count());
 
+            File.Delete(Path.Combine(deleteDir, "test1.st"));
             db.Delete(Path.Combine(deleteDir, "test1.db"));
 
             Assert.AreEqual(1, Directory.EnumerateFiles(deleteDir, "*", SearchOption.TopDirectoryOnly).Count());
