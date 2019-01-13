@@ -97,7 +97,7 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Returns all the messages sent to the standard or error output, should be used once the process has exited
         /// </summary>
-        public StringBuilder BatchOutput {
+        public virtual StringBuilder BatchOutput {
             get {
                 if (_batchModeOutput == null || _process != null && !_process.HasExited) {
                     _batchModeOutput = new StringBuilder();
@@ -175,7 +175,7 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Start the process synchronously, catch the exceptions
         /// </summary>
-        public bool TryExecute(string arguments = null, bool silent = true) {
+        public virtual bool TryExecute(string arguments = null, bool silent = true) {
             try {
                 return Execute(arguments, silent) && ErrorOutputArray.Count == 0;
             } catch (Exception e) {
@@ -187,7 +187,7 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Start the process synchronously
         /// </summary>
-        public bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
+        public virtual bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
             ExecuteAsyncProcess(arguments, silent);
 
             WaitUntilProcessExits(timeoutMs);

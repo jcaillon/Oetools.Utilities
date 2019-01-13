@@ -51,11 +51,11 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// Returns the output value of the last operation done
         /// </summary>
-        public string LastOperationOutput => GetBatchOutputFromProcessIo(_lastUsedProcess);
+        public string LastOperationOutput => _lastUsedProcess.BatchOutputString;
 
-        private ProcessIo _lastUsedProcess;
+        private ProcessIoWithLog _lastUsedProcess;
 
-        private Dictionary<string, ProcessIo> _processIos = new Dictionary<string, ProcessIo>();
+        private Dictionary<string, ProcessIoWithLog> _processIos = new Dictionary<string, ProcessIoWithLog>();
 
         /// <summary>
         /// Returns the path to _dbutil (or null if not found in the dlc folder)
@@ -142,7 +142,7 @@ namespace Oetools.Utilities.Openedge.Database {
             try {
                 dbUtil.Execute($"prolog {dbPhysicalName}{online} {InternationalizationStartupParameters}");
             } catch(Exception) {
-                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(dbUtil));
+                throw new UoeDatabaseOperationException(dbUtil.BatchOutputString);
             }
         }
 
@@ -172,13 +172,10 @@ namespace Oetools.Utilities.Openedge.Database {
             proUtil.WorkingDirectory = dbFolder;
 
             var executionOk = proUtil.TryExecute($"{dbPhysicalName} -C dump {tableName} {dumpDirectoryPath.CliQuoter()} {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            var batchOutput = GetBatchOutputFromProcessIo(proUtil);
-            if (!executionOk || !batchOutput.Contains("(6254)")) {
+            if (!executionOk || !proUtil.BatchOutputString.Contains("(6254)")) {
                 // Binary Dump complete. (6254)
-                throw new UoeDatabaseOperationException(batchOutput);
+                throw new UoeDatabaseOperationException(proUtil.BatchOutputString);
             }
-
-            Log?.Debug(batchOutput);
         }
 
         /// <summary>
@@ -204,13 +201,10 @@ namespace Oetools.Utilities.Openedge.Database {
             proUtil.WorkingDirectory = dbFolder;
 
             var executionOk = proUtil.TryExecute($"{dbPhysicalName} -C load {binDataFilePath.CliQuoter()} {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            var batchOutput = GetBatchOutputFromProcessIo(proUtil);
-            if (!executionOk || !batchOutput.Contains("(6256)")) {
+            if (!executionOk || !proUtil.BatchOutputString.Contains("(6256)")) {
                 // Binary Load complete. (6256)
-                throw new UoeDatabaseOperationException(batchOutput);
+                throw new UoeDatabaseOperationException(proUtil.BatchOutputString);
             }
-
-            Log?.Debug(batchOutput);
         }
 
         /// <summary>
@@ -227,13 +221,10 @@ namespace Oetools.Utilities.Openedge.Database {
             proUtil.WorkingDirectory = dbFolder;
 
             var executionOk = proUtil.TryExecute($"{dbPhysicalName} -C idxbuild {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            var batchOutput = GetBatchOutputFromProcessIo(proUtil);
-            if (!executionOk || !batchOutput.Contains("(11465)")|| !batchOutput.Contains(" 0 err")) {
+            if (!executionOk || !proUtil.BatchOutputString.Contains("(11465)")|| !proUtil.BatchOutputString.Contains(" 0 err")) {
                 // 1 indexes were rebuilt. (11465)
-                throw new UoeDatabaseOperationException(batchOutput);
+                throw new UoeDatabaseOperationException(proUtil.BatchOutputString);
             }
-
-            Log?.Debug(batchOutput);
         }
 
         /// <summary>
@@ -270,10 +261,8 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var executionOk = dbUtil.TryExecute($"prostrct create {dbPhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)} {(validate ? "-validate" : "")} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
             if (!executionOk) {
-                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(dbUtil));
+                throw new UoeDatabaseOperationException(dbUtil.BatchOutputString);
             }
-
-            Log?.Debug(GetBatchOutputFromProcessIo(dbUtil));
         }
 
         /// <summary>
@@ -291,10 +280,8 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var executionOk = dbUtil.TryExecute($"prostrct list {dbPhysicalName} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
             if (!executionOk) {
-                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(dbUtil));
+                throw new UoeDatabaseOperationException(dbUtil.BatchOutputString);
             }
-
-            Log?.Debug(GetBatchOutputFromProcessIo(dbUtil));
         }
 
         /// <summary>
@@ -311,13 +298,10 @@ namespace Oetools.Utilities.Openedge.Database {
             Log?.Info($"Repairing database structure of {targetDbPath.PrettyQuote()}.");
 
             var executionOk = dbUtil.TryExecute($"prostrct repair {dbPhysicalName} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            var batchOutput = GetBatchOutputFromProcessIo(dbUtil);
-            if (!executionOk || !batchOutput.Contains("(13485)")) {
+            if (!executionOk || !dbUtil.BatchOutputString.Contains("(13485)")) {
                 // repair of *** ended. (13485)
-                throw new UoeDatabaseOperationException(batchOutput);
+                throw new UoeDatabaseOperationException(dbUtil.BatchOutputString);
             }
-
-            Log?.Debug(batchOutput);
         }
 
         /// <summary>
@@ -347,13 +331,10 @@ namespace Oetools.Utilities.Openedge.Database {
             Log?.Info($"Appending new extents from {structureFilePath.PrettyQuote()} to the database structure of {targetDbPath.PrettyQuote()}.");
 
             var executionOk = dbUtil.TryExecute($"prostrct {qualifier} {dbPhysicalName} {structureFilePath.CliQuoter()} {(validate ? "-validate" : "")} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            var batchOutput = GetBatchOutputFromProcessIo(dbUtil);
-            if (!executionOk || batchOutput.Contains("(12867)")) {
+            if (!executionOk || dbUtil.BatchOutputString.Contains("(12867)")) {
                 // prostrct add FAILED. (12867)
-                throw new UoeDatabaseOperationException(batchOutput);
+                throw new UoeDatabaseOperationException(dbUtil.BatchOutputString);
             }
-
-            Log?.Debug(batchOutput);
 
             ProstrctList(targetDbPath);
         }
@@ -383,13 +364,10 @@ namespace Oetools.Utilities.Openedge.Database {
             Log?.Info($"Copying database {sourceDbPath.PrettyQuote()} to {targetDbPath.PrettyQuote()}.");
 
             var executionOk = dbUtil.TryExecute($"procopy {sourceDbPath.CliQuoter()} {dbPhysicalName}{(newInstance ? $" {NewInstanceFlag}" : "")}{(relativePath ? $" {RelativeFlag}" : "")} {InternationalizationStartupParameters}");
-            var batchOutput = GetBatchOutputFromProcessIo(dbUtil);
-            if (!executionOk || !batchOutput.Contains("(1365)")) {
+            if (!executionOk || !dbUtil.BatchOutputString.Contains("(1365)")) {
                 // db copied from C:\progress\client\v117x_dv\dlc\empty1. (1365)
-                throw new UoeDatabaseOperationException(batchOutput);
+                throw new UoeDatabaseOperationException(dbUtil.BatchOutputString);
             }
-
-            Log?.Debug(batchOutput);
         }
 
         /// <summary>
@@ -561,13 +539,16 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var proUtil = GetExecutable(ProUtilPath);
             proUtil.WorkingDirectory = dbFolder;
+            proUtil.Log = null;
             try {
                 proUtil.Execute($"{dbPhysicalName} -C busy {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            } catch(Exception) {
-                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(proUtil));
+            } catch (Exception) {
+                throw new UoeDatabaseOperationException(proUtil.BatchOutputString);
+            } finally {
+                proUtil.Log = Log;
             }
 
-            var output = GetBatchOutputFromProcessIo(proUtil);
+            var output = proUtil.BatchOutputString;
             switch (output) {
                 case string _ when output.Contains("(276)"):
                     return DatabaseBusyMode.MultiUser;
@@ -669,10 +650,8 @@ namespace Oetools.Utilities.Openedge.Database {
             proshut.TryExecute($"{dbPhysicalName} -by {options} {InternationalizationStartupParameters}");
 
             if (GetBusyMode(targetDbPath) != DatabaseBusyMode.NotBusy) {
-                throw new UoeDatabaseOperationException(GetBatchOutputFromProcessIo(proshut));
+                throw new UoeDatabaseOperationException(proshut.BatchOutputString);
             }
-
-            Log?.Debug(GetBatchOutputFromProcessIo(proshut));
         }
 
         /// <summary>
@@ -1029,16 +1008,17 @@ namespace Oetools.Utilities.Openedge.Database {
             return databaseConnectionString?.Replace("-db", $"-ct {maxCt} -db");
         }
 
-        protected ProcessIo GetExecutable(string exeName) {
+        protected ProcessIoWithLog GetExecutable(string exeName) {
             if (!_processIos.ContainsKey(exeName)) {
                 var outputPath = Path.Combine(DlcPath, "bin", exeName);
                 if (!File.Exists(outputPath)) {
                     throw new ArgumentException($"The openedge tool {exeName} does not exist in the expected path: {outputPath.PrettyQuote()}.");
                 }
 
-                _processIos.Add(exeName, new ProcessIo(outputPath) {
+                _processIos.Add(exeName, new ProcessIoWithLog(outputPath) {
                     RedirectedOutputEncoding = Encoding,
-                    CancelToken = CancelToken
+                    CancelToken = CancelToken,
+                    Log = Log
                 });
             }
 
@@ -1089,17 +1069,48 @@ namespace Oetools.Utilities.Openedge.Database {
             return Path.Combine(dbFolder, $"{dbPhysicalName}.db");
         }
 
-        protected static string GetBatchOutputFromProcessIo(ProcessIo pro) {
-            var batchModeOutput = new StringBuilder();
-            foreach (var s in pro.ErrorOutputArray.ToNonNullEnumerable()) {
-                batchModeOutput.AppendLine(s.Trim());
+        protected class ProcessIoWithLog : ProcessIo {
+
+            /// <summary>
+            /// A logger.
+            /// </summary>
+            public ILog Log { get; set; }
+
+            public ProcessIoWithLog(string executablePath) : base(executablePath) { }
+
+            protected override void PrepareStart(string arguments, bool silent) {
+                base.PrepareStart(arguments, silent);
+                _batchOutput = null;
+                Log?.Debug($"Executing command:\n{ExecutedCommandLine}");
             }
-            batchModeOutput.TrimEnd();
-            foreach (var s in pro.StandardOutputArray.ToNonNullEnumerable()) {
-                batchModeOutput.AppendLine(s.Trim());
+
+            private string _batchOutput;
+
+            /// <summary>
+            /// Returns all the messages sent to the standard or error output, should be used once the process has exited
+            /// </summary>
+            public string BatchOutputString {
+                get {
+                    if (_batchOutput == null) {
+                        var batchModeOutput = new StringBuilder();
+                        foreach (var s in ErrorOutputArray.ToNonNullEnumerable()) {
+                            batchModeOutput.AppendLine(s.Trim());
+                        }
+                        foreach (var s in StandardOutputArray.ToNonNullEnumerable()) {
+                            batchModeOutput.AppendLine(s.Trim());
+                        }
+                        _batchOutput = batchModeOutput.ToString();
+                    }
+
+                    return _batchOutput;
+                }
             }
-            batchModeOutput.TrimEnd();
-            return batchModeOutput.ToString();
+
+            public override bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
+                var result = base.Execute(arguments, silent, timeoutMs);
+                Log?.Debug($"Command output:\n{BatchOutputString}");
+                return result;
+            }
         }
 
     }

@@ -18,6 +18,8 @@ IF NUM-DBS < 1 THEN DO:
     QUIT.
 END.
 
+CREATE ALIAS "DICTDB" FOR DATABASE VALUE(LDBNAME(1)).
+
 ASSIGN
     ipc_code = ENTRY(1, SESSION:PARAMETER, "|")
     ipc_path = ENTRY(2, SESSION:PARAMETER, "|").
@@ -37,8 +39,11 @@ CASE ipc_code:
         RUN ReadFileIntoStandardOutput (INPUT LDBNAME("DICTDB") + ".e").
     END.
     WHEN "dump-inc" THEN DO:
-        CREATE ALIAS "DICTDB" FOR DATABASE "after".
-        CREATE ALIAS "DICTDB2" FOR DATABASE "before".
+        IF NUM-DBS < 2 THEN DO:
+            PUT UNFORMATTED "Need 2 databases connected.".
+            QUIT.
+        END.
+        CREATE ALIAS "DICTDB2" FOR DATABASE VALUE(LDBNAME(2)).
         RUN prodict/dump_inc.p PERSISTENT SET gh_proc.
         RUN setFileName in gh_proc (ipc_path).
         RUN setCodePage in gh_proc (?).
