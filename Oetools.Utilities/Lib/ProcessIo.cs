@@ -129,6 +129,11 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         public List<string> ErrorOutputArray { get; private set; } = new List<string>();
 
+        /// <summary>
+        /// Returns the command line used for the execution.
+        /// </summary>
+        public string ExecutedCommandLine => $"{ExecutablePath?.CliQuoter()} {_startInfo?.Arguments}".CliCompactWhitespaces();
+
         private int? _exitCode;
 
         /// <summary>

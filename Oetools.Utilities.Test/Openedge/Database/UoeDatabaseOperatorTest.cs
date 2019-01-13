@@ -350,6 +350,37 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         }
 
         [TestMethod]
+        public void ProstrctAdd() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            var db = new UoeDatabaseOperator(dlcPath);
+
+            var addDir = Path.Combine(TestFolder, "prostractadd");
+            Directory.CreateDirectory(addDir);
+
+            File.WriteAllText(Path.Combine(addDir, "part1.st"), @"
+b .
+d ""Schema Area"" .
+d ""Data Area"" .
+d ""Index Area"" .
+");
+            File.WriteAllText(Path.Combine(addDir, "part2.st"), @"
+d ""Data Area2"" .
+d ""Data Area3"" .
+");
+            db.ProstrctCreate(Path.Combine(addDir, "test1.db"), Path.Combine(addDir, "part1.st"));
+
+            Assert.AreEqual(8, Directory.EnumerateFiles(addDir, "*", SearchOption.TopDirectoryOnly).Count());
+
+            db.ProstrctAdd(Path.Combine(addDir, "test1.db"), Path.Combine(addDir, "part2.st"));
+
+            Assert.AreEqual(11, Directory.EnumerateFiles(addDir, "*", SearchOption.TopDirectoryOnly).Count());
+
+        }
+
+        [TestMethod]
         public void Delete() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
