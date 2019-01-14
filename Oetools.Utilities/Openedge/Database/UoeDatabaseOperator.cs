@@ -1039,7 +1039,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseOperationException($"The physical name of the database is empty: {dbPath.PrettyQuote()}.");
             }
 
-            if (dbPhysicalName.EndsWith(".db")) {
+            if (dbPhysicalName.EndsWith(".db", StringComparison.OrdinalIgnoreCase)) {
                 dbPhysicalName = dbPhysicalName.Substring(0, dbPhysicalName.Length - 3);
             }
 

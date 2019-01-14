@@ -59,7 +59,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING\n");
 
             using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
-                dataAdmin.LoadSchemaDefinition(Path.Combine(TestFolder, "ref.db"), dfPath);
+                dataAdmin.LoadSchemaDefinition(dataAdmin.GetConnectionString(Path.Combine(TestFolder, "ref.db")), dfPath);
             }
         }
 
@@ -80,7 +80,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             Exception ex = null;
             try {
                 using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
-                    dataAdmin.LoadSchemaDefinition(Path.Combine(TestFolder, "ref2.db"), dfPath);
+                    dataAdmin.LoadSchemaDefinition(dataAdmin.GetConnectionString(Path.Combine(TestFolder, "ref2.db")), dfPath);
                 }
             } catch (Exception e) {
                 ex = e;
@@ -143,7 +143,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                 Assert.IsTrue(dataAdmin.GetBusyMode(dbPath).Equals(DatabaseBusyMode.NotBusy));
 
                 var dfPathOut = Path.Combine(TestFolder, "dumpdf_out.df");
-                dataAdmin.DumpSchemaDefinition(dbPath, dfPathOut);
+                dataAdmin.DumpSchemaDefinition(dataAdmin.GetConnectionString(dbPath), dfPathOut);
 
                 Assert.IsTrue(File.Exists(dfPathOut));
                 Assert.IsTrue(File.ReadAllText(dfPathOut).Contains("field1"));
@@ -209,11 +209,11 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
                 // load seq
                 File.WriteAllText(sequenceDataFilePath, "0 \"sequence1\" 20\n");
-                dataAdmin.LoadSequenceData(dbPath, sequenceDataFilePath);
+                dataAdmin.LoadSequenceData(dataAdmin.GetConnectionString(dbPath), sequenceDataFilePath);
 
                 // dump seq
                 File.Delete(sequenceDataFilePath);
-                dataAdmin.DumpSequenceData(dbPath, sequenceDataFilePath);
+                dataAdmin.DumpSequenceData(dataAdmin.GetConnectionString(dbPath), sequenceDataFilePath);
 
                 Assert.IsTrue(File.Exists(sequenceDataFilePath));
                 var dataContent = File.ReadAllText(sequenceDataFilePath);
@@ -244,11 +244,11 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                     var table1Path = Path.Combine(dataDirectory, "table1.d");
                     // load data
                     File.WriteAllText(table1Path, "\"value1\" 1\n\"value2\" 2\n");
-                    dataAdmin.LoadData(dbPath, dataDirectory);
+                    dataAdmin.LoadData(dataAdmin.GetConnectionString(dbPath), dataDirectory);
 
                     // dump seq
                     File.Delete(table1Path);
-                    dataAdmin.DumpData(dbPath, dataDirectory);
+                    dataAdmin.DumpData(dataAdmin.GetConnectionString(dbPath), dataDirectory);
 
                     Assert.IsTrue(File.Exists(table1Path));
                     var dataContent = File.ReadAllText(table1Path);
