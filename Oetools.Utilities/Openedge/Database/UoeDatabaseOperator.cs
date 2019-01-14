@@ -60,22 +60,22 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// Returns the path to _dbutil (or null if not found in the dlc folder)
         /// </summary>
-        private string DbUtilPath => Utils.IsRuntimeWindowsPlatform ? "_dbutil.exe" : "_dbutil";
+        private string DbUtilName => Utils.IsRuntimeWindowsPlatform ? "_dbutil.exe" : "_dbutil";
 
         /// <summary>
         /// Returns the path to _proutil (or null if not found in the dlc folder)
         /// </summary>
-        private string ProUtilPath => Utils.IsRuntimeWindowsPlatform ? "_proutil.exe" : "_proutil";
+        private string ProUtilName => Utils.IsRuntimeWindowsPlatform ? "_proutil.exe" : "_proutil";
 
         /// <summary>
         /// Returns the path to _mprosrv (or null if not found in the dlc folder)
         /// </summary>
-        private string ProservePath => Utils.IsRuntimeWindowsPlatform ? "_mprosrv.exe" : "_mprosrv";
+        private string ProservePath => Path.Combine(DlcPath, "bin", Utils.IsRuntimeWindowsPlatform ? "_mprosrv.exe" : "_mprosrv");
 
         /// <summary>
         /// Returns the path to _mprshut (or null if not found in the dlc folder)
         /// </summary>
-        private string ProshutPath => Utils.IsRuntimeWindowsPlatform ? "_mprshut.exe" : "_mprshut";
+        private string ProshutName => Utils.IsRuntimeWindowsPlatform ? "_mprshut.exe" : "_mprshut";
 
         /// <summary>
         /// Internationalization startup parameters such as -cpinternal codepage and -cpstream codepage.
@@ -130,7 +130,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public void TruncateLog(string targetDbPath) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
-            var dbUtil = GetExecutable(DbUtilPath);
+            var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = dbFolder;
 
             string online =  null;
@@ -168,7 +168,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping binary data of table {tableName} to directory {dumpDirectoryPath.PrettyQuote()} from {targetDbPath.PrettyQuote()}.");
 
-            var proUtil = GetExecutable(ProUtilPath);
+            var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = dbFolder;
 
             var executionOk = proUtil.TryExecute($"{dbPhysicalName} -C dump {tableName} {dumpDirectoryPath.CliQuoter()} {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
@@ -197,7 +197,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading binary data from {binDataFilePath.PrettyQuote()} to {targetDbPath.PrettyQuote()}.");
 
-            var proUtil = GetExecutable(ProUtilPath);
+            var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = dbFolder;
 
             var executionOk = proUtil.TryExecute($"{dbPhysicalName} -C load {binDataFilePath.CliQuoter()} {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
@@ -217,7 +217,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public void RebuildIndexes(string targetDbPath, string options = "activeindexes") {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
-            var proUtil = GetExecutable(ProUtilPath);
+            var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = dbFolder;
 
             var executionOk = proUtil.TryExecute($"{dbPhysicalName} -C idxbuild {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
@@ -254,7 +254,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 Directory.CreateDirectory(dbFolder);
             }
 
-            var dbUtil = GetExecutable(DbUtilPath);
+            var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = dbFolder;
 
             Log?.Info($"Creating database structure for {targetDbPath.PrettyQuote()} from {structureFilePath.PrettyQuote()} with block size {blockSize.ToString().Substring(1)}.");
@@ -273,7 +273,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public void ProstrctList(string targetDbPath) {
             targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
-            var dbUtil = GetExecutable(DbUtilPath);
+            var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = dbFolder;
 
             Log?.Info($"Creating structure file for the database {targetDbPath.PrettyQuote()}.");
@@ -292,7 +292,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public void ProstrctRepair(string targetDbPath) {
             targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
-            var dbUtil = GetExecutable(DbUtilPath);
+            var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = dbFolder;
 
             Log?.Info($"Repairing database structure of {targetDbPath.PrettyQuote()}.");
@@ -325,7 +325,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 Log?.Debug($"The database is served for multi-users, using the `{qualifier}` qualifier.");
             }
 
-            var dbUtil = GetExecutable(DbUtilPath);
+            var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = dbFolder;
 
             Log?.Info($"Appending new extents from {structureFilePath.PrettyQuote()} to the database structure of {targetDbPath.PrettyQuote()}.");
@@ -355,7 +355,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 Directory.CreateDirectory(dbFolder);
             }
 
-            var dbUtil = GetExecutable(DbUtilPath);
+            var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = dbFolder;
 
             var structureFilePath = Path.Combine(dbFolder, $"{dbPhysicalName}.st");
@@ -502,10 +502,18 @@ namespace Oetools.Utilities.Openedge.Database {
 
             options = $"{dbPhysicalName} {options} {InternationalizationStartupParameters}".CliCompactWhitespaces();
 
-            Log?.Info($"Starting database server for {targetDbPath.PrettyQuote()} with options: {options.PrettyQuote()}.");
+            Log?.Info($"Starting database server for {targetDbPath.PrettyQuote()}.");
+
+            var proservePath = ProservePath;
+
+            if (!File.Exists(proservePath)) {
+                throw new UoeDatabaseOperationException($"The proserve executable does not exist: {proservePath.PrettyQuote()}.");
+            }
+
+            Log?.Debug($"Executing command:\n{$"{proservePath.CliQuoter()} {options}".CliCompactWhitespaces()}");
 
             var proc = Process.Start(new ProcessStartInfo {
-                FileName = ProservePath,
+                FileName = proservePath,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
@@ -537,7 +545,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public DatabaseBusyMode GetBusyMode(string targetDbPath) {
             GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
-            var proUtil = GetExecutable(ProUtilPath);
+            var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = dbFolder;
             proUtil.Log = null;
             try {
@@ -642,7 +650,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public void Proshut(string targetDbPath, string options = null) {
             targetDbPath = GetDatabaseFolderAndName(targetDbPath, out string dbFolder, out string dbPhysicalName, true);
 
-            var proshut = GetExecutable(ProshutPath);
+            var proshut = GetExecutable(ProshutName);
             proshut.WorkingDirectory = dbFolder;
 
             Log?.Info($"Shutting down database server for {targetDbPath.PrettyQuote()}.");
@@ -1008,24 +1016,6 @@ namespace Oetools.Utilities.Openedge.Database {
             return databaseConnectionString?.Replace("-db", $"-ct {maxCt} -db");
         }
 
-        protected ProcessIoWithLog GetExecutable(string exeName) {
-            if (!_processIos.ContainsKey(exeName)) {
-                var outputPath = Path.Combine(DlcPath, "bin", exeName);
-                if (!File.Exists(outputPath)) {
-                    throw new ArgumentException($"The openedge tool {exeName} does not exist in the expected path: {outputPath.PrettyQuote()}.");
-                }
-
-                _processIos.Add(exeName, new ProcessIoWithLog(outputPath) {
-                    RedirectedOutputEncoding = Encoding,
-                    CancelToken = CancelToken,
-                    Log = Log
-                });
-            }
-
-            _lastUsedProcess = _processIos[exeName];
-            return _lastUsedProcess;
-        }
-
         /// <exception cref="UoeDatabaseOperationException"></exception>
         protected static string GetDatabaseFolderAndName(string dbPath, out string dbFolder, out string dbPhysicalName, bool needToExist = false) {
             if (string.IsNullOrEmpty(dbPath)) {
@@ -1067,6 +1057,24 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             return Path.Combine(dbFolder, $"{dbPhysicalName}.db");
+        }
+
+        protected ProcessIoWithLog GetExecutable(string exeName) {
+            if (!_processIos.ContainsKey(exeName)) {
+                var outputPath = Path.Combine(DlcPath, "bin", exeName);
+                if (!File.Exists(outputPath)) {
+                    throw new ArgumentException($"The openedge tool {exeName} does not exist in the expected path: {outputPath.PrettyQuote()}.");
+                }
+
+                _processIos.Add(exeName, new ProcessIoWithLog(outputPath) {
+                    RedirectedOutputEncoding = Encoding,
+                    CancelToken = CancelToken,
+                    Log = Log
+                });
+            }
+
+            _lastUsedProcess = _processIos[exeName];
+            return _lastUsedProcess;
         }
 
         protected class ProcessIoWithLog : ProcessIo {
