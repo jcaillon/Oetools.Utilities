@@ -613,7 +613,7 @@ namespace Oetools.Utilities.Openedge.Database {
                     case "4261":
                         // BROKER  0: (4261)  Host Name (-H): localhost
                         idx = line.IndexOf(':', idx + 6);
-                        hostName = idx > 0 && line.Length > idx ? line.Substring(idx + 1).Trim() : null;
+                        hostName = idx > 0 && line.Length > idx ? line.Substring(idx + 1).Trim().TrimEnd('.') : null;
                         // If not -H was specified when starting the db, the -H will equal to the current hostname.
                         // But you can't connect with this hostname so we correct it here.
                         if (!string.IsNullOrEmpty(hostName) && hostName.Equals(GetHostName(), StringComparison.OrdinalIgnoreCase)) {
@@ -623,7 +623,7 @@ namespace Oetools.Utilities.Openedge.Database {
                     case "4262":
                         // BROKER  0: (4262)  Service Name (-S): 0
                         idx = line.IndexOf(':', idx + 6);
-                        serviceName = idx > 0 && line.Length > idx ? line.Substring(idx + 1).Trim() : null;
+                        serviceName = idx > 0 && line.Length > idx ? line.Substring(idx + 1).Trim().TrimEnd('.') : null;
                         continue;
                     default:
                         continue;
