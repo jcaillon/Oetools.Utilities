@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (StringExtensions.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -28,7 +28,7 @@ using System.Text.RegularExpressions;
 [assembly: InternalsVisibleTo("Oetools.Utilities.Test")]
 
 namespace Oetools.Utilities.Lib.Extension {
-    
+
     public static class StringExtensions {
 
         /// <summary>
@@ -40,9 +40,9 @@ namespace Oetools.Utilities.Lib.Extension {
         public static string TakeDefaultIfNeeded(this string source, string defaultValue) {
             return string.IsNullOrWhiteSpace(source) ? defaultValue : source;
         }
-        
+
         /// <summary>
-        /// Remove quotes from a string
+        /// Remove double quotes from a string
         /// </summary>
         /// <param name="source"></param>
         /// <returns></returns>
@@ -50,9 +50,9 @@ namespace Oetools.Utilities.Lib.Extension {
             if (string.IsNullOrEmpty(source)) {
                 return source;
             }
-            return source.Length > 1 && source[0] == source[source.Length - 1] && source[0] == '"' ? (source.Length - 2 > 0 ? source.Substring(1, source.Length - 2) : "") : source;
+            return source.Length > 1 && source[0] == source[source.Length - 1] && source[0] == '"' ? source.Length - 2 > 0 ? source.Substring(1, source.Length - 2) : "" : source;
         }
-        
+
         /// <summary>
         ///     Converts a string to an object of the given type
         /// </summary>
@@ -102,7 +102,7 @@ namespace Oetools.Utilities.Lib.Extension {
         public static void ValidatePlaceHolders(this string source, string openPo = "{{", string closePo = "}}", int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
             source.ReplacePlaceHolders(null, openPo, closePo, maxDepth, comparison);
         }
-        
+
         /// <summary>
         /// Replace the place holders in a string by a value
         /// </summary>
@@ -156,10 +156,10 @@ namespace Oetools.Utilities.Lib.Extension {
             if (startPosStack.Count != 0) {
                 throw new Exception($"Unbalanced number or {openPo} and {closePo}).");
             }
-            
+
             return osb;
         }
-        
+
         /// <summary>
         /// Converts a camel case string to a string separated with the given separator.
         /// Ex: from ThisSentence to this_sentence.
@@ -170,7 +170,7 @@ namespace Oetools.Utilities.Lib.Extension {
         public static string CamelCaseToSeparator(this string str, string separator = "_") {
             return string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? separator + x.ToString() : x.ToString())).ToLower();
         }
-        
+
         /// <summary>
         /// A simple quote to use for result display
         /// </summary>
@@ -227,7 +227,7 @@ namespace Oetools.Utilities.Lib.Extension {
         public static string ProPreProcStringify(this string text) {
             return (text ?? "").ProStringify().Replace("~", "~~");
         }
-        
+
         /// <summary>
         /// The opposite function of proquoter
         /// </summary>
@@ -236,7 +236,7 @@ namespace Oetools.Utilities.Lib.Extension {
         public static string ProUnescapeString(this string text) {
             if (string.IsNullOrEmpty(text)) {
                 return text;
-            }           
+            }
             text = text.StripQuotes();
             if (text.Equals("?")) {
                 return null;
@@ -249,7 +249,7 @@ namespace Oetools.Utilities.Lib.Extension {
 
         private static Regex _httpRegex;
         private static Regex HttpUriRegex => _httpRegex ?? (_httpRegex = new Regex(@"^https?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?", RegexOptions.Compiled));
-        
+
         /// <summary>
         /// Parses the given HTTP URI into strings
         /// </summary>
@@ -337,7 +337,7 @@ namespace Oetools.Utilities.Lib.Extension {
             port = 0;
             return false;
         }
-        
+
         /// <summary>
         /// handle all whitespace chars not only spaces, trim both leading and trailing whitespaces, remove extra whitespaces,
         /// and all whitespaces are replaced to space char (so we have uniform space separator)
@@ -348,7 +348,7 @@ namespace Oetools.Utilities.Lib.Extension {
         public static string CliCompactWhitespaces(this string s) {
             return new StringBuilder(s).CliCompactWhitespaces().ToString();
         }
-        
+
         /// <summary>
         /// Tests wheter or not a character is a letter from the ascii table
         /// </summary>

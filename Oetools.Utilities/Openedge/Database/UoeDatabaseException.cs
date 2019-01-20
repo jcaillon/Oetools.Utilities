@@ -20,9 +20,9 @@
 using System;
 
 namespace Oetools.Utilities.Openedge.Database {
-    public class UoeDatabaseOperationException : Exception {
-        public UoeDatabaseOperationException() { }
-        public UoeDatabaseOperationException(string message) : base(message) { }
-        public UoeDatabaseOperationException(string message, Exception innerException) : base(message, innerException) { }
+    public class UoeDatabaseException : Exception {
+        public UoeDatabaseException() { }
+        public UoeDatabaseException(string message) : base(message) { }
+        public UoeDatabaseException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

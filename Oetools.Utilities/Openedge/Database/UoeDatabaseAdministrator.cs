@@ -18,7 +18,9 @@
 // ========================================================================
 #endregion
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
@@ -86,52 +88,33 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Creates a new database.
+        /// Creates a new database and loads the given schema definition file.
         /// </summary>
-        /// <param name="targetDbPath"></param>
+        /// <param name="targetDb"></param>
+        /// <param name="dfFilePath"></param>
         /// <param name="stFilePath"></param>
         /// <param name="blockSize"></param>
         /// <param name="codePage"></param>
         /// <param name="newInstance"></param>
         /// <param name="relativePath"></param>
-        /// <param name="dfFilePath"></param>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void CreateDatabase(string targetDbPath, string stFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true, string dfFilePath = null) {
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void CreateWithDf(UoeDatabase targetDb, string dfFilePath, string stFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
             // exists?
-            if (DatabaseExists(targetDbPath)) {
-                throw new UoeDatabaseOperationException($"The target database already exists, choose a new name or delete the existing database: {targetDbPath.PrettyQuote()}.");
+            if (targetDb.Exists()) {
+                throw new UoeDatabaseException($"The target database already exists, choose a new name or delete the existing database: {targetDb.FullPath.PrettyQuote()}.");
             }
 
-            if (!string.IsNullOrEmpty(stFilePath)) {
-                CopyStructureFile(targetDbPath, stFilePath);
-            } else if (!string.IsNullOrEmpty(dfFilePath)) {
+            if (string.IsNullOrEmpty(stFilePath) && !string.IsNullOrEmpty(dfFilePath)) {
                 // generate a structure file from df?
-                stFilePath = GenerateStructureFileFromDf(targetDbPath, dfFilePath);
+                stFilePath = GenerateStructureFileFromDf2(targetDb, dfFilePath);
             }
 
-            if (!string.IsNullOrEmpty(stFilePath)) {
-                ProstrctCreate(targetDbPath, stFilePath, blockSize);
-            }
-
-            Procopy(targetDbPath, blockSize, codePage, newInstance, relativePath);
+            Create(targetDb, stFilePath, blockSize, codePage, newInstance, relativePath);
 
             // Load .df
             if (!string.IsNullOrEmpty(dfFilePath)) {
-                LoadSchemaDefinition(GetSingleUserConnectionString(targetDbPath), dfFilePath);
+                LoadSchemaDefinition(UoeConnectionString.NewSingleUserConnection(targetDb), dfFilePath);
             }
-        }
-
-        /// <summary>
-        /// Generates a database from a .df (database definition) file.
-        /// That database should not be used in production since it has all default configuration, its purpose is to exist for file compilation.
-        /// </summary>
-        /// <param name="targetDbPath"></param>
-        /// <param name="dfFilePath"></param>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void CreateCompilationDatabaseFromDf(string targetDbPath, string dfFilePath) {
-            ProstrctCreate(targetDbPath, GenerateStructureFileFromDf(targetDbPath, dfFilePath));
-            Procopy(targetDbPath);
-            LoadSchemaDefinition(GetSingleUserConnectionString(targetDbPath), dfFilePath);
         }
 
         /// <summary>
@@ -140,16 +123,14 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="connectionString">The connection string to the database.</param>
         /// <param name="dfFilePath">Path to the .df file to load.</param>
         /// <returns></returns>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void LoadSchemaDefinition(string connectionString, string dfFilePath) {
-            connectionString = MakeDbPathAbsolute(connectionString);
-
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void LoadSchemaDefinition(UoeConnectionString connectionString, string dfFilePath) {
             dfFilePath = dfFilePath?.MakePathAbsolute();
             if (!File.Exists(dfFilePath)) {
-                throw new UoeDatabaseOperationException($"The schema definition file does not exist: {dfFilePath.PrettyQuote()}.");
+                throw new UoeDatabaseException($"The schema definition file does not exist: {dfFilePath.PrettyQuote()}.");
             }
 
-            Log?.Info($"Loading schema definition file {dfFilePath.PrettyQuote()} in {connectionString.PrettyQuote()}.");
+            Log?.Info($"Loading schema definition file {dfFilePath.PrettyQuote()} in {connectionString.ToString().PrettyQuote()}.");
 
             StartDataAdministratorProgram($"{connectionString} -param {$"load-df|{dfFilePath}".CliQuoter()}");
         }
@@ -161,12 +142,10 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="dfDumpFilePath">Path to the .df file to write.</param>
         /// <param name="tableName"></param>
         /// <returns></returns>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void DumpSchemaDefinition(string connectionString, string dfDumpFilePath, string tableName = "ALL") {
-            connectionString = MakeDbPathAbsolute(connectionString);
-
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void DumpSchemaDefinition(UoeConnectionString connectionString, string dfDumpFilePath, string tableName = "ALL") {
             if (string.IsNullOrEmpty(dfDumpFilePath)) {
-                throw new UoeDatabaseOperationException("The definition file path can't be null.");
+                throw new UoeDatabaseException("The definition file path can't be null.");
             }
 
             dfDumpFilePath = dfDumpFilePath.MakePathAbsolute();
@@ -175,7 +154,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 Directory.CreateDirectory(dir);
             }
 
-            Log?.Info($"Dumping schema definition to file {dfDumpFilePath.PrettyQuote()} from {connectionString.PrettyQuote()}.");
+            Log?.Info($"Dumping schema definition to file {dfDumpFilePath.PrettyQuote()} from {connectionString.ToString().PrettyQuote()}.");
 
             StartDataAdministratorProgram($"{connectionString} -param {$"dump-df|{dfDumpFilePath}".CliQuoter()}|{tableName}");
         }
@@ -188,10 +167,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="connectionString">The connection string to the database.</param>
         /// <param name="incDfDumpFilePath"></param>
         /// <param name="renameFilePath"></param>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void DumpIncrementalSchemaDefinitionFromDatabases(string connectionString, string incDfDumpFilePath, string renameFilePath = null) {
-            connectionString = MakeDbPathAbsolute(connectionString);
-
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void DumpIncrementalSchemaDefinitionFromDatabases(IEnumerable<UoeConnectionString> connectionString, string incDfDumpFilePath, string renameFilePath = null) {
             if (!string.IsNullOrEmpty(renameFilePath)) {
                 Log?.Info($"Using rename file {renameFilePath.PrettyQuote()}.");
             }
@@ -202,13 +179,12 @@ namespace Oetools.Utilities.Openedge.Database {
                 Directory.CreateDirectory(dir);
             }
 
-            var matches = new Regex(@"-db\s+(""(?<quotedpath>[^""]+)""|(?<path>[^\s]+))").Matches(connectionString);
-
-            if (matches.Count != 2) {
-                throw new UoeDatabaseOperationException($"There should be exactly 2 databases specified in the connection string: {connectionString.PrettyQuote()}.");
+            var csList = connectionString.ToList();
+            if (csList.Count != 2) {
+                throw new UoeDatabaseException($"There should be exactly 2 databases specified in the connection string: {UoeConnectionString.GetConnectionString(csList).PrettyQuote()}.");
             }
 
-            Log?.Info($"Dumping incremental schema definition to file {incDfDumpFilePath.PrettyQuote()} from {(matches[1].Groups["path"].Success ? matches[1].Groups["path"].Success : matches[1].Groups["quotedpath"].Success)} (old) and {(matches[0].Groups["path"].Success ? matches[0].Groups["path"].Success : matches[0].Groups["quotedpath"].Success)} (new).");
+            Log?.Info($"Dumping incremental schema definition to file {incDfDumpFilePath.PrettyQuote()} from {(csList[0].Database.Exists() ? csList[0].Database.FullPath : csList[0].Database.PhysicalName)} (old) and {(csList[1].Database.Exists() ? csList[1].Database.FullPath : csList[1].Database.PhysicalName)} (new).");
 
             StartDataAdministratorProgram($"{connectionString} -param {$"dump-inc|{incDfDumpFilePath}|{renameFilePath ?? ""}".CliQuoter()}");
         }
@@ -233,11 +209,11 @@ namespace Oetools.Utilities.Openedge.Database {
             var tempFolder = Path.Combine(TempFolder, Path.GetRandomFileName());
             Directory.CreateDirectory(tempFolder);
             try {
-                var previousDbPath = Path.Combine(tempFolder, "dbprev.db");
-                var newDbPath = Path.Combine(tempFolder, "dbnew.db");
-                CreateCompilationDatabaseFromDf(previousDbPath, beforeDfPath);
-                CreateCompilationDatabaseFromDf(newDbPath, afterDfPath);
-                DumpIncrementalSchemaDefinitionFromDatabases($"{GetConnectionString(newDbPath)} {GetConnectionString(previousDbPath)}", incDfDumpFilePath, renameFilePath);
+                var previousDb = new UoeDatabase(Path.Combine(tempFolder, "dbprev.db"));
+                var newDb = new UoeDatabase(Path.Combine(tempFolder, "dbnew.db"));
+                CreateWithDf(previousDb, beforeDfPath);
+                CreateWithDf(newDb, afterDfPath);
+                DumpIncrementalSchemaDefinitionFromDatabases(new List<UoeConnectionString> { UoeConnectionString.NewSingleUserConnection(newDb), UoeConnectionString.NewSingleUserConnection(previousDb)}, incDfDumpFilePath, renameFilePath);
             } finally {
                 Directory.Delete(tempFolder, true);
             }
@@ -249,12 +225,10 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="connectionString">The connection string to the database.</param>
         /// <param name="dumpFilePath">Path to the sequence data file to write.</param>
         /// <returns></returns>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void DumpSequenceData(string connectionString, string dumpFilePath) {
-            connectionString = MakeDbPathAbsolute(connectionString);
-
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void DumpSequenceData(UoeConnectionString connectionString, string dumpFilePath) {
             if (string.IsNullOrEmpty(dumpFilePath)) {
-                throw new UoeDatabaseOperationException("The sequence data file path can't be null.");
+                throw new UoeDatabaseException("The sequence data file path can't be null.");
             }
 
             dumpFilePath = dumpFilePath.MakePathAbsolute();
@@ -263,7 +237,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 Directory.CreateDirectory(dir);
             }
 
-            Log?.Info($"Dumping sequence data to file {dumpFilePath.PrettyQuote()} from {connectionString.PrettyQuote()}.");
+            Log?.Info($"Dumping sequence data to file {dumpFilePath.PrettyQuote()} from {connectionString.ToString().PrettyQuote()}.");
 
             StartDataAdministratorProgram($"{connectionString} -param {$"dump-seq|{dumpFilePath}".CliQuoter()}");
         }
@@ -274,16 +248,14 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="connectionString">The connection string to the database.</param>
         /// <param name="sequenceDataFilePath">Path to the sequence data file to read.</param>
         /// <returns></returns>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void LoadSequenceData(string connectionString, string sequenceDataFilePath) {
-            connectionString = MakeDbPathAbsolute(connectionString);
-
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void LoadSequenceData(UoeConnectionString connectionString, string sequenceDataFilePath) {
             sequenceDataFilePath = sequenceDataFilePath?.MakePathAbsolute();
             if (!File.Exists(sequenceDataFilePath)) {
-                throw new UoeDatabaseOperationException($"The sequence data file does not exist: {sequenceDataFilePath.PrettyQuote()}.");
+                throw new UoeDatabaseException($"The sequence data file does not exist: {sequenceDataFilePath.PrettyQuote()}.");
             }
 
-            Log?.Info($"Loading sequence data from file {sequenceDataFilePath.PrettyQuote()} to {connectionString.PrettyQuote()}.");
+            Log?.Info($"Loading sequence data from file {sequenceDataFilePath.PrettyQuote()} to {connectionString.ToString().PrettyQuote()}.");
 
             StartDataAdministratorProgram($"{connectionString} -param {$"load-seq|{sequenceDataFilePath}".CliQuoter()}");
         }
@@ -294,19 +266,17 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="connectionString">The connection string to the database.</param>
         /// <param name="dumpDirectoryPath"></param>
         /// <param name="tableName"></param>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void DumpData(string connectionString, string dumpDirectoryPath, string tableName = "ALL") {
-            connectionString = MakeDbPathAbsolute(connectionString);
-
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void DumpData(UoeConnectionString connectionString, string dumpDirectoryPath, string tableName = "ALL") {
             if (string.IsNullOrEmpty(dumpDirectoryPath)) {
-                throw new UoeDatabaseOperationException("The data dump directory path can't be null.");
+                throw new UoeDatabaseException("The data dump directory path can't be null.");
             }
             dumpDirectoryPath = dumpDirectoryPath.MakePathAbsolute();
             if (!string.IsNullOrEmpty(dumpDirectoryPath) && !Directory.Exists(dumpDirectoryPath)) {
                 Directory.CreateDirectory(dumpDirectoryPath);
             }
 
-            Log?.Info($"Dumping data to directory {dumpDirectoryPath.PrettyQuote()} from {connectionString.PrettyQuote()}.");
+            Log?.Info($"Dumping data to directory {dumpDirectoryPath.PrettyQuote()} from {connectionString.ToString().PrettyQuote()}.");
 
             StartDataAdministratorProgram($"{connectionString} -param {$"dump-d|{dumpDirectoryPath}|{tableName}".CliQuoter()}");
         }
@@ -317,33 +287,27 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="connectionString">The connection string to the database.</param>
         /// <param name="dataDirectoryPath"></param>
         /// <param name="tableName"></param>
-        /// <exception cref="UoeDatabaseOperationException"></exception>
-        public void LoadData(string connectionString, string dataDirectoryPath, string tableName = "ALL") {
-            connectionString = MakeDbPathAbsolute(connectionString);
-
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void LoadData(UoeConnectionString connectionString, string dataDirectoryPath, string tableName = "ALL") {
             dataDirectoryPath = dataDirectoryPath?.MakePathAbsolute();
 
             if (!Directory.Exists(dataDirectoryPath)) {
-                throw new UoeDatabaseOperationException($"The data directory does not exist: {dataDirectoryPath.PrettyQuote()}.");
+                throw new UoeDatabaseException($"The data directory does not exist: {dataDirectoryPath.PrettyQuote()}.");
             }
 
-            Log?.Info($"Loading data from directory {dataDirectoryPath.PrettyQuote()} to {connectionString.PrettyQuote()}.");
+            Log?.Info($"Loading data from directory {dataDirectoryPath.PrettyQuote()} to {connectionString.ToString().PrettyQuote()}.");
 
             StartDataAdministratorProgram($"{connectionString} -param {$"load-d|{dataDirectoryPath}|{tableName}".CliQuoter()}");
         }
 
-        public string MakeDbPathAbsolute(string connectionString, string currentDirectory = null) {
-            return new Regex(@"-db\s+(""(?<quotedpath>[^""]+)""|(?<path>[^\s]+))").Replace(connectionString, me => {
-                if (me.Groups["quotedpath"].Success) {
-                    return $"-db \"{me.Groups["quotedpath"].Value.MakePathAbsolute(currentDirectory)}\"";
-                }
-                return $"-db \"{me.Groups["path"].Value.MakePathAbsolute()}\"";
-            });
-        }
 
         private void StartDataAdministratorProgram(string parameters, string workingDirectory = null) {
             Progres.WorkingDirectory = workingDirectory ?? TempFolder;
-            var executionOk = Progres.TryExecute($"-p {ProcedurePath.CliQuoter()} {parameters}");
+            var arguments = $"-p {ProcedurePath.CliQuoter()} {parameters}";
+
+            Log?.Debug($"Executing command:\n{$"{Progres.ExecutablePath?.CliQuoter()} {arguments}".CliCompactWhitespaces()}");
+            var executionOk = Progres.TryExecute(arguments);
+
             var batchModeOutput = new StringBuilder();
             foreach (var s in Progres.ErrorOutputArray.ToNonNullEnumerable()) {
                 batchModeOutput.AppendLine(s.Trim());
@@ -355,10 +319,13 @@ namespace Oetools.Utilities.Openedge.Database {
             batchModeOutput.TrimEnd();
             var output = batchModeOutput.ToString();
             if (!executionOk || !output.EndsWith("OK")) {
-                throw new UoeDatabaseOperationException(Progres.BatchOutput.ToString());
+                throw new UoeDatabaseException(Progres.BatchOutput.ToString());
             }
+
             if (output.Length > 4) {
                 Log?.Warn($"Warning messages published during the process:\n{output.Substring(0, output.Length - 4)}");
+            } else {
+                Log?.Debug($"Command output:\n{batchModeOutput}");
             }
         }
     }

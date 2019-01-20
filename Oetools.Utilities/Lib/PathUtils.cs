@@ -265,7 +265,15 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Creates the directory if it doesn't exists, can apply attributes
+        /// Creates the directory for the given file path if it doesn't exists, can apply attributes.
+        /// </summary>
+        public static bool CreateDirectoryForFileIfNeeded(string filePath, FileAttributes attributes = FileAttributes.Directory) {
+            var dir = Path.GetDirectoryName(filePath);
+            return !string.IsNullOrEmpty(dir) && CreateDirectoryIfNeeded(dir, attributes);
+        }
+
+        /// <summary>
+        /// Creates the directory if it doesn't exists, can apply attributes.
         /// </summary>
         public static bool CreateDirectoryIfNeeded(string path, FileAttributes attributes = FileAttributes.Directory) {
             if (Directory.Exists(path)) {

@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeExecutionParallelCompileTest.cs) is part of Oetools.Utilities.Test.
-// 
+//
 // Oetools.Utilities.Test is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities.Test is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -26,10 +26,10 @@ using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Test.Openedge.Execution {
-    
+
     [TestClass]
     public class UoeExecutionParallelCompileTest : UoeExecutionCompileTest {
-        
+
         private static string _testClassFolder;
 
         protected new static string TestClassFolder => _testClassFolder ?? (_testClassFolder = TestHelper.GetTestFolder(nameof(UoeExecutionParallelCompileTest)));
@@ -42,30 +42,24 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
         [ClassCleanup]
         public new static void Cleanup() {
-            // stop dummy database
-            if (TestHelper.GetDlcPath(out string dlcPath)) {
-                if (File.Exists(Path.Combine(TestClassFolder, "dummy.db"))) {
-                    new UoeDatabaseOperator(dlcPath).Proshut(Path.Combine(TestClassFolder, "dummy.db"));
-                }
-            }
             if (Directory.Exists(TestClassFolder)) {
                 Directory.Delete(TestClassFolder, true);
             }
         }
-        
+
         protected override string TestFolder => TestClassFolder;
-        
+
         protected override UoeExecutionCompile GetOeExecutionCompile(UoeExecutionEnv env) {
             return new UoeExecutionParallelCompile2(env);
         }
 
         public class UoeExecutionParallelCompile2 : UoeExecutionParallelCompile {
-            
+
             public override int MinimumNumberOfFilesPerProcess => 1;
 
             public UoeExecutionParallelCompile2(AUoeExecutionEnv env) : base(env) { }
         }
-        
+
         [TestMethod]
         public void OeExecutionParallelCompile_Test_Stop_compilation_on_error() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
@@ -105,13 +99,13 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is UoeExecutionCompilationStoppedException), "stop exception");
             }
         }
-        
+
         [TestMethod]
         public void OeExecutionParallelCompile_Test_Start_Failed() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;
             }
-            
+
             for (int i = 1; i <= 15; i++) {
                 File.WriteAllText(Path.Combine(TestFolder, $"test_start_fail_proc{i}.p"), @"QUIT.");
             }
@@ -147,17 +141,17 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.AreEqual(1, exec.HandledExceptions.Count, $"for the multi compilation, if a process fails to start we kill the others, so we should see a killed exception here {string.Join(",", exec.HandledExceptions)}");
             }
         }
-        
+
         [TestMethod]
         public void OeExecutionParallelCompile_Test_NumberOfProcessesPerCore() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;
             }
-            
+
             for (int i = 1; i <= 15; i++) {
                 File.WriteAllText(Path.Combine(TestFolder, $"test_nb_proc{i}.p"), @"QUIT.");
             }
-            
+
             // when it goes ok
             env.UseProgressCharacterMode = true;
             using (var exec = GetOeExecutionCompile(env) as UoeExecutionParallelCompile) {

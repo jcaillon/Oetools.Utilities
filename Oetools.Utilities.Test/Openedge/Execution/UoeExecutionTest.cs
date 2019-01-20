@@ -291,21 +291,17 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             // generate temp base
             var db = new UoeDatabaseOperator(env.DlcDirectoryPath);
-            var dbPn = "test1.db";
-            var stPath = db.CreateStandardStructureFile(Path.Combine(TestFolder, dbPn));
-            db.ProstrctCreate(Path.Combine(TestFolder, dbPn), stPath, DatabaseBlockSize.S1024);
-            db.Procopy(Path.Combine(TestFolder, dbPn), DatabaseBlockSize.S1024);
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, dbPn)));
+            var dbPn = new UoeDatabase(Path.Combine(TestFolder, "test1.db"));
+            db.Create(dbPn);
+            Assert.IsTrue(dbPn.Exists());
 
             // generate temp base
-            var dbPn2 = "test2.db";
-            stPath = db.CreateStandardStructureFile(Path.Combine(TestFolder, dbPn2));
-            db.ProstrctCreate(Path.Combine(TestFolder, dbPn2), stPath, DatabaseBlockSize.S1024);
-            db.Procopy(Path.Combine(TestFolder, dbPn2), DatabaseBlockSize.S1024);
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, dbPn2)));
+            var dbPn2 = new UoeDatabase(Path.Combine(TestFolder, "test2.db"));
+            db.Create(dbPn2);
+            Assert.IsTrue(dbPn2.Exists());
 
             // try if connected well and can manage aliases
-            env.DatabaseConnectionString = $"{UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn))} {UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, dbPn2))}";
+            env.DatabaseConnectionString = $"{db.GetConnectionString(dbPn)} {db.GetConnectionString(dbPn2)}";
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "test1",
@@ -343,7 +339,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = true;
 
             // try if connected well and can manage aliases
-            env.DatabaseConnectionString = UoeDatabaseOperator.GetSingleUserConnectionString(Path.Combine(TestFolder, "random.db"));
+            env.DatabaseConnectionString = UoeConnectionString.NewSingleUserConnection(new UoeDatabase(Path.Combine(TestFolder, "random.db"))).ToString();
 
             using (var exec = new UoeExecutionCustomTest(env)) {
                 exec.NeedDatabaseConnection = true;

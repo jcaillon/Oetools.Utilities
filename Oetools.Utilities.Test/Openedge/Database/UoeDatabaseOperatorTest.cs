@@ -39,10 +39,6 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
-
-            var db = new UoeDatabaseOperator(dlcPath);
-            db.Procopy(Path.Combine(TestFolder, "ref.db"), DatabaseBlockSize.S1024);
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "ref.db")));
         }
 
         [ClassCleanup]
@@ -54,85 +50,68 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             }
         }
 
-        [DataRow(@"", true)]
-        [DataRow(null, true)]
-        [DataRow("123456789012345678901234567890123", true, DisplayName = "33 chars is too much")]
-        [DataRow(@"azée", true, DisplayName = "contains invalid accent char")]
-        [DataRow(@"zeffez zezffe", true, DisplayName = "spaces")]
-        [DataRow(@"0ezzef", true, DisplayName = "first should be a letter")]
-        [DataRow(@"az_-zefze", false, DisplayName = "ok")]
-        [DataTestMethod]
-        public void ValidateLogicalName_Test(string input, bool exception) {
-            if (exception) {
-                Assert.ThrowsException<UoeDatabaseOperationException>(() => UoeDatabaseOperator.ValidateLogicalName(input));
-            } else {
-                UoeDatabaseOperator.ValidateLogicalName(input);
-            }
-        }
-
-        [DataRow(@"", "unnamed")]
-        [DataRow(null, "unnamed")]
-        [DataRow("bouhé!", "bouh")]
-        [DataRow("truc db", "trucdb")]
-        [DataRow("éééééé@", "unnamed")]
-        [DataRow("123456789012345678901234567890123456789", "12345678901234567890123456789012")]
-        [DataTestMethod]
-        public void GetValidLogicalName_Test(string input, string expect) {
-            Assert.AreEqual(expect, UoeDatabaseOperator.GetValidLogicalName(input));
-        }
-
-        [DataRow(@"", "unnamed")]
-        [DataRow(null, "unnamed")]
-        [DataRow("bouhé!", "bouh")]
-        [DataRow("truc db", "trucdb")]
-        [DataRow("éééééé@", "unnamed")]
-        [DataRow("123456789012345678901234567890123456789", "12345678901")]
-        [DataTestMethod]
-        public void GetValidPhysicalName_Test(string input, string expect) {
-            Assert.AreEqual(expect, UoeDatabaseOperator.GetValidPhysicalName(input));
+        private UoeDatabase GetDb(string name) {
+            return new UoeDatabase(Path.Combine(TestFolder, name));
         }
 
         [TestMethod]
-        public void GetNextAvailablePort_Ok() {
+        public void GetNextAvailablePort() {
             Assert.IsTrue(UoeDatabaseOperator.GetNextAvailablePort(0) > 0);
             Assert.IsTrue(UoeDatabaseOperator.GetNextAvailablePort(1025) >= 1025);
         }
+        [TestMethod]
+        public void AddMaxConnectionTry() {
+            Assert.IsTrue(UoeDatabaseOperator.AddMaxConnectionTry("-db mydb -1", 3).Contains("-ct 3"));
+        }
 
         [TestMethod]
-        public void ProstrctCreate_Ok() {
+        public void ReadLogFileTest() {
+            var lgPAth = Path.Combine(TestFolder, "ReadLogFileTest.lg");
+            File.WriteAllText(lgPAth, @"
+                Tue Jan  1 15:28:10 2019
+[2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): localhost
+[2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 0
+");
+            UoeDatabaseOperator.ReadLogFile(lgPAth, out string hostName, out string serviceName);
+
+            Assert.IsNotNull(hostName);
+            Assert.IsNotNull(serviceName);
+
+            Assert.AreEqual(@"localhost", hostName);
+            Assert.AreEqual(@"0", serviceName);
+        }
+
+        [TestMethod]
+        public void Create() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
+            var dbOperator = new UoeDatabaseOperator(dlcPath);
 
-            var stPath = db.CreateStandardStructureFile(Path.Combine(TestFolder, "test1.db"));
+            var stPath = Path.Combine(TestFolder, "test1.st");
+            File.WriteAllText(stPath, "b .\nd \"Schema Area\" .\n");
 
-            db.ProstrctCreate(Path.Combine(TestFolder, "test1.db"), stPath, DatabaseBlockSize.S1024);
+            var db = GetDb("test1.db");
 
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test1.db")));
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test1.d1")));
+            dbOperator.Create(db);
 
+            Assert.IsTrue(db.Exists());
+
+            dbOperator.Delete(db);
+
+            dbOperator.Create(db, stPath);
+
+            Assert.IsTrue(db.Exists());
+            Assert.IsTrue(File.Exists(Path.ChangeExtension(db.FullPath, ".b1")));
+
+            dbOperator.Delete(db);
+
+            dbOperator.Create(db, stPath, DatabaseBlockSize.S4096, "UTF8", false, false);
+
+            Assert.IsTrue(db.Exists());
         }
-
-        [TestMethod]
-        public void Procopy_empty_no_options_after_create_Ok() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-
-            var db = new UoeDatabaseOperator(dlcPath);
-
-            var stPath = db.CreateStandardStructureFile(Path.Combine(TestFolder, "test2.db"));
-
-            db.ProstrctCreate(Path.Combine(TestFolder, "test2.db"), stPath, DatabaseBlockSize.S1024);
-
-            db.Procopy(Path.Combine(TestFolder, "test2.db"), DatabaseBlockSize.S1024);
-
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test2.db")));
-
-        }
-
+/*
         [TestMethod]
         public void Procopy_empty_no_options_Ok() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
@@ -141,7 +120,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             var db = new UoeDatabaseOperator(dlcPath);
 
-            db.Procopy(Path.Combine(TestFolder, "test3.db"), DatabaseBlockSize.S1024);
+            db.ProcopyEmpty(Path.Combine(TestFolder, "test3.db"), DatabaseBlockSize.S1024);
 
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test3.db")));
 
@@ -155,7 +134,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             var db = new UoeDatabaseOperator(dlcPath);
 
-            db.Procopy(Path.Combine(TestFolder, "test4.db"), DatabaseBlockSize.S8192, "utf", false, false);
+            db.ProcopyEmpty(Path.Combine(TestFolder, "test4.db"), DatabaseBlockSize.S8192, "utf", false, false);
 
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test4.db")));
 
@@ -199,7 +178,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             File.WriteAllText(pathSt, "d \"Schema Area\":6,32;1 .\nd \"Order\":11,32;1 D:\\DATABASES\\cp_sport f 1280 \nd \"Order\":11,32;1 \"D:\\DATABASES\\cp_sport\"");
 
-            var generatedSt = db.CopyStructureFile(Path.Combine(TestFolder, "target.db"), pathSt);
+            var generatedSt = db.MakeStructureFileUseRelativePath(Path.Combine(TestFolder, "target.db"), pathSt);
 
             Assert.AreEqual(Path.Combine(TestFolder, "target.st"), generatedSt);
             Assert.IsTrue(File.Exists(generatedSt));
@@ -226,23 +205,6 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         }
 
         [TestMethod]
-        public void ReadLogFileTest() {
-            var lgPAth = Path.Combine(TestFolder, "ReadLogFileTest.lg");
-            File.WriteAllText(lgPAth, @"
-                Tue Jan  1 15:28:10 2019
-[2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): localhost
-[2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 0
-");
-            UoeDatabaseOperator.ReadLogFile(lgPAth, out string hostName, out string serviceName);
-
-            Assert.IsNotNull(hostName);
-            Assert.IsNotNull(serviceName);
-
-            Assert.AreEqual(@"localhost", hostName);
-            Assert.AreEqual(@"0", serviceName);
-        }
-
-        [TestMethod]
         public void TruncateLog() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
@@ -250,7 +212,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             var db = new UoeDatabaseOperator(dlcPath);
             var dbPath = Path.Combine(TestFolder, "trunclog.db");
-            db.Procopy(dbPath);
+            db.ProcopyEmpty(dbPath);
             Assert.IsTrue(File.Exists(dbPath));
 
             db.TruncateLog(dbPath);
@@ -328,7 +290,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             }
             var db = new UoeDatabaseOperator(dlcPath);
             var dbPath = Path.Combine(TestFolder, "testcs.db");
-            db.Procopy(dbPath);
+            db.ProcopyEmpty(dbPath);
             Assert.IsTrue(File.Exists(dbPath));
 
             var cs = db.GetConnectionString(dbPath);
@@ -347,6 +309,21 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             //cs = db.GetConnectionString(dbPath);
             //Assert.IsTrue(!cs.Contains("-1") && cs.Contains("-H"), $"Should have multi user connection string: {cs.PrettyQuote()}.");
+        }
+
+        [TestMethod]
+        public void Backup_Restore() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            var db = new UoeDatabaseOperator(dlcPath);
+            var dbPath = Path.Combine(TestFolder, "backup.db");
+
+            db.Copy(dbPath, Path.Combine(dlcPath, "sports2000"));
+            Assert.IsTrue(File.Exists(dbPath));
+
+            var backupPath = Path.Combine(TestFolder, "backup.bkp");
+            db.Backup(dbPath, backupPath);
         }
 
         [TestMethod]
@@ -370,11 +347,11 @@ d ""Index Area"" .
 d ""Data Area2"" .
 d ""Data Area3"" .
 ");
-            db.ProstrctCreate(Path.Combine(addDir, "test1.db"), Path.Combine(addDir, "part1.st"));
+            db.CreateVoidDatabase(Path.Combine(addDir, "test1.db"), Path.Combine(addDir, "part1.st"));
 
             Assert.AreEqual(8, Directory.EnumerateFiles(addDir, "*", SearchOption.TopDirectoryOnly).Count());
 
-            db.ProstrctAdd(Path.Combine(addDir, "test1.db"), Path.Combine(addDir, "part2.st"));
+            db.AddStructureDefinition(Path.Combine(addDir, "test1.db"), Path.Combine(addDir, "part2.st"));
 
             Assert.AreEqual(11, Directory.EnumerateFiles(addDir, "*", SearchOption.TopDirectoryOnly).Count());
 
@@ -399,7 +376,7 @@ d ""Index Area"":8,32;8 .
 d ""Data Area2"":9,32;8 .
 d ""Data Area3"":12,32;8 .
 ");
-            db.ProstrctCreate(Path.Combine(deleteDir, "test1.db"), Path.Combine(deleteDir, "test1.st"));
+            db.CreateVoidDatabase(Path.Combine(deleteDir, "test1.db"), Path.Combine(deleteDir, "test1.st"));
 
             Assert.AreEqual(9, Directory.EnumerateFiles(deleteDir, "*", SearchOption.TopDirectoryOnly).Count());
 
@@ -428,7 +405,7 @@ d ""Misc"",32 !""./1/misc data""
 d ""schema Area"" .
 ");
 
-            db.ProstrctCreate(Path.Combine(deleteDir, "test1.db"), Path.Combine(deleteDir, "test1.st"));
+            db.CreateVoidDatabase(Path.Combine(deleteDir, "test1.db"), Path.Combine(deleteDir, "test1.st"));
 
             Assert.AreEqual(20, Directory.EnumerateFiles(deleteDir, "*", SearchOption.AllDirectories).Count());
 
@@ -455,7 +432,7 @@ d ""schema Area"" .
 
             var db = new UoeDatabaseOperator(dlcPath);
 
-            db.Procopy(Path.Combine(TestFolder, "test5.db"), Path.Combine(TestFolder, "ref.db"), false, false);
+            db.Copy(Path.Combine(TestFolder, "test5.db"), Path.Combine(TestFolder, "ref.db"), false, false);
 
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test5.db")));
 
@@ -467,7 +444,7 @@ d ""schema Area"" .
             }
 
             var db = new UoeDatabaseOperator(dlcPath);
-            db.ProstrctRepair(Path.Combine(TestFolder, "ref.db"));
+            db.UpdateDatabaseControlInfo(Path.Combine(TestFolder, "ref.db"));
         }
 
         private void GetBusyMode_isnone_ok() {
@@ -534,6 +511,7 @@ d ""schema Area"" .
         }
 
 
-
+*/
     }
+
 }

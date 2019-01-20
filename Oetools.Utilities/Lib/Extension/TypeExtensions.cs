@@ -2,31 +2,43 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (TypeExtensions.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Oetools.Utilities.Lib.Attributes;
 
 namespace Oetools.Utilities.Lib.Extension {
-    
+
     public static class TypeExtension {
-        
+
+        /// <summary>
+        /// Wraps this object instance into an IEnumerable&lt;T&gt;
+        /// consisting of a single item.
+        /// </summary>
+        /// <typeparam name="T"> Type of the object. </typeparam>
+        /// <param name="item"> The instance that will be wrapped. </param>
+        /// <returns> An IEnumerable&lt;T&gt; consisting of a single item. </returns>
+        public static IEnumerable<T> Yield<T>(this T item) {
+            yield return item;
+        }
+
         /// <summary>
         /// Set a value to this instance, by its property name
         /// </summary>
@@ -110,7 +122,7 @@ namespace Oetools.Utilities.Lib.Extension {
         public static bool HasDefaultConstructor(this Type t) {
             return t.IsValueType || t.GetConstructor(Type.EmptyTypes) != null;
         }
-        
+
         /// <summary>
         /// Returns a new object that has the same public property values.
         /// </summary>
@@ -120,13 +132,13 @@ namespace Oetools.Utilities.Lib.Extension {
         public static T GetDeepCopy<T>(this T obj) where T : class {
             return obj.DeepCopy<T>(null);
         }
-        
+
         /// <summary>
         /// Copies all the public properties of one object to another.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// - If a property is a class and both the source and target values are not null, a sub deep copy is started on the properties of those 2 objects. 
+        /// - If a property is a class and both the source and target values are not null, a sub deep copy is started on the properties of those 2 objects.
         /// - If a property is a list or an array, the source value will not replace the target value, it will just be added to it.
         /// - If a property is null in the source object, it won't replace the value in the target object.
         /// </para>
@@ -143,7 +155,7 @@ namespace Oetools.Utilities.Lib.Extension {
             }
             return (T) DeepCopyPublicProperties(sourceObj, targetType, targetObj);
         }
-        
+
         /// <summary>
         /// Create a new deep copy of an object, using its default constructor.
         /// </summary>
@@ -157,12 +169,12 @@ namespace Oetools.Utilities.Lib.Extension {
             }
             return DeepCopyPublicProperties(sourceObj, targetType);
         }
-        
+
         /// <summary>
         /// Copies all the public properties of one object to another
         /// </summary>
         /// <remarks>
-        /// - If a property is a class and both the source and target values are not null, a sub deep copy is started on the properties of those 2 objects. 
+        /// - If a property is a class and both the source and target values are not null, a sub deep copy is started on the properties of those 2 objects.
         /// - If a property is a list or an array, the source value will not replace the target value, it will just be added to it.
         /// - If a property is null in the source object, it won't replace the value in the target object.
         /// </remarks>
@@ -227,7 +239,7 @@ namespace Oetools.Utilities.Lib.Extension {
                                 array.SetValue(listItem[i] != null ? DeepCopyPublicProperties(listItem[i], listItem[i].GetType()) : null, i + targetArrayCount);
                             }
                             targetProperty.SetValue(targetObj, array);
-                            
+
                         } else if (sourceProperty.PropertyType.UnderlyingSystemType.GenericTypeArguments.Length > 0) {
                             IList list;
                             if (targetProperty.GetValue(targetObj) is IList targetList) {
@@ -240,7 +252,7 @@ namespace Oetools.Utilities.Lib.Extension {
                             }
                             targetProperty.SetValue(targetObj, list);
                         }
-                        
+
                         break;
                     default:
                         if (sourceProperty.PropertyType.IsClass || sourceProperty.PropertyType.IsInterface) {
