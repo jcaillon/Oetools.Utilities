@@ -98,15 +98,10 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="newInstance"></param>
         /// <param name="relativePath"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void CreateWithDf(UoeDatabase targetDb, string dfFilePath, string stFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
-            // exists?
-            if (targetDb.Exists()) {
-                throw new UoeDatabaseException($"The target database already exists, choose a new name or delete the existing database: {targetDb.FullPath.PrettyQuote()}.");
-            }
-
+        public void CreateWithDf(UoeDatabaseLocation targetDb, string dfFilePath, string stFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
             if (string.IsNullOrEmpty(stFilePath) && !string.IsNullOrEmpty(dfFilePath)) {
                 // generate a structure file from df?
-                stFilePath = GenerateStructureFileFromDf2(targetDb, dfFilePath);
+                stFilePath = GenerateStructureFileFromDf(targetDb, dfFilePath);
             }
 
             Create(targetDb, stFilePath, blockSize, codePage, newInstance, relativePath);
@@ -184,9 +179,9 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException($"There should be exactly 2 databases specified in the connection string: {UoeConnectionString.GetConnectionString(csList).PrettyQuote()}.");
             }
 
-            Log?.Info($"Dumping incremental schema definition to file {incDfDumpFilePath.PrettyQuote()} from {(csList[0].Database.Exists() ? csList[0].Database.FullPath : csList[0].Database.PhysicalName)} (old) and {(csList[1].Database.Exists() ? csList[1].Database.FullPath : csList[1].Database.PhysicalName)} (new).");
+            Log?.Info($"Dumping incremental schema definition to file {incDfDumpFilePath.PrettyQuote()} from {(csList[0].DatabaseLocation.Exists() ? csList[0].DatabaseLocation.FullPath : csList[0].DatabaseLocation.PhysicalName)} (old) and {(csList[1].DatabaseLocation.Exists() ? csList[1].DatabaseLocation.FullPath : csList[1].DatabaseLocation.PhysicalName)} (new).");
 
-            StartDataAdministratorProgram($"{connectionString} -param {$"dump-inc|{incDfDumpFilePath}|{renameFilePath ?? ""}".CliQuoter()}");
+            StartDataAdministratorProgram($"{UoeConnectionString.GetConnectionString(csList)} -param {$"dump-inc|{incDfDumpFilePath}|{renameFilePath ?? ""}".CliQuoter()}");
         }
 
         /// <summary>
@@ -209,8 +204,8 @@ namespace Oetools.Utilities.Openedge.Database {
             var tempFolder = Path.Combine(TempFolder, Path.GetRandomFileName());
             Directory.CreateDirectory(tempFolder);
             try {
-                var previousDb = new UoeDatabase(Path.Combine(tempFolder, "dbprev.db"));
-                var newDb = new UoeDatabase(Path.Combine(tempFolder, "dbnew.db"));
+                var previousDb = new UoeDatabaseLocation(Path.Combine(tempFolder, "dbprev.db"));
+                var newDb = new UoeDatabaseLocation(Path.Combine(tempFolder, "dbnew.db"));
                 CreateWithDf(previousDb, beforeDfPath);
                 CreateWithDf(newDb, afterDfPath);
                 DumpIncrementalSchemaDefinitionFromDatabases(new List<UoeConnectionString> { UoeConnectionString.NewSingleUserConnection(newDb), UoeConnectionString.NewSingleUserConnection(previousDb)}, incDfDumpFilePath, renameFilePath);

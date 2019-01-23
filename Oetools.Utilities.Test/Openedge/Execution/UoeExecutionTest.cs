@@ -291,12 +291,12 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             // generate temp base
             var db = new UoeDatabaseOperator(env.DlcDirectoryPath);
-            var dbPn = new UoeDatabase(Path.Combine(TestFolder, "test1.db"));
+            var dbPn = new UoeDatabaseLocation(Path.Combine(TestFolder, "test1.db"));
             db.Create(dbPn);
             Assert.IsTrue(dbPn.Exists());
 
             // generate temp base
-            var dbPn2 = new UoeDatabase(Path.Combine(TestFolder, "test2.db"));
+            var dbPn2 = new UoeDatabaseLocation(Path.Combine(TestFolder, "test2.db"));
             db.Create(dbPn2);
             Assert.IsTrue(dbPn2.Exists());
 
@@ -339,7 +339,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = true;
 
             // try if connected well and can manage aliases
-            env.DatabaseConnectionString = UoeConnectionString.NewSingleUserConnection(new UoeDatabase(Path.Combine(TestFolder, "random.db"))).ToString();
+            env.DatabaseConnectionString = UoeConnectionString.NewSingleUserConnection(new UoeDatabaseLocation(Path.Combine(TestFolder, "random.db"))).ToString();
 
             using (var exec = new UoeExecutionCustomTest(env)) {
                 exec.NeedDatabaseConnection = true;

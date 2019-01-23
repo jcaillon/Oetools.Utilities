@@ -23,30 +23,30 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
     /// <summary>
     /// Token object
     /// </summary>
-    internal abstract class Token {
+    internal abstract class ParameterStringToken {
         public string Value { get; private set; }
 
-        protected Token(string value) {
+        protected ParameterStringToken(string value) {
             Value = value;
         }
     }
 
-    internal class TokenOption : Token {
-        public TokenOption(string value) : base(value) {}
+    internal class ParameterStringTokenOption : ParameterStringToken {
+        public ParameterStringTokenOption(string value) : base(value) {}
     }
 
-    internal class TokenValue : Token {
-        public TokenValue(string value) : base(value) {}
+    internal class ParameterStringTokenValue : ParameterStringToken {
+        public ParameterStringTokenValue(string value) : base(value) {}
     }
 
-    internal class TokenWhiteSpace : Token {
-        public TokenWhiteSpace(string value) : base(value) {}
+    internal class ParameterStringTokenWhiteSpace : ParameterStringToken {
+        public ParameterStringTokenWhiteSpace(string value) : base(value) {}
     }
 
     /// <summary>
     /// Eof is end of file/string.
     /// </summary>
-    internal class TokenEof : Token {
-        public TokenEof(string value) : base(value) {}
+    internal class ParameterStringTokenEof : ParameterStringToken {
+        public ParameterStringTokenEof(string value) : base(value) {}
     }
 }

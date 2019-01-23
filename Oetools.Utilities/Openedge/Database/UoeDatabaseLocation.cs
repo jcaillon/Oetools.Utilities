@@ -28,12 +28,12 @@ using Oetools.Utilities.Lib.Extension;
 namespace Oetools.Utilities.Openedge.Database {
 
     /// <summary>
-    /// An openedge database.
+    /// An openedge database location.
     /// </summary>
-    public class UoeDatabase {
+    public class UoeDatabaseLocation {
 
         public const string Extension = ".db";
-        public const string StructureFileExtension = ".db";
+        public const string StructureFileExtension = ".st";
         private const int DbPhysicalNameMaxLength = 11;
         private const int DbLogicalNameMaxLength = 32;
 
@@ -43,7 +43,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public string DirectoryPath { get; }
 
         /// <summary>
-        /// The physical (file) name of the database.
+        /// The physical (file) name of the database (without the .db extension).
         /// </summary>
         public string PhysicalName { get; }
 
@@ -58,15 +58,15 @@ namespace Oetools.Utilities.Openedge.Database {
         public string StructureFileFullPath => Path.Combine(DirectoryPath, $"{PhysicalName}{StructureFileExtension}");
 
         /// <summary>
-        /// New instance of <see cref="UoeDatabase"/> from another file path. For instance, the .df or the .st file.
+        /// New instance of <see cref="UoeDatabaseLocation"/> from another file path. For instance, the .df or the .st file.
         /// </summary>
         /// <param name="filePath"></param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        public static UoeDatabase FromOtherFilePath(string filePath) {
+        public static UoeDatabaseLocation FromOtherFilePath(string filePath) {
             var dir = Path.GetDirectoryName(filePath);
             var physicalName = GetValidPhysicalName(Path.GetFileNameWithoutExtension(filePath));
-            return new UoeDatabase(string.IsNullOrEmpty(dir) ? physicalName : Path.Combine(dir, physicalName));
+            return new UoeDatabaseLocation(string.IsNullOrEmpty(dir) ? physicalName : Path.Combine(dir, physicalName));
         }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         /// <param name="databasePath"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public UoeDatabase(string databasePath) {
+        public UoeDatabaseLocation(string databasePath) {
             if (string.IsNullOrEmpty(databasePath)) {
                 throw new UoeDatabaseException("Invalid path, can't be null.");
             }
@@ -123,9 +123,11 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <exception cref="UoeDatabaseException"></exception>
         public void ThrowIfNotExist() {
             if (!Exists()) {
-                throw new UoeDatabaseException($"The database doesn't exist, correct the path: {FullPath.PrettyQuote()}.");
+                throw new UoeDatabaseException($"The database doesn't exist in the following location: {FullPath.PrettyQuote()}.");
             }
         }
+
+        public override string ToString() => FullPath;
 
         /// <summary>
         /// Throws exceptions if the given logical name is invalid

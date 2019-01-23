@@ -29,10 +29,7 @@ namespace Oetools.Utilities.Openedge {
         public const string ExtCls = ".cls";
         public const string ExtFileIdLog = ".fileidlog";
         public const string ExtTableList = ".tablelist";
-
         public const string ExtProlibFile = ".pl";
-
-        public const string ProwinWindowClass = "ProMainWin";
 
         public const string OeDlcEnvVar = "DLC";
         public const string OeDlcAlternativeEnvVar = "OE_DLC";
@@ -41,7 +38,5 @@ namespace Oetools.Utilities.Openedge {
         public const int MaximumPropathLength = 31990;
 
         public const int StopOnCompilationReturnErrorCode = -991;
-
-        public const string DatabaseFileExtension = ".db";
     }
 }

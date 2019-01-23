@@ -20,15 +20,14 @@
 
 using System;
 using System.Collections.Generic;
-using Oetools.Utilities.Lib.ParameterStringParser;
 
-namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
+namespace Oetools.Utilities.Lib.ParameterStringParser {
 
     /// <summary>
     /// This class "tokenize" the input data into tokens of various types,
     /// it implements a visitor pattern
     /// </summary>
-    internal class Tokenizer {
+    internal class ParameterStringTokenizer {
 
         protected const char Eof = (char) 0;
 
@@ -40,12 +39,12 @@ namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
 
         protected int _tokenPos = -1;
 
-        protected List<Token> _tokenList;
+        protected List<ParameterStringToken> _tokenList;
 
         /// <summary>
         /// Returns the tokens list
         /// </summary>
-        public List<Token> TokensList {
+        public List<ParameterStringToken> TokensList {
             get { return _tokenList; }
         }
 
@@ -53,13 +52,13 @@ namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
         /// constructor, data is the input string to tokenize
         /// call Tokenize() to do the work
         /// </summary>
-        public Tokenizer(string data) {
+        public ParameterStringTokenizer(string data) {
             Construct(data);
         }
 
         protected void Construct(string data) {
             if (data == null) {
-                throw new ArgumentNullException("data");
+                throw new ArgumentNullException(nameof(data));
             }
 
             _data = data;
@@ -87,8 +86,8 @@ namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
         /// To use this lexer as an enumerator,
         /// peek at the current pos + x token of the list, returns a new TokenEof if can't find
         /// </summary>
-        public virtual Token PeekAtToken(int x) {
-            return _tokenPos + x >= _tokenList.Count || _tokenPos + x < 0 ? new TokenEof("") : _tokenList[_tokenPos + x];
+        public virtual ParameterStringToken PeekAtToken(int x) {
+            return _tokenPos + x >= _tokenList.Count || _tokenPos + x < 0 ? new ParameterStringTokenEof("") : _tokenList[_tokenPos + x];
         }
 
         /// <summary>
@@ -99,14 +98,14 @@ namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
                 return;
 
             if (_tokenList == null) {
-                _tokenList = new List<Token>();
+                _tokenList = new List<ParameterStringToken>();
             }
 
-            Token token;
+            ParameterStringToken parameterStringToken;
             do {
-                token = GetNextToken();
-                _tokenList.Add(token);
-            } while (!(token is TokenEof));
+                parameterStringToken = GetNextToken();
+                _tokenList.Add(parameterStringToken);
+            } while (!(parameterStringToken is ParameterStringTokenEof));
 
             // clean
             _data = null;
@@ -146,14 +145,14 @@ namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
         /// returns the next token of the string
         /// </summary>
         /// <returns></returns>
-        protected Token GetNextToken() {
+        protected ParameterStringToken GetNextToken() {
             _startPos = _pos;
 
             var ch = PeekAtChr(0);
 
             // END OF FILE reached
             if (ch == Eof)
-                return new TokenEof(GetTokenValue());
+                return new ParameterStringTokenEof(GetTokenValue());
 
             if (char.IsWhiteSpace(ch)) {
                 return CreateWhitespaceToken();
@@ -165,7 +164,7 @@ namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
             return ch == '-';
         }
 
-        protected virtual Token CreateWhitespaceToken() {
+        protected virtual ParameterStringToken CreateWhitespaceToken() {
             ReadChr();
             while (true) {
                 var ch = PeekAtChr(0);
@@ -174,10 +173,10 @@ namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
                 else
                     break;
             }
-            return new TokenWhiteSpace(GetTokenValue());
+            return new ParameterStringTokenWhiteSpace(GetTokenValue());
         }
 
-        protected virtual Token CreateValueToken(bool quotedValue) {
+        protected virtual ParameterStringToken CreateValueToken(bool quotedValue) {
             ReadChr();
             while (true) {
                 var ch = PeekAtChr(0);
@@ -200,13 +199,15 @@ namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
 
                 ReadChr();
             }
-            return new TokenValue(GetTokenValue());
+            return new ParameterStringTokenValue(GetTokenValue());
         }
 
-        protected virtual Token CreateOptionToken() {
+        protected virtual ParameterStringToken CreateOptionToken() {
             ReadChr();
             while (true) {
                 var ch = PeekAtChr(0);
+                if (ch == Eof)
+                    break;
 
                 // normal word
                 if (!char.IsWhiteSpace(ch)) {
@@ -215,7 +216,7 @@ namespace Oetools.Utilities.Openedge.Database.ParameterStringParser {
                 }
                 break;
             }
-            return new TokenOption(GetTokenValue());
+            return new ParameterStringTokenOption(GetTokenValue());
         }
     }
 }

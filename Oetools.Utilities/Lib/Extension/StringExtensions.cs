@@ -181,15 +181,96 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Replaces " by "", replaces new lines by spaces and add extra " at the start and end of the string
+        ///  Undo the processing which took place to create string[] args in Main, so that the next process will receive the same string[] args.
+        /// </summary>
+        /// <param name="args"></param>
+        /// <param name="isWindows"></param>
+        /// <returns></returns>
+        public static string EscapedCliArgs(this IEnumerable<string> args, bool? isWindows = null) => string.Join(" ", args.Select(arg => CliQuoter(arg, isWindows)));
+
+        /// <summary>
+        /// Prepare a string representing an argument of a cmd line interface so that it is interpreted as a single argument.
+        /// Uses double quote when the string contains whitespaces.
         /// </summary>
         /// <param name="text"></param>
+        /// <param name="isWindows"></param>
+        /// <remarks>
+        /// In linux, you escape double quotes with \"
+        /// In windows, you escape doubles quotes with ""
+        /// In linux, you need to escape \ with \\ but not in windows
+        /// </remarks>
         /// <returns></returns>
-        public static string CliQuoter(this string text) {
-            if (Utils.IsRuntimeWindowsPlatform) {
-                return $"\"{text?.Replace("\"", "\"\"").Replace("\n", "").Replace("\r", "") ?? ""}\"";
+        public static string CliQuoter(this string text, bool? isWindows = null) {
+            if (string.IsNullOrEmpty(text)) {
+                return @"""""";
             }
-            return $"\"{text?.Replace("\"", "\\\"").Replace("\n", "").Replace("\r", "") ?? ""}\"";
+
+            var isQuoted = IsSurroundedWithDoubleQuotes(text);
+            var hasWhiteSpaces = false;
+
+            var sb = new StringBuilder();
+
+            if (isWindows ?? Utils.IsRuntimeWindowsPlatform) {
+                // https://blogs.msdn.microsoft.com/twistylittlepassagesallalike/2011/04/23/everyone-quotes-command-line-arguments-the-wrong-way/
+                var textLength = text.Length - (isQuoted ? 1 : 0);
+                for (int i = isQuoted ? 1 : 0; i < textLength; ++i) {
+                    var backslashes = 0;
+
+                    // Consume all backslashes
+                    while (i < textLength && text[i] == '\\') {
+                        backslashes++;
+                        i++;
+                    }
+
+                    if (i == textLength) {
+                        if (hasWhiteSpaces) {
+                            // Escape any backslashes at the end of the arg when the argument is also quoted.
+                            // This ensures the outside quote is interpreted as an argument delimiter
+                            sb.Append('\\', 2 * backslashes);
+                        } else {
+                            // At then end of the arg, which isn't quoted,
+                            // just add the backslashes, no need to escape
+                            sb.Append('\\', backslashes);
+                        }
+                    } else if (text[i] == '"') {
+                        // Escape any preceding backslashes and the quote
+                        sb.Append('\\', 2 * backslashes + 1);
+                        sb.Append('"');
+                    } else {
+                        if (char.IsWhiteSpace(text[i])) {
+                            hasWhiteSpaces = true;
+                        }
+                        // Output any consumed backslashes and the character
+                        sb.Append('\\', backslashes);
+                        sb.Append(text[i]);
+                    }
+                }
+
+            } else {
+                for (int i = isQuoted ? 1 : 0; i < text.Length - (isQuoted ? 1 : 0); ++i) {
+                    if (text[i] == '"') {
+                        sb.Append('\\');
+                    } else if (text[i] == '\\') {
+                        sb.Append('\\');
+                    } else if (char.IsWhiteSpace(text[i])) {
+                        hasWhiteSpaces = true;
+                    }
+                    sb.Append(text[i]);
+                }
+            }
+            return hasWhiteSpaces ? $"\"{sb.Append('"')}" : sb.ToString();
+        }
+
+        /// <summary>
+        /// Returns true if a string is surrounded with double quotes.
+        /// </summary>
+        /// <param name="argument"></param>
+        /// <returns></returns>
+        public static bool IsSurroundedWithDoubleQuotes(string argument) {
+            if (string.IsNullOrEmpty(argument) || argument.Length <= 1) {
+                return false;
+            }
+            return argument[0] == '"' && argument[argument.Length - 1] == '"';
         }
 
         /// <summary>

@@ -26,10 +26,34 @@ using Oetools.Utilities.Openedge.Database;
 namespace Oetools.Utilities.Test.Openedge.Database {
 
     [TestClass]
-    public class UoeDatabaseTest {
+    public class UoeDatabaseLocationTest {
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeDatabaseTest)));
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeDatabaseLocationTest)));
+
+        [TestMethod]
+        public void UoeDatabaseLocation_() {
+            var loc = UoeDatabaseLocation.FromOtherFilePath(Path.Combine(TestFolder, "data.st"));
+
+            Assert.AreEqual(Path.Combine(TestFolder, "data.db"), loc.FullPath);
+            Assert.AreEqual("data", loc.PhysicalName);
+            Assert.AreEqual(TestFolder, loc.DirectoryPath);
+            Assert.AreEqual(Path.Combine(TestFolder, "data.st"), loc.StructureFileFullPath);
+            Assert.IsFalse(loc.Exists());
+            Assert.ThrowsException<UoeDatabaseException>(() => loc.ThrowIfNotExist());
+
+            var dbPath = Path.Combine(TestFolder, "data.db");
+
+            loc = new UoeDatabaseLocation(dbPath);
+            Assert.AreEqual(dbPath, loc.FullPath);
+            Assert.IsFalse(loc.Exists());
+
+            Directory.CreateDirectory(TestFolder);
+            File.WriteAllText(dbPath, "");
+
+            Assert.IsTrue(loc.Exists());
+            loc.ThrowIfNotExist();
+        }
 
         [DataRow(@"", true)]
         [DataRow(null, true)]
@@ -39,23 +63,12 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         [DataRow(@"0ezzef", true, DisplayName = "first should be a letter")]
         [DataRow(@"az_-zefze", false, DisplayName = "ok")]
         [DataTestMethod]
-        public void ValidateLogicalName_Test(string input, bool exception) {
+        public void ValidateLogicalName(string input, bool exception) {
             if (exception) {
-                Assert.ThrowsException<UoeDatabaseException>(() => UoeDatabase.ValidateLogicalName(input));
+                Assert.ThrowsException<UoeDatabaseException>(() => UoeDatabaseLocation.ValidateLogicalName(input));
             } else {
-                UoeDatabase.ValidateLogicalName(input);
+                UoeDatabaseLocation.ValidateLogicalName(input);
             }
-        }
-
-        [DataRow(@"", "unnamed")]
-        [DataRow(null, "unnamed")]
-        [DataRow("bouhé!", "bouh")]
-        [DataRow("truc db", "trucdb")]
-        [DataRow("éééééé@", "unnamed")]
-        [DataRow("123456789012345678901234567890123456789", "12345678901234567890123456789012")]
-        [DataTestMethod]
-        public void GetValidLogicalName_Test(string input, string expect) {
-            Assert.AreEqual(expect, UoeDatabase.GetValidLogicalName(input));
         }
 
         [DataRow(@"", "unnamed")]
@@ -65,8 +78,8 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         [DataRow("éééééé@", "unnamed")]
         [DataRow("123456789012345678901234567890123456789", "12345678901")]
         [DataTestMethod]
-        public void GetValidPhysicalName_Test(string input, string expect) {
-            Assert.AreEqual(expect, UoeDatabase.GetValidPhysicalName(input));
+        public void GetValidPhysicalName(string input, string expect) {
+            Assert.AreEqual(expect, UoeDatabaseLocation.GetValidPhysicalName(input));
         }
 
     }

@@ -17,6 +17,8 @@
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
+using System;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -31,20 +33,53 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeConnectionStringTest)));
 
-        //[DataRow(@"", true)]
-        //[DataRow(null, true)]
-        //[DataRow("123456789012345678901234567890123", true, DisplayName = "33 chars is too much")]
-        //[DataRow(@"azée", true, DisplayName = "contains invalid accent char")]
-        //[DataRow(@"zeffez zezffe", true, DisplayName = "spaces")]
-        //[DataRow(@"0ezzef", true, DisplayName = "first should be a letter")]
-        //[DataRow(@"az_-zefze", false, DisplayName = "ok")]
-        //[DataTestMethod]
-        //public void ValidateLogicalName_Test(string input, bool exception) {
-        //    if (exception) {
-        //        Assert.ThrowsException<UoeDatabaseException>(() => UoeDatabase.ValidateLogicalName(input));
-        //    } else {
-        //        UoeDatabase.ValidateLogicalName(input);
-        //    }
-        //}
+        [DataRow(@"-db data -ld logi -H hostname -S 1024", 1)]
+        [DataRow(@"-db data -ld logi -1", 1)]
+        [DataRow(@"-singleoption -db data -ld logi -1", 1)]
+        [DataRow(@"-db data -ld logi -1 -db data2 -ld logi2 -H hostname -S 1024", 2)]
+        [DataRow(@"-option value -db data -ld logi -1 -db data2 -ld logi2 -H hostname -S 1024 -db data3 -ld logi3 -H hostname -S 1025", 3)]
+        [DataTestMethod]
+        public void GetConnectionStrings_NumberOfCsReturned(string input, int nb) {
+            var list = UoeConnectionString.GetConnectionStrings(input);
+            Assert.AreEqual(nb, list.Count());
+        }
+
+        [DataRow(
+            @"-option value -db data -ld logi -1 -db data2 -option2 value2 -singleoption -ld logi2 -H hostname -S 1024 -db data3 -ld logi3 -H hostname -S 1025",
+            @"-db ""data"" -ld logi -1 -option value -db data2 -ld logi2 -H hostname -S 1024 -option2 value2 -singleoption -db data3 -ld logi3 -H hostname -S 1025")]
+        [DataTestMethod]
+        public void GetConnectionString(string input, string output) {
+            output = output.Replace(@"""data""", "\"" + Path.Combine(Directory.GetCurrentDirectory(), "data.db") + "\"");
+            Assert.AreEqual(output, UoeConnectionString.GetConnectionString(UoeConnectionString.GetConnectionStrings(input)));
+        }
+
+        [DataRow(@"-option value value")] // 2 values
+        [DataRow(@"-db -option")] // -db without value
+        [DataRow(@"-lb -option")]
+        [DataRow(@"-H -option")]
+        [DataRow(@"-S -option")]
+        [DataRow(@"-ld logi -H hostname -S 1024")] // no -db
+        [DataRow(@"-db data -ld logi -H hostname -S 1024 -1")] // -1 with -S
+        [DataTestMethod]
+        public void GetConnectionStrings_Except(string input) {
+            Exception e = null;
+            try {
+                var list = UoeConnectionString.GetConnectionStrings(input);
+                Assert.AreEqual(1, list.Count());
+            } catch (UoeConnectionStringParseException ex) {
+                e = ex;
+            }
+            Assert.IsNotNull(e);
+        }
+
+        [TestMethod]
+        public void GetConnectionString_Multi_Single() {
+
+            var cs = UoeConnectionString.NewMultiUserConnection(new UoeDatabaseLocation("data")).ToString();
+            Assert.IsTrue(!cs.Contains("-1") && !cs.Contains("-H"), $"Should have multi user connection string without hostname: {cs.PrettyQuote()}.");
+
+            cs = UoeConnectionString.NewSingleUserConnection(new UoeDatabaseLocation("data")).ToString();
+            Assert.IsTrue(cs.Contains("-1") && cs.Contains("-db"), $"Should have single user connection string.");
+        }
     }
 }

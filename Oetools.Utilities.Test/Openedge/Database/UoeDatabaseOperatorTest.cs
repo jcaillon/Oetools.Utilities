@@ -35,10 +35,6 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         public static void Init(TestContext context) {
             Cleanup();
             Directory.CreateDirectory(TestFolder);
-
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
         }
 
         [ClassCleanup]
@@ -50,8 +46,8 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             }
         }
 
-        private UoeDatabase GetDb(string name) {
-            return new UoeDatabase(Path.Combine(TestFolder, name));
+        private UoeDatabaseLocation GetDb(string name) {
+            return new UoeDatabaseLocation(Path.Combine(TestFolder, name));
         }
 
         [TestMethod]
@@ -81,280 +77,215 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             Assert.AreEqual(@"0", serviceName);
         }
 
+
+
+        [TestMethod]
+        public void ValidateStructureFile() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            var pathSt = Path.Combine(TestFolder, "validate.st");
+            File.WriteAllText(pathSt, "b .\nd \"Schema Area\":6,32;1 .\nd \"Data\":11,32;1 .");
+
+            var ope = new UoeDatabaseOperator(dlcPath);
+
+            ope.ValidateStructureFile(GetDb("data"), pathSt);
+
+            File.WriteAllText(pathSt, "z \"Schema Area\":6,32;1 .\nd \"Order\":11,32;1 . f 1280 \nd \"Order\":11,32;1 .");
+
+            Assert.ThrowsException<UoeDatabaseException>(() => ope.ValidateStructureFile(GetDb("data"), pathSt));
+        }
+
         [TestMethod]
         public void Create() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var dbOperator = new UoeDatabaseOperator(dlcPath);
-
-            var stPath = Path.Combine(TestFolder, "test1.st");
-            File.WriteAllText(stPath, "b .\nd \"Schema Area\" .\n");
-
+            var ope = new UoeDatabaseOperator(dlcPath);
             var db = GetDb("test1.db");
 
-            dbOperator.Create(db);
+            ope.Create(db);
 
             Assert.IsTrue(db.Exists());
 
-            dbOperator.Delete(db);
+            ope.Delete(db);
 
-            dbOperator.Create(db, stPath);
+            Assert.IsFalse(db.Exists());
 
-            Assert.IsTrue(db.Exists());
-            Assert.IsTrue(File.Exists(Path.ChangeExtension(db.FullPath, ".b1")));
+            var stPath = Path.Combine(TestFolder, "test1.st");
+            File.WriteAllText(stPath, "b .\nd \"Schema Area\" .\nd \"data\" .");
 
-            dbOperator.Delete(db);
-
-            dbOperator.Create(db, stPath, DatabaseBlockSize.S4096, "UTF8", false, false);
+            ope.Create(db, stPath);
 
             Assert.IsTrue(db.Exists());
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test1_7.d1")));
+
+            ope.Delete(db);
+
+            Assert.IsFalse(db.Exists());
+
+            File.WriteAllText(stPath, "b .\nd \"Schema Area\" ./sub\nd \"data\" ./data");
+
+            ope.Create(db, stPath, DatabaseBlockSize.S4096, "utf", false, false);
+
+            Assert.IsTrue(db.Exists());
+
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "sub", "test1.d1")));
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "data", "test1_7.d1")));
+
+            ope.Delete(db);
+
+            Assert.IsFalse(File.Exists(Path.Combine(TestFolder, "sub", "test1.d1")));
+            Assert.IsFalse(File.Exists(Path.Combine(TestFolder, "data", "test1_7.d1")));
         }
-/*
+
         [TestMethod]
-        public void Procopy_empty_no_options_Ok() {
+        public void Copy() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
+            var ope = new UoeDatabaseOperator(dlcPath);
 
-            db.ProcopyEmpty(Path.Combine(TestFolder, "test3.db"), DatabaseBlockSize.S1024);
+            var stPath = Path.Combine(TestFolder, "copysource.st");
+            File.WriteAllText(stPath, $"b .\nd \"Schema Area\" \"{TestFolder}\"");
 
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test3.db")));
+            var srcDb = GetDb("copysource");
+            var tgtDb = GetDb("copytarget");
 
+            ope.Create(srcDb, stPath);
+            Assert.IsTrue(srcDb.Exists());
+
+            ope.Copy(tgtDb, srcDb, false, false);
+            Assert.IsTrue(tgtDb.Exists());
+
+            ope.Delete(tgtDb);
+            Assert.IsFalse(tgtDb.Exists());
+
+            ope.Copy(tgtDb, srcDb);
+            Assert.IsTrue(tgtDb.Exists());
         }
 
         [TestMethod]
-        public void Procopy_empty_with_options_then_delete_Ok() {
+        public void UpdateStructureFile() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
+            var ope = new UoeDatabaseOperator(dlcPath);
 
-            db.ProcopyEmpty(Path.Combine(TestFolder, "test4.db"), DatabaseBlockSize.S8192, "utf", false, false);
+            var tgtDb = GetDb("updatest");
 
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test4.db")));
+            ope.Create(tgtDb);
+            Assert.IsTrue(tgtDb.Exists());
 
-            db.Delete(Path.Combine(TestFolder, "test4.db"));
+            File.Delete(tgtDb.StructureFileFullPath);
 
-            Assert.IsFalse(File.Exists(Path.Combine(TestFolder, "test4.db")));
+            ope.UpdateStructureFile(tgtDb, false);
+
+            Assert.IsTrue(File.ReadAllText(tgtDb.StructureFileFullPath).Contains("updatest.b1"));
+
+            File.Delete(tgtDb.StructureFileFullPath);
+
+            ope.UpdateStructureFile(tgtDb);
+
+            Assert.IsFalse(File.ReadAllText(tgtDb.StructureFileFullPath).Contains("updatest.b1"));
         }
 
         [TestMethod]
-        public void GenerateStructureFile() {
+        public void RepairDatabaseControlInfo() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
+            var ope = new UoeDatabaseOperator(dlcPath);
 
-            var pathDf = Path.Combine(TestFolder, "file.df");
+            var tgtDb = GetDb("repair");
 
-            File.WriteAllText(pathDf, "ADD TABLE \"Benefits\"\n  AREA \"Employee\"\n  DESCRIPTION \"The benefits table contains employee benefits.\"\n  DUMP-NAME \"benefits\"\n\nADD TABLE \"BillTo\"\n  AREA \"Order\"\n  DESCRIPTION \"The billto table contains bill to address information for an order. \"\n  DUMP-NAME \"billto\"\n");
+            ope.Create(tgtDb);
+            Assert.IsTrue(tgtDb.Exists());
 
-            var generatedSt = db.GenerateStructureFileFromDf(Path.Combine(TestFolder, "file.db"), pathDf);
+            var stPath = Path.Combine(TestFolder, "repair.st");
+            File.WriteAllText(stPath, $"b .\nd \"Schema Area\" \"{TestFolder}\"");
 
-            Assert.AreEqual(Path.Combine(TestFolder, "file.st"), generatedSt);
+            ope.RepairDatabaseControlInfo(tgtDb);
 
-            Assert.IsTrue(File.Exists(generatedSt));
+            File.WriteAllText(stPath, "b .\nd \"Schema Area\" .");
 
-            Assert.IsTrue(File.ReadAllText(Path.Combine(TestFolder, "file.st")).Contains("Employee"));
-            Assert.IsTrue(File.ReadAllText(Path.Combine(TestFolder, "file.st")).Contains("Order"));
+            File.Delete(tgtDb.FullPath);
+            ope.RepairDatabaseControlInfo(tgtDb);
 
+            tgtDb.ThrowIfNotExist();
         }
 
         [TestMethod]
-        public void CopyStructureFile() {
+        public void AddAndRemoveExtents() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
+            var ope = new UoeDatabaseOperator(dlcPath);
 
-            var pathSt = Path.Combine(TestFolder, "source.st");
+            var tgtDb = GetDb("extents");
 
-            File.WriteAllText(pathSt, "d \"Schema Area\":6,32;1 .\nd \"Order\":11,32;1 D:\\DATABASES\\cp_sport f 1280 \nd \"Order\":11,32;1 \"D:\\DATABASES\\cp_sport\"");
+            ope.Create(tgtDb);
+            Assert.IsTrue(tgtDb.Exists());
 
-            var generatedSt = db.MakeStructureFileUseRelativePath(Path.Combine(TestFolder, "target.db"), pathSt);
+            var stPath = Path.Combine(TestFolder, "extents_add.st");
+            File.WriteAllText(stPath, $"d \"Data Area\" \"{TestFolder}\"");
 
-            Assert.AreEqual(Path.Combine(TestFolder, "target.st"), generatedSt);
-            Assert.IsTrue(File.Exists(generatedSt));
+            ope.AddStructureDefinition(tgtDb, stPath);
 
-            Assert.IsTrue(File.ReadAllText(Path.Combine(TestFolder, "target.st")).Count(c => c.Equals('.')).Equals(3));
+            try {
+                ope.Start(tgtDb);
+                File.WriteAllText(stPath, $"d \"New Area\" \"{TestFolder}\"");
+                ope.AddStructureDefinition(tgtDb, stPath);
+            } finally {
+                ope.Shutdown(tgtDb);
+            }
 
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "extents_7.d1")));
+            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "extents_8.d1")));
+
+            ope.RemoveStructureDefinition(tgtDb, "d", "Data Area");
+
+            Assert.IsFalse(File.Exists(Path.Combine(TestFolder, "extents_7.d1")));
         }
 
         [TestMethod]
-        public void GenerateStructureFile_empty_df() {
+        public void Start() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
+            var ope = new UoeDatabaseOperator(dlcPath);
 
-            var pathDf = Path.Combine(TestFolder, "file.df");
+            var tgtDb = GetDb("start");
 
-            File.WriteAllText(pathDf, "");
+            ope.Create(tgtDb);
+            Assert.IsTrue(tgtDb.Exists());
 
-            db.GenerateStructureFileFromDf(Path.Combine(TestFolder, "file.db"), pathDf);
+            Assert.AreEqual(DatabaseBusyMode.NotBusy, ope.GetBusyMode(tgtDb));
 
-            Assert.IsTrue(File.ReadAllText(Path.Combine(TestFolder, "file.st")).Contains("Schema Area"));
-        }
+            var nextPort = UoeDatabaseOperator.GetNextAvailablePort();
 
-        [TestMethod]
-        public void TruncateLog() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
+            try {
+                var option = ope.Start(tgtDb, "localhost", nextPort.ToString(), 20, "-minport 50000 -maxport 50100 -L 20000");
+
+                Assert.IsTrue(nextPort > 0);
+                Assert.IsTrue(option.Contains($"-S {nextPort}"));
+                Assert.IsTrue(option.Contains("-H localhost"));
+                Assert.IsTrue(option.Contains("-Ma 20"));
+                Assert.IsTrue(option.Contains("-maxport 50100"));
+
+                Assert.AreEqual(DatabaseBusyMode.MultiUser, ope.GetBusyMode(tgtDb));
+
+            } finally {
+                ope.Shutdown(tgtDb);
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
-            var dbPath = Path.Combine(TestFolder, "trunclog.db");
-            db.ProcopyEmpty(dbPath);
-            Assert.IsTrue(File.Exists(dbPath));
-
-            db.TruncateLog(dbPath);
-
-            db.ProServe(dbPath);
-
-            var oldSize = new FileInfo(Path.Combine(TestFolder, "trunclog.lg")).Length;
-            db.TruncateLog(dbPath);
-            var newSize = new FileInfo(Path.Combine(TestFolder, "trunclog.lg")).Length;
-
-            Assert.AreNotEqual(oldSize, newSize);
-
-            var cs = db.GetConnectionString(dbPath);
-            Assert.IsTrue(!cs.Contains("-1") && !cs.Contains("-H"), $"Should have multi user connection string without hostname: {cs.PrettyQuote()}.");
-
-            db.Proshut(dbPath);
-        }
-
-        [TestMethod]
-        public void BinaryDumpLoadIdxRebuild() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-
-            // create .df
-            var dfPath = Path.Combine(TestFolder, "bindb.df");
-            File.WriteAllText(dfPath, "ADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD FIELD \"field2\" OF \"table1\" AS integer \n  DESCRIPTION \"field two\"\n  FORMAT \"9\"\n  INITIAL 0\n  POSITION 3\n  ORDER 20\n");
-
-            using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
-                var dbPath = Path.Combine(TestFolder, "bindb.db");
-                dataAdmin.CreateCompilationDatabaseFromDf(dbPath, dfPath);
-                Assert.IsTrue(dataAdmin.GetBusyMode(dbPath).Equals(DatabaseBusyMode.NotBusy));
-
-                var dataDirectory = Path.Combine(TestFolder, "bindb_data");
-                Directory.CreateDirectory(dataDirectory);
-                try {
-                    var table1Path = Path.Combine(dataDirectory, "table1.d");
-                    // load data
-                    File.WriteAllText(table1Path, "\"value1\" 1\n\"value2\" 2\n");
-                    dataAdmin.LoadData(dataAdmin.GetConnectionString(dbPath), dataDirectory);
-                    File.Delete(table1Path);
-
-                    // dump binary
-                    dataAdmin.DumpBinaryData(dbPath, "table1", dataDirectory);
-                    var binDataFilePath = Path.Combine(dataDirectory, "table1.bd");
-                    Assert.IsTrue(File.Exists(binDataFilePath));
-
-                    // recreate db
-                    dataAdmin.Delete(dbPath);
-                    dataAdmin.CreateCompilationDatabaseFromDf(dbPath, dfPath);
-
-                    // load binary
-                    dataAdmin.LoadBinaryData(dbPath, binDataFilePath);
-
-                    // rebuild index
-                    dataAdmin.RebuildIndexes(dbPath, "table table1");
-
-                    // dump data
-                    dataAdmin.DumpData(dataAdmin.GetConnectionString(dbPath), dataDirectory, "table1");
-                    Assert.IsTrue(File.Exists(table1Path));
-                    var dataContent = File.ReadAllText(table1Path);
-                    Assert.IsTrue(dataContent.Contains("\"value1\" 1"));
-
-                } finally {
-                    Directory.Delete(dataDirectory, true);
-                }
-            }
-
-        }
-
-        [TestMethod]
-        public void GetConnectionString() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-            var db = new UoeDatabaseOperator(dlcPath);
-            var dbPath = Path.Combine(TestFolder, "testcs.db");
-            db.ProcopyEmpty(dbPath);
-            Assert.IsTrue(File.Exists(dbPath));
-
-            var cs = db.GetConnectionString(dbPath);
-
-            Assert.IsTrue(cs.Contains("-1"), $"Should have mono user connection string: {cs.PrettyQuote()}.");
-
-            db.ProServe(dbPath);
-
-            cs = db.GetConnectionString(dbPath);
-            Assert.IsTrue(!cs.Contains("-1") && !cs.Contains("-H"), $"Should have multi user connection string without hostname: {cs.PrettyQuote()}.");
-
-            db.Proshut(dbPath);
-
-            // can't test the last part because the database doesn't have the time to start to fill the database log.lg file
-            //db.ProServe(dbPath, UoeDatabaseOperator.GetNextAvailablePort());
-
-            //cs = db.GetConnectionString(dbPath);
-            //Assert.IsTrue(!cs.Contains("-1") && cs.Contains("-H"), $"Should have multi user connection string: {cs.PrettyQuote()}.");
-        }
-
-        [TestMethod]
-        public void Backup_Restore() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-            var db = new UoeDatabaseOperator(dlcPath);
-            var dbPath = Path.Combine(TestFolder, "backup.db");
-
-            db.Copy(dbPath, Path.Combine(dlcPath, "sports2000"));
-            Assert.IsTrue(File.Exists(dbPath));
-
-            var backupPath = Path.Combine(TestFolder, "backup.bkp");
-            db.Backup(dbPath, backupPath);
-        }
-
-        [TestMethod]
-        public void ProstrctAdd() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-
-            var db = new UoeDatabaseOperator(dlcPath);
-
-            var addDir = Path.Combine(TestFolder, "prostractadd");
-            Directory.CreateDirectory(addDir);
-
-            File.WriteAllText(Path.Combine(addDir, "part1.st"), @"
-b .
-d ""Schema Area"" .
-d ""Data Area"" .
-d ""Index Area"" .
-");
-            File.WriteAllText(Path.Combine(addDir, "part2.st"), @"
-d ""Data Area2"" .
-d ""Data Area3"" .
-");
-            db.CreateVoidDatabase(Path.Combine(addDir, "test1.db"), Path.Combine(addDir, "part1.st"));
-
-            Assert.AreEqual(8, Directory.EnumerateFiles(addDir, "*", SearchOption.TopDirectoryOnly).Count());
-
-            db.AddStructureDefinition(Path.Combine(addDir, "test1.db"), Path.Combine(addDir, "part2.st"));
-
-            Assert.AreEqual(11, Directory.EnumerateFiles(addDir, "*", SearchOption.TopDirectoryOnly).Count());
-
+            Assert.AreEqual(DatabaseBusyMode.NotBusy, ope.GetBusyMode(tgtDb));
         }
 
         [TestMethod]
@@ -368,7 +299,8 @@ d ""Data Area3"" .
             var deleteDir = Path.Combine(TestFolder, "delete");
             Directory.CreateDirectory(deleteDir);
 
-            File.WriteAllText(Path.Combine(deleteDir, "test1.st"), @"
+            var stPath = Path.Combine(deleteDir, "test1.st");
+            File.WriteAllText(stPath, @"
 b .
 d ""Schema Area"":6,32;1 .
 d ""Data Area"":7,32;1 .
@@ -376,16 +308,18 @@ d ""Index Area"":8,32;8 .
 d ""Data Area2"":9,32;8 .
 d ""Data Area3"":12,32;8 .
 ");
-            db.CreateVoidDatabase(Path.Combine(deleteDir, "test1.db"), Path.Combine(deleteDir, "test1.st"));
+            var loc = new UoeDatabaseLocation(Path.Combine(deleteDir, "test1.db"));
+            db.Create(loc, stPath);
 
             Assert.AreEqual(9, Directory.EnumerateFiles(deleteDir, "*", SearchOption.TopDirectoryOnly).Count());
 
-            File.Delete(Path.Combine(deleteDir, "test1.st"));
-            db.Delete(Path.Combine(deleteDir, "test1.db"));
+            File.Delete(stPath);
 
-            Assert.AreEqual(1, Directory.EnumerateFiles(deleteDir, "*", SearchOption.TopDirectoryOnly).Count());
+            db.Delete(loc);
 
-            File.WriteAllText(Path.Combine(deleteDir, "test1.st"), @"
+            Assert.AreEqual(1, Directory.EnumerateFiles(deleteDir, "*", SearchOption.TopDirectoryOnly).Count(), "only the .st should be left (it has been recreated to list files to delete).");
+
+            File.WriteAllText(stPath, @"
 b ./2
 a ./3 f 1024
 a ./3 f 1024
@@ -405,113 +339,187 @@ d ""Misc"",32 !""./1/misc data""
 d ""schema Area"" .
 ");
 
-            db.CreateVoidDatabase(Path.Combine(deleteDir, "test1.db"), Path.Combine(deleteDir, "test1.st"));
+            db.CreateVoidDatabase(loc, stPath);
 
             Assert.AreEqual(20, Directory.EnumerateFiles(deleteDir, "*", SearchOption.AllDirectories).Count());
 
-            db.Delete(Path.Combine(deleteDir, "test1.db"));
+            db.Delete(loc);
 
             Assert.AreEqual(1, Directory.EnumerateFiles(deleteDir, "*", SearchOption.AllDirectories).Count());
         }
 
         [TestMethod]
-        public void Tests_on_base_ref() {
-            Procopy_existing_db();
-            ProstrctRepair_ok();
-            GetBusyMode_isnone_ok();
-            Proserve_simple();
-            ProShut_normal_ok();
-            Proserve_with_options();
-            ProShut_hard_ok();
-        }
-
-        private void Procopy_existing_db() {
+        public void GenerateStructureFileFromDf() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
+            var ope = new UoeDatabaseOperator(dlcPath);
+            var db = GetDb("generatedf");
 
-            db.Copy(Path.Combine(TestFolder, "test5.db"), Path.Combine(TestFolder, "ref.db"), false, false);
+            var pathDf = Path.Combine(TestFolder, "generatedf.df");
 
-            Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "test5.db")));
+            File.WriteAllText(pathDf, "ADD TABLE \"Benefits\"\n  AREA \"Employee\"\n  DESCRIPTION \"The benefits table contains employee benefits.\"\n  DUMP-NAME \"benefits\"\n\nADD TABLE \"BillTo\"\n  AREA \"Order\"\n  DESCRIPTION \"The billto table contains bill to address information for an order. \"\n  DUMP-NAME \"billto\"\n");
 
+            var generatedSt = ope.GenerateStructureFileFromDf(db, pathDf);
+
+            Assert.AreEqual(db.StructureFileFullPath, generatedSt);
+            Assert.IsTrue(File.Exists(generatedSt));
+
+            Assert.IsTrue(File.ReadAllText(generatedSt).Contains("Employee"));
+            Assert.IsTrue(File.ReadAllText(generatedSt).Contains("Order"));
+
+            File.WriteAllText(pathDf, "");
+
+            ope.GenerateStructureFileFromDf(db, pathDf);
+            Assert.IsTrue(File.ReadAllText(generatedSt).Contains("Schema Area"));
         }
 
-        private void ProstrctRepair_ok() {
+        [TestMethod]
+        public void GetConnectionString() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
-            db.UpdateDatabaseControlInfo(Path.Combine(TestFolder, "ref.db"));
+            var ope = new UoeDatabaseOperator(dlcPath);
+            var db = GetDb("connec");
+
+            ope.Create(db);
+
+            Assert.IsTrue(ope.GetConnectionString(db).SingleUser);
+            Assert.IsTrue(string.IsNullOrEmpty(ope.GetConnectionString(db).Service));
+            Assert.AreEqual(null, ope.GetConnectionString(db).LogicalName);
+            Assert.AreEqual("test", ope.GetConnectionString(db, "test").LogicalName);
+
+            try {
+                ope.Start(db);
+
+                Assert.IsFalse(ope.GetConnectionString(db).SingleUser);
+                Assert.IsTrue(string.IsNullOrEmpty(ope.GetConnectionString(db).Service));
+            } finally {
+                ope.Shutdown(db);
+            }
+
+            try {
+                ope.Start(db, null, UoeDatabaseOperator.GetNextAvailablePort().ToString());
+
+                Assert.IsFalse(ope.GetConnectionString(db).SingleUser);
+                Assert.IsFalse(string.IsNullOrEmpty(ope.GetConnectionString(db).Service));
+                Assert.IsFalse(string.IsNullOrEmpty(ope.GetConnectionString(db).HostName));
+            } finally {
+                ope.Shutdown(db);
+            }
         }
 
-        private void GetBusyMode_isnone_ok() {
+        [TestMethod]
+        public void TruncateLog() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
-            Assert.AreEqual(DatabaseBusyMode.NotBusy, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
+            var ope = new UoeDatabaseOperator(dlcPath);
+            var db = GetDb("trunclog");
+
+            ope.Create(db);
+            Assert.IsTrue(db.Exists());
+
+            ope.TruncateLog(db);
+
+            try {
+                ope.Start(db);
+
+                var oldSize = new FileInfo(Path.Combine(TestFolder, "trunclog.lg")).Length;
+
+                ope.TruncateLog(db);
+
+                var newSize = new FileInfo(Path.Combine(TestFolder, "trunclog.lg")).Length;
+
+                Assert.AreNotEqual(oldSize, newSize);
+
+                var cs = ope.GetConnectionString(db);
+                Assert.IsFalse(cs.SingleUser);
+                Assert.IsTrue(string.IsNullOrEmpty(cs.Service));
+            } finally {
+                ope.Shutdown(db);
+            }
         }
 
-        private void ProShut_hard_ok() {
+        [TestMethod]
+        public void BinaryDumpLoadIdxRebuild() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
 
-            var db = new UoeDatabaseOperator(dlcPath);
+            // create .df
+            var dfPath = Path.Combine(TestFolder, "bindb.df");
+            File.WriteAllText(dfPath, "ADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD FIELD \"field2\" OF \"table1\" AS integer \n  DESCRIPTION \"field two\"\n  FORMAT \"9\"\n  INITIAL 0\n  POSITION 3\n  ORDER 20\n");
 
-            UoeDatabaseOperator.KillAllMproSrv();
+            using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
+                var db = GetDb("dumploadbin");
+                dataAdmin.CreateWithDf(db, dfPath);
 
-            Assert.AreEqual(DatabaseBusyMode.NotBusy, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
+                var dataDirectory = Path.Combine(TestFolder, "bindb_data");
+                Directory.CreateDirectory(dataDirectory);
+                try {
+                    var table1Path = Path.Combine(dataDirectory, "table1.d");
+                    // load data from .d
+                    File.WriteAllText(table1Path, "\"value1\" 1\n\"value2\" 2\n");
+                    dataAdmin.LoadData(dataAdmin.GetConnectionString(db), dataDirectory);
+                    File.Delete(table1Path);
+
+                    // dump binary
+                    dataAdmin.DumpBinaryData(db, "table1", dataDirectory);
+                    var binDataFilePath = Path.Combine(dataDirectory, "table1.bd");
+                    Assert.IsTrue(File.Exists(binDataFilePath));
+
+                    // recreate db
+                    dataAdmin.Delete(db);
+                    dataAdmin.CreateWithDf(db, dfPath);
+
+                    // load binary
+                    dataAdmin.LoadBinaryData(db, binDataFilePath);
+
+                    // re-rebuild index
+                    dataAdmin.RebuildIndexes(db, "table table1");
+
+                    // dump data .d
+                    dataAdmin.DumpData(dataAdmin.GetConnectionString(db), dataDirectory, "table1");
+                    Assert.IsTrue(File.Exists(table1Path));
+                    var dataContent = File.ReadAllText(table1Path);
+                    Assert.IsTrue(dataContent.Contains("\"value1\" 1"));
+
+                } finally {
+                    Directory.Delete(dataDirectory, true);
+                }
+            }
+
         }
 
-        private void ProShut_normal_ok() {
+        [TestMethod]
+        public void Backup_Restore() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
+            var ope = new UoeDatabaseOperator(dlcPath);
+            var db = GetDb("backuprest");
 
-            var db = new UoeDatabaseOperator(dlcPath);
+            ope.Copy(db, new UoeDatabaseLocation(Path.Combine(dlcPath, "sports2000")));
+            Assert.IsTrue(db.Exists());
 
-            db.Proshut(Path.Combine(TestFolder, "ref.db"));
+            var backupPath = Path.Combine(TestFolder, "backup.bkp");
+            ope.Backup(db, backupPath);
 
-            Assert.AreEqual(DatabaseBusyMode.NotBusy, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
+            ope.Delete(db);
+            Assert.IsFalse(db.Exists());
+
+            ope.Restore(db, backupPath);
+            Assert.IsTrue(db.Exists());
         }
 
-        private void Proserve_with_options() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-
-            var db = new UoeDatabaseOperator(dlcPath);
-            var nextPort = UoeDatabaseOperator.GetNextAvailablePort(0);
-
-            Assert.IsTrue(nextPort > 0);
-
-            db.ProServe(Path.Combine(TestFolder, "ref.db"), nextPort, 20, "-minport 50000 -maxport 50100 -L 20000");
-            // https://community.progress.com/community_groups/openedge_rdbms/f/18/t/9300
-
-            Assert.AreEqual(DatabaseBusyMode.MultiUser, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
+        [TestMethod]
+        public void BulkLoad() {
+            // TODO: test BulkLoad.
         }
-
-        private void Proserve_simple() {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-
-            var db = new UoeDatabaseOperator(dlcPath);
-
-
-            db.ProServe(Path.Combine(TestFolder, "ref.db"));
-            // https://community.progress.com/community_groups/openedge_rdbms/f/18/t/9300
-
-            Assert.AreEqual(DatabaseBusyMode.MultiUser, db.GetBusyMode(Path.Combine(TestFolder, "ref.db")));
-        }
-
-
-*/
     }
 
 }

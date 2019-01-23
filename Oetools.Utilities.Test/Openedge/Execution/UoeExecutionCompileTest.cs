@@ -49,7 +49,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             // stop dummy database
             if (TestHelper.GetDlcPath(out string dlcPath)) {
                 if (File.Exists(Path.Combine(TestClassFolder, "dummy.db"))) {
-                    new UoeDatabaseOperator(dlcPath).Proshut(DummyDatabase);
+                    new UoeDatabaseOperator(dlcPath).Shutdown(DummyDatabaseLocation);
                 }
             }
             if (Directory.Exists(TestClassFolder)) {
@@ -59,7 +59,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
         protected virtual string TestFolder => TestClassFolder;
 
-        private static UoeDatabase DummyDatabase { get; } = new UoeDatabase(Path.Combine(TestClassFolder, "dummy.db"));
+        private static UoeDatabaseLocation DummyDatabaseLocation { get; } = new UoeDatabaseLocation(Path.Combine(TestClassFolder, "dummy.db"));
 
         protected void CreateDummyBaseIfNeeded() {
             // create dummy database
@@ -69,8 +69,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
                     TestHelper.CreateDatabaseFromDf(Path.Combine(TestFolder, "dummy.db"), Path.Combine(TestFolder, "dummy.df"));
                 }
-                if (new UoeDatabaseOperator(dlcPath).GetBusyMode(DummyDatabase) != DatabaseBusyMode.MultiUser) {
-                    new UoeDatabaseOperator(dlcPath).ProServe(DummyDatabase);
+                if (new UoeDatabaseOperator(dlcPath).GetBusyMode(DummyDatabaseLocation) != DatabaseBusyMode.MultiUser) {
+                    new UoeDatabaseOperator(dlcPath).Start(DummyDatabaseLocation);
                 }
             }
         }
@@ -718,7 +718,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
-            env.DatabaseConnectionString = UoeConnectionString.NewMultiUserConnection(DummyDatabase).ToString();
+            env.DatabaseConnectionString = UoeConnectionString.NewMultiUserConnection(DummyDatabaseLocation).ToString();
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "dummy",
@@ -789,7 +789,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
-            env.DatabaseConnectionString = UoeConnectionString.NewMultiUserConnection(DummyDatabase).ToString();
+            env.DatabaseConnectionString = UoeConnectionString.NewMultiUserConnection(DummyDatabaseLocation).ToString();
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "dummy",

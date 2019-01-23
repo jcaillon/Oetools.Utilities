@@ -33,55 +33,24 @@ using Oetools.Utilities.Lib.Extension;
 namespace Oetools.Utilities.Openedge.Database {
 
     /// <summary>
-    /// Allows to interact with an openedge database at a file system level : create/start/shutdown and so on...
-    /// TODO: -C bulkload
+    /// Operate on an openedge database.
     /// </summary>
     public class UoeDatabaseOperator {
 
         /// <summary>
-        /// Path to the openedge installation folder
-        /// </summary>
-        protected string DlcPath { get; }
-
-        /// <summary>
         /// Returns the output value of the last operation done
         /// </summary>
-        public string LastOperationOutput => _lastUsedProcess.BatchOutputString;
-
-        private ProcessIoWithLog _lastUsedProcess;
-
-        private Dictionary<string, ProcessIoWithLog> _processIos = new Dictionary<string, ProcessIoWithLog>();
-
-        /// <summary>
-        /// Returns the path to _dbutil (or null if not found in the dlc folder)
-        /// </summary>
-        private string DbUtilName => Utils.IsRuntimeWindowsPlatform ? "_dbutil.exe" : "_dbutil";
-
-        /// <summary>
-        /// Returns the path to _proutil (or null if not found in the dlc folder)
-        /// </summary>
-        private string ProUtilName => Utils.IsRuntimeWindowsPlatform ? "_proutil.exe" : "_proutil";
-
-        /// <summary>
-        /// Returns the path to _mprosrv (or null if not found in the dlc folder)
-        /// </summary>
-        private string ProservePath => Path.Combine(DlcPath, "bin", Utils.IsRuntimeWindowsPlatform ? "_mprosrv.exe" : "_mprosrv");
-
-        /// <summary>
-        /// Returns the path to _mprshut (or null if not found in the dlc folder)
-        /// </summary>
-        private string ProshutName => Utils.IsRuntimeWindowsPlatform ? "_mprshut.exe" : "_mprshut";
+        public string LastOperationOutput => _lastUsedProcess?.BatchOutputString;
 
         /// <summary>
         /// Internationalization startup parameters such as -cpinternal codepage and -cpstream codepage.
-        /// They will be used for commands that support them.
+        /// They will be used for commands that support them. (_dbutil, _mprosrv, _mprshut, _proutil)
         /// </summary>
         public string InternationalizationStartupParameters { get; set; }
 
         /// <summary>
-        /// Database access/encryption parameters:
-        /// [[-userid username [-password passwd ]] | [ -U username -P passwd] ]
-        /// [-Passphrase]
+        /// Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].
+        /// They will be used for commands that support them. (_dbutil prostrct, _proutil)
         /// </summary>
         public string DatabaseAccessStartupParameters { get; set; }
 
@@ -96,9 +65,26 @@ namespace Oetools.Utilities.Openedge.Database {
         public ILog Log { get; set; }
 
         /// <summary>
-        /// Cancellation token.
+        /// Cancellation token. Used to cancel execution.
         /// </summary>
         public CancellationToken? CancelToken { get; set; }
+
+        /// <summary>
+        /// Path to the openedge installation folder
+        /// </summary>
+        protected string DlcPath { get; }
+
+        private ProcessIoWithLog _lastUsedProcess;
+
+        private Dictionary<string, ProcessIoWithLog> _processIos = new Dictionary<string, ProcessIoWithLog>();
+
+        private string DbUtilName => Utils.IsRuntimeWindowsPlatform ? "_dbutil.exe" : "_dbutil";
+
+        private string ProUtilName => Utils.IsRuntimeWindowsPlatform ? "_proutil.exe" : "_proutil";
+
+        private string ProservePath => Path.Combine(DlcPath, "bin", Utils.IsRuntimeWindowsPlatform ? "_mprosrv.exe" : "_mprosrv");
+
+        private string ProshutName => Utils.IsRuntimeWindowsPlatform ? "_mprshut.exe" : "_mprshut";
 
         /// <summary>
         /// New database utility.
@@ -117,186 +103,38 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Backup a database. The database can either be started (online backup) or stopped (offline backup).
+        /// Validates whether or not the structure file is correct. Throws exception if not correct.
         /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="targetBackupFile"></param>
-        /// <param name="verbose"></param>
-        /// <param name="scan"></param>
-        /// <param name="compressed"></param>
-        /// <param name="extra"></param>
-        /// <exception cref="ArgumentException"></exception>
+        /// <returns></returns>
+        /// <param name="targetDb">Path to the target database</param>
+        /// <param name="structureFilePath">Path to the .st file, a prostrct create will be executed with it to create the database</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void Backup(UoeDatabase targetDb, string targetBackupFile, bool verbose = true, bool scan = true, bool compressed = true, string extra = null) {
-            targetDb.ThrowIfNotExist();
-
-            var busyMode = GetBusyMode(targetDb);
-            if (busyMode == DatabaseBusyMode.SingleUser) {
-                throw new ArgumentException($"The database is used in single user mode: {targetDb.FullPath.PrettyQuote()}.");
+        public void ValidateStructureFile(UoeDatabaseLocation targetDb, string structureFilePath) {
+            structureFilePath = structureFilePath?.MakePathAbsolute();
+            if (!File.Exists(structureFilePath)) {
+                throw new UoeDatabaseException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
             }
 
-            extra = extra?.Replace("online", "") ?? "";
-            if (busyMode == DatabaseBusyMode.MultiUser) {
-                // can't use -scan in online mode
-                extra = extra.Replace("-scan", "");
-            } else if (scan) {
-                extra += " -scan";
-            }
-            if (compressed) {
-                extra += " -com";
-            }
-            if (verbose) {
-                extra += " -verbose";
-            }
+            Log?.Info($"Validating structure file {structureFilePath.PrettyQuote()}.");
 
-            targetBackupFile = targetBackupFile.MakePathAbsolute();
-            var dir = Path.GetDirectoryName(targetBackupFile);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
-                Directory.CreateDirectory(dir);
-            }
-
-            if (GetBusyMode(targetDb) == DatabaseBusyMode.NotBusy) {
-                Log?.Debug($"Backing up database {targetDb.FullPath.PrettyQuote()} in offline mode to file {targetBackupFile.PrettyQuote()}.");
-
-                var dbUtil = GetExecutable(DbUtilName);
-                dbUtil.WorkingDirectory = targetDb.DirectoryPath;
-
-                var executionOk = dbUtil.TryExecute($"probkup {targetDb.PhysicalName} {targetBackupFile.CliQuoter()} {extra} {InternationalizationStartupParameters}");
-                if (!executionOk || !dbUtil.BatchOutputString.Contains("(3740)")) {
-                    // Backup complete. (3740)
-                    throw new UoeDatabaseException(dbUtil.BatchOutputString);
-                }
+            if (!targetDb.Exists()) {
+                CreateVoidDatabase(targetDb, structureFilePath, DatabaseBlockSize.DefaultForCurrentPlatform, true);
             } else {
-                Log?.Debug($"Backing up database {targetDb.FullPath.PrettyQuote()} in online mode to file {targetBackupFile.PrettyQuote()}.");
-
-                var proShut = GetExecutable(ProshutName);
-                proShut.WorkingDirectory = targetDb.DirectoryPath;
-
-                var executionOk = proShut.TryExecute($"{targetDb.PhysicalName} -C backup online {targetBackupFile.CliQuoter()} {extra} {InternationalizationStartupParameters}");
-                if (!executionOk || !proShut.BatchOutputString.Contains("(3740)")) {
-                    // Backup complete. (3740)
-                    throw new UoeDatabaseException(proShut.BatchOutputString);
-                }
-            }
-
-        }
-
-        /// <summary>
-        /// Truncates the log file. If the database is started, it will re-log the database startup parameters to the log file.
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <returns></returns>
-        /// <exception cref="UoeDatabaseException"></exception>
-        public void TruncateLog(UoeDatabase targetDb) {
-            targetDb.ThrowIfNotExist();
-
-            var dbUtil = GetExecutable(DbUtilName);
-            dbUtil.WorkingDirectory = targetDb.DirectoryPath;
-
-            string online =  null;
-            if (GetBusyMode(targetDb) == DatabaseBusyMode.MultiUser) {
-                online = " -online";
-                Log?.Debug("The database is served for multi-users, using the `-online` option.");
-            }
-
-            try {
-                dbUtil.Execute($"prolog {targetDb.PhysicalName}{online} {InternationalizationStartupParameters}");
-            } catch(Exception) {
-                throw new UoeDatabaseException(dbUtil.BatchOutputString);
-            }
-        }
-
-        /// <summary>
-        /// Dump binary data for the given table.
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="dumpDirectoryPath"></param>
-        /// <param name="options"></param>
-        /// <param name="tableName"></param>
-        /// <returns></returns>
-        /// <exception cref="UoeDatabaseException"></exception>
-        public void DumpBinaryData(UoeDatabase targetDb, string tableName, string dumpDirectoryPath, string options = null) {
-            targetDb.ThrowIfNotExist();
-
-            if (string.IsNullOrEmpty(dumpDirectoryPath)) {
-                throw new UoeDatabaseException("The data dump directory path can't be null.");
-            }
-            dumpDirectoryPath = dumpDirectoryPath.MakePathAbsolute();
-            if (!string.IsNullOrEmpty(dumpDirectoryPath) && !Directory.Exists(dumpDirectoryPath)) {
-                Directory.CreateDirectory(dumpDirectoryPath);
-            }
-
-            Log?.Info($"Dumping binary data of table {tableName} to directory {dumpDirectoryPath.PrettyQuote()} from {targetDb.FullPath.PrettyQuote()}.");
-
-            var proUtil = GetExecutable(ProUtilName);
-            proUtil.WorkingDirectory = targetDb.DirectoryPath;
-
-            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C dump {tableName} {dumpDirectoryPath.CliQuoter()} {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            if (!executionOk || !proUtil.BatchOutputString.Contains("(6254)")) {
-                // Binary Dump complete. (6254)
-                throw new UoeDatabaseException(proUtil.BatchOutputString);
-            }
-        }
-
-        /// <summary>
-        /// Load binary data to the given database.
-        /// The index of the loaded tables should be rebuilt afterward.
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="options"></param>
-        /// <param name="binDataFilePath"></param>
-        /// <returns></returns>
-        /// <exception cref="UoeDatabaseException"></exception>
-        public void LoadBinaryData(UoeDatabase targetDb, string binDataFilePath, string options = null) {
-            targetDb.ThrowIfNotExist();
-
-            binDataFilePath = binDataFilePath?.MakePathAbsolute();
-            if (!File.Exists(binDataFilePath)) {
-                throw new UoeDatabaseException($"The binary data file does not exist: {binDataFilePath.PrettyQuote()}.");
-            }
-
-            Log?.Info($"Loading binary data from {binDataFilePath.PrettyQuote()} to {targetDb.FullPath.PrettyQuote()}.");
-
-            var proUtil = GetExecutable(ProUtilName);
-            proUtil.WorkingDirectory = targetDb.DirectoryPath;
-
-            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C load {binDataFilePath.CliQuoter()} {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            if (!executionOk || !proUtil.BatchOutputString.Contains("(6256)")) {
-                // Binary Load complete. (6256)
-                throw new UoeDatabaseException(proUtil.BatchOutputString);
-            }
-        }
-
-        /// <summary>
-        /// Rebuild the indexed of a database. By default, rebuilds all the active indexes.
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="options"></param>
-        /// <returns></returns>
-        /// <exception cref="UoeDatabaseException"></exception>
-        public void RebuildIndexes(UoeDatabase targetDb, string options = "activeindexes") {
-            targetDb.ThrowIfNotExist();
-
-            var proUtil = GetExecutable(ProUtilName);
-            proUtil.WorkingDirectory = targetDb.DirectoryPath;
-
-            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C idxbuild {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            if (!executionOk || !proUtil.BatchOutputString.Contains("(11465)")|| !proUtil.BatchOutputString.Contains(" 0 err")) {
-                // 1 indexes were rebuilt. (11465)
-                throw new UoeDatabaseException(proUtil.BatchOutputString);
+                AddStructureDefinition(targetDb, structureFilePath, true);
             }
         }
 
         /// <summary>
         /// Creates a void OpenEdge database from a previously defined structure description (.st) file.
-        /// You will need to a schema to this void database by using <see cref="ProcopyEmpty"/>.
+        /// You will need to add a schema to this void database by using <see cref="ProcopyEmpty"/>.
         /// </summary>
         /// <param name="targetDb">Path to the target database</param>
         /// <param name="structureFilePath">Path to the .st file, a prostrct create will be executed with it to create the database</param>
         /// <param name="blockSize">Block size for the database prostrct create</param>
+        /// <param name="validate"></param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        internal void CreateVoidDatabase(UoeDatabase targetDb, string structureFilePath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform) {
+        internal void CreateVoidDatabase(UoeDatabaseLocation targetDb, string structureFilePath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, bool validate = false) {
             if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
                 blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
             }
@@ -306,7 +144,87 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
             }
 
-            CreateExtentsDirectories(UoeDatabase.FromOtherFilePath(structureFilePath));
+            // create necessary directories
+            if (!Directory.Exists(targetDb.DirectoryPath)) {
+                Directory.CreateDirectory(targetDb.DirectoryPath);
+            }
+            CreateExtentsDirectories(targetDb, structureFilePath);
+
+            var dbUtil = GetExecutable(DbUtilName);
+            dbUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+            Log?.Info($"Creating database structure for {targetDb.FullPath.PrettyQuote()} from {structureFilePath.PrettyQuote()} with block size {blockSize.ToString().Substring(1)}.");
+
+            var executionOk = dbUtil.TryExecute($"prostrct create {targetDb.PhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)} {(validate ? "-validate" : "")} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
+            if (!executionOk) {
+                throw new UoeDatabaseException(dbUtil.BatchOutputString);
+            }
+        }
+
+        /// <summary>
+        /// Create a new empty database.
+        /// </summary>
+        /// <param name="targetDb">Path to the target database</param>
+        /// <param name="structureFilePath">Path to the .st file, a prostrct create will be executed with it to create the database</param>
+        /// <param name="blockSize">Block size for the database prostrct create</param>
+        /// <param name="codePage">Database codepage (copy from $DLC/prolang/codepage/emptyX)</param>
+        /// <param name="newInstance">Use -newinstance in procopy command</param>
+        /// <param name="relativePath">Use -relativepath in procopy command</param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void Create(UoeDatabaseLocation targetDb, string structureFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
+            if (targetDb.Exists()) {
+                throw new UoeDatabaseException($"The database already exists: {targetDb.FullPath.PrettyQuote()}.");
+            }
+
+            if (!string.IsNullOrEmpty(structureFilePath)) {
+                CreateVoidDatabase(targetDb, structureFilePath, blockSize);
+            }
+            ProcopyEmpty(targetDb, blockSize, codePage, newInstance, relativePath);
+        }
+
+        /// <summary>
+        /// Copy an empty database from the openedge installation directory.
+        /// </summary>
+        /// <param name="targetDb">Path to the target database</param>
+        /// <param name="blockSize">Block size for the database prostrct create</param>
+        /// <param name="codePage">Database codepage (copy from $DLC/prolang/codepage/emptyX)</param>
+        /// <param name="newInstance">Use -newinstance in procopy command</param>
+        /// <param name="relativePath">Use -relativepath in procopy command</param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        internal void ProcopyEmpty(UoeDatabaseLocation targetDb, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
+            if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
+                blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
+            }
+
+            string emptyDirectoryPath;
+            if (!string.IsNullOrEmpty(codePage)) {
+                emptyDirectoryPath = Path.Combine(DlcPath, "prolang", codePage);
+                if (!Directory.Exists(emptyDirectoryPath)) {
+                    throw new UoeDatabaseException($"Invalid codepage, the folder doesn't exist: {emptyDirectoryPath.PrettyQuote()}.");
+                }
+            } else {
+                emptyDirectoryPath = DlcPath;
+            }
+
+            var sourceDb = new UoeDatabaseLocation(Path.Combine(emptyDirectoryPath, $"empty{(int) blockSize}"));
+
+            if (!sourceDb.Exists()) {
+                throw new UoeDatabaseException($"Could not find the procopy source database: {sourceDb.FullPath.PrettyQuote()}.");
+            }
+
+            Copy(targetDb, sourceDb, newInstance, relativePath);
+        }
+
+        /// <summary>
+        /// Copy a database (procopy).
+        /// </summary>
+        /// <param name="targetDb">Path to the target database</param>
+        /// <param name="sourceDb">Path of the procopy source database</param>
+        /// <param name="newInstance">Use -newinstance in procopy command</param>
+        /// <param name="relativePath">Use -relativepath in procopy command</param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void Copy(UoeDatabaseLocation targetDb, UoeDatabaseLocation sourceDb, bool newInstance = true, bool relativePath = true) {
+            sourceDb.ThrowIfNotExist();
 
             if (!Directory.Exists(targetDb.DirectoryPath)) {
                 Directory.CreateDirectory(targetDb.DirectoryPath);
@@ -315,42 +233,28 @@ namespace Oetools.Utilities.Openedge.Database {
             var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-            Log?.Info($"Creating database structure for {targetDb.FullPath.PrettyQuote()} from {structureFilePath.PrettyQuote()} with block size {blockSize.ToString().Substring(1)}.");
+            Log?.Info($"Copying database {sourceDb.FullPath.PrettyQuote()} to {targetDb.FullPath.PrettyQuote()}.");
 
-            var executionOk = dbUtil.TryExecute($"prostrct create {targetDb.PhysicalName} {structureFilePath.CliQuoter()} -blocksize {blockSize.ToString().Substring(1)} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            if (!executionOk) {
+            var executionOk = dbUtil.TryExecute($"procopy {sourceDb.FullPath.CliQuoter()} {targetDb.PhysicalName}{(newInstance ? " -newinstance" : "")}{(relativePath ? " -relative" : "")} {InternationalizationStartupParameters}");
+            if (!executionOk || !dbUtil.BatchOutputString.Contains("(1365)")) {
+                // db copied from C:\progress\client\v117x_dv\dlc\empty1. (1365)
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
             }
-        }
 
-        /// <summary>
-        /// Validates whether or not the structure file is correct. Return null if correct, the errors otherwise.
-        /// </summary>
-        /// <returns></returns>
-        /// <exception cref="UoeDatabaseException"></exception>
-        internal string ValidateStructureFile(string structureFilePath) {
-            structureFilePath = structureFilePath?.MakePathAbsolute();
-            if (!File.Exists(structureFilePath)) {
-                throw new UoeDatabaseException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
+            targetDb.ThrowIfNotExist();
+
+            if (!File.Exists(targetDb.StructureFileFullPath)) {
+                UpdateStructureFile(targetDb);
             }
-
-            var dbUtil = GetExecutable(DbUtilName);
-
-            Log?.Info($"Validating structure file {structureFilePath.PrettyQuote()}.");
-
-            var executionOk = dbUtil.TryExecute($"prostrct create dummy {structureFilePath.CliQuoter()} -validate {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            if (!executionOk) {
-                return dbUtil.BatchOutputString;
-            }
-            return null;
         }
 
         /// <summary>
         /// Creates/updates a structure description (.st) file from the .db file.
         /// </summary>
         /// <param name="targetDb"></param>
+        /// <param name="extentPathAsDirectory">By default, listing will output file path to each extent, this option allows to output directory path instead.</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void UpdateStructureFile(UoeDatabase targetDb) {
+        public void UpdateStructureFile(UoeDatabaseLocation targetDb, bool extentPathAsDirectory = true) {
             targetDb.ThrowIfNotExist();
 
             var dbUtil = GetExecutable(DbUtilName);
@@ -360,22 +264,27 @@ namespace Oetools.Utilities.Openedge.Database {
             Log?.Info($"{(File.Exists(structureFilePath) ? "Updating" : "Creating")} structure file (.st) for the database {targetDb.FullPath.PrettyQuote()}.");
 
             var executionOk = dbUtil.TryExecute($"prostrct list {targetDb.PhysicalName} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-            if (!executionOk) {
+            if (!executionOk || !File.Exists(targetDb.StructureFileFullPath)) {
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
             }
-        }
 
-        /// <summary>
-        /// Creates the structure file (.st) from the .db file if it does not exist (or does nothing).
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <exception cref="UoeDatabaseException"></exception>
-        private void CreateStructureFileIfNeeded(UoeDatabase targetDb) {
-            targetDb.ThrowIfNotExist();
-
-            if (!File.Exists(targetDb.StructureFileFullPath)) {
-                Log?.Debug($"The structure file does not exist, creating it: {targetDb.StructureFileFullPath.PrettyQuote()}.");
-                UpdateStructureFile(targetDb);
+            if (extentPathAsDirectory) {
+                // we can simplify the .st a bit because prostrct list will put the file path instead of the directory path for extents
+                var newContent = new Regex(@"^(?<beforepath>(?<type>[abdt])(?<areainfo>\s""(?<areaname>[\w\s]+)""(:(?<areanum>[0-9]+))?(,(?<recsPerBlock>[0-9]+))?(;(?<blksPerCluster>[0-9]+))?)?\s)((?<path>[^\s""!]+)|!""(?<pathquoted>[^""]+)"")(?<afterpath>(\s(?<extentType>[f|v])\s(?<extentSize>[0-9]+))?)", RegexOptions.Multiline).Replace(File.ReadAllText(targetDb.StructureFileFullPath, Encoding), match => {
+                    var path = match.Groups["pathquoted"].Value;
+                    if (string.IsNullOrEmpty(path)) {
+                        path = match.Groups["path"].Value;
+                    }
+                    if (!string.IsNullOrEmpty(path) && File.Exists(path.MakePathAbsolute(targetDb.DirectoryPath))) {
+                        var dir = Path.GetDirectoryName(path);
+                        if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) {
+                            dir = dir.Contains(' ') ? $"!\"{dir.TrimEndDirectorySeparator()}\"" : dir.TrimEndDirectorySeparator();
+                            return $"{match.Groups["beforepath"]}{dir}{match.Groups["afterpath"]}";
+                        }
+                    }
+                    return match.Value;
+                });
+                File.WriteAllText(targetDb.StructureFileFullPath, newContent, Encoding);
             }
         }
 
@@ -385,7 +294,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         /// <param name="targetDb"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void UpdateDatabaseControlInfo(UoeDatabase targetDb) {
+        public void RepairDatabaseControlInfo(UoeDatabaseLocation targetDb) {
             var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = targetDb.DirectoryPath;
 
@@ -393,21 +302,15 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException($"The structure file does not exist: {targetDb.StructureFileFullPath.PrettyQuote()}.");
             }
 
-            if (targetDb.Exists()) {
-                Log?.Info($"Repairing database control information (.db) of {targetDb.FullPath.PrettyQuote()} from {targetDb.StructureFileFullPath}.");
+            var repairMode = targetDb.Exists();
 
-                var executionOk = dbUtil.TryExecute($"prostrct repair {targetDb.PhysicalName} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-                if (!executionOk || !dbUtil.BatchOutputString.Contains("(13485)")) {
-                    // repair of *** ended. (13485)
-                    throw new UoeDatabaseException(dbUtil.BatchOutputString);
-                }
-            } else {
-                Log?.Info($"Creating database control information (.db) of {targetDb.FullPath.PrettyQuote()} from {targetDb.StructureFileFullPath}.");
+            Log?.Info($"{(repairMode ? "Repairing" : "Creating ")} database control information (.db) of {targetDb.FullPath.PrettyQuote()} from {targetDb.StructureFileFullPath}.");
 
-                var executionOk = dbUtil.TryExecute($"prostrct builddb {targetDb.PhysicalName} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
-                if (!executionOk) {
-                    throw new UoeDatabaseException(dbUtil.BatchOutputString);
-                }
+            var executionOk = dbUtil.TryExecute($"prostrct {(repairMode ? "repair" : "builddb")} {targetDb.PhysicalName} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
+
+            if (!executionOk || repairMode && !dbUtil.BatchOutputString.Contains("(13485)")) {
+                // repair of *** ended. (13485)
+                throw new UoeDatabaseException(dbUtil.BatchOutputString);
             }
         }
 
@@ -418,7 +321,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="structureFilePath"></param>
         /// <param name="validate"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void AddStructureDefinition(UoeDatabase targetDb, string structureFilePath, bool validate = false) {
+        public void AddStructureDefinition(UoeDatabaseLocation targetDb, string structureFilePath, bool validate = false) {
             targetDb.ThrowIfNotExist();
 
             structureFilePath = structureFilePath?.MakePathAbsolute();
@@ -435,6 +338,8 @@ namespace Oetools.Utilities.Openedge.Database {
             var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = targetDb.DirectoryPath;
 
+            CreateExtentsDirectories(targetDb, structureFilePath);
+
             Log?.Info($"Appending new extents from {structureFilePath.PrettyQuote()} to the database structure of {targetDb.FullPath.PrettyQuote()}.");
 
             var executionOk = dbUtil.TryExecute($"prostrct {qualifier} {targetDb.PhysicalName} {structureFilePath.CliQuoter()} {(validate ? "-validate" : "")} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
@@ -448,122 +353,43 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Copy a database (procopy).
+        /// Removes storage areas or extents within storage areas.
         /// </summary>
-        /// <param name="targetDb">Path to the target database</param>
-        /// <param name="sourceDb">Path of the procopy source database</param>
-        /// <param name="newInstance">Use -newinstance in procopy command</param>
-        /// <param name="relativePath">Use -relativepath in procopy command</param>
+        /// <param name="targetDb"></param>
+        /// <param name="extentToken">Indicates the type of extent to remove. Specify one of the following: d, bi, ai, tl</param>
+        /// <param name="storageArea">Specifies the name of the storage area to remove.</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void Copy(UoeDatabase targetDb, UoeDatabase sourceDb, bool newInstance = true, bool relativePath = true) {
-            sourceDb.ThrowIfNotExist();
+        public void RemoveStructureDefinition(UoeDatabaseLocation targetDb, string extentToken, string storageArea) {
+            targetDb.ThrowIfNotExist();
 
-            if (!Directory.Exists(targetDb.DirectoryPath)) {
-                Directory.CreateDirectory(targetDb.DirectoryPath);
+            if (string.IsNullOrEmpty(extentToken)) {
+                throw new UoeDatabaseException("The extent token can't be empty, it must be one of the following: d, bi, ai, tl.");
+            }
+            if (string.IsNullOrEmpty(storageArea)) {
+                throw new UoeDatabaseException("The name of storage area to remove must be specified.");
             }
 
             var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-            CreateExtentsDirectories(targetDb);
+            Log?.Info($"Removing extent {extentToken.PrettyQuote()} named {storageArea.PrettyQuote()} from the database {targetDb.FullPath.PrettyQuote()}.");
 
-            Log?.Info($"Copying database {sourceDb.FullPath.PrettyQuote()} to {targetDb.FullPath.PrettyQuote()}.");
-
-            var executionOk = dbUtil.TryExecute($"procopy {sourceDb.FullPath.CliQuoter()} {targetDb.PhysicalName}{(newInstance ? " -newinstance" : "")}{(relativePath ? " -relative" : "")} {InternationalizationStartupParameters}");
-            if (!executionOk || !dbUtil.BatchOutputString.Contains("(1365)")) {
-                // db copied from C:\progress\client\v117x_dv\dlc\empty1. (1365)
-                throw new UoeDatabaseException(dbUtil.BatchOutputString);
-            }
-        }
-
-        /// <summary>
-        /// Copy an empty database from the openedge installation directory.
-        /// </summary>
-        /// <param name="targetDb">Path to the target database</param>
-        /// <param name="blockSize">Block size for the database prostrct create</param>
-        /// <param name="codePage">Database codepage (copy from $DLC/prolang/codepage/emptyX)</param>
-        /// <param name="newInstance">Use -newinstance in procopy command</param>
-        /// <param name="relativePath">Use -relativepath in procopy command</param>
-        /// <exception cref="UoeDatabaseException"></exception>
-        internal void ProcopyEmpty(UoeDatabase targetDb, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
-            if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
-                blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
-            }
-
-            string emptyDirectoryPath;
-            if (!string.IsNullOrEmpty(codePage)) {
-                emptyDirectoryPath = Path.Combine(DlcPath, "prolang", codePage);
-                if (!Directory.Exists(emptyDirectoryPath)) {
-                    throw new UoeDatabaseException($"Invalid codepage, the folder doesn't exist: {emptyDirectoryPath.PrettyQuote()}.");
+            for (int i = 0; i < 2; i++) {
+                var executionOk = dbUtil.TryExecute($"prostrct remove {targetDb.PhysicalName} {extentToken} {storageArea.CliQuoter()} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
+                if (!executionOk || !dbUtil.BatchOutputString.Contains("(6968)")) {
+                    // successfully removed. (6968)
+                    if (i == 0 && dbUtil.BatchOutputString.Contains("(6953)")) {
+                        // You must use the proutil truncate bi command before doing a remove. (6953).
+                        TruncateBi(targetDb);
+                        continue;
+                    }
+                    throw new UoeDatabaseException(dbUtil.BatchOutputString);
                 }
-            } else {
-                emptyDirectoryPath = DlcPath;
+                break;
             }
 
-            var sourceDb = new UoeDatabase(Path.Combine(emptyDirectoryPath, $"empty{(int) blockSize}.db"));
-
-            if (!sourceDb.Exists()) {
-                throw new UoeDatabaseException($"Could not find the procopy source database: {sourceDb.FullPath.PrettyQuote()}.");
-            }
-
-            Copy(targetDb, sourceDb, newInstance, relativePath);
-        }
-
-        /// <summary>
-        /// Create a new empty database.
-        /// </summary>
-        /// <param name="targetDb">Path to the target database</param>
-        /// <param name="structureFilePath">Path to the .st file, a prostrct create will be executed with it to create the database</param>
-        /// <param name="blockSize">Block size for the database prostrct create</param>
-        /// <param name="codePage">Database codepage (copy from $DLC/prolang/codepage/emptyX)</param>
-        /// <param name="newInstance">Use -newinstance in procopy command</param>
-        /// <param name="relativePath">Use -relativepath in procopy command</param>
-        /// <exception cref="UoeDatabaseException"></exception>
-        public void Create(UoeDatabase targetDb, string structureFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
-            if (targetDb.Exists()) {
-                throw new UoeDatabaseException($"The database already exists: {targetDb.FullPath.PrettyQuote()}.");
-            }
-
-            if (!string.IsNullOrEmpty(structureFilePath)) {
-                CreateVoidDatabase(targetDb, structureFilePath, blockSize);
-            }
-            ProcopyEmpty(targetDb, blockSize, codePage, newInstance, relativePath);
-        }
-
-        /// <summary>
-        /// Start a databaser server
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="nbUsers"></param>
-        /// <param name="options"></param>
-        /// <returns>start parameters string</returns>
-        public string ProServe(UoeDatabase targetDb, int? nbUsers = null, string options = null) {
-            return ProServe(targetDb, null, nbUsers, options);
-        }
-
-        /// <summary>
-        /// Start a databaser server
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="servicePort"></param>
-        /// <param name="nbUsers"></param>
-        /// <param name="options"></param>
-        /// <returns>start parameters string</returns>
-        public string ProServe(UoeDatabase targetDb, int servicePort, int? nbUsers = null, string options = null) {
-            return ProServe(targetDb, servicePort.ToString(), nbUsers, options);
-        }
-
-        /// <summary>
-        /// Start a database server
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="serviceName"></param>
-        /// <param name="nbUsers"></param>
-        /// <param name="options"></param>
-        /// <exception cref="UoeDatabaseException"></exception>
-        /// <returns>start parameters string</returns>
-        public string ProServe(UoeDatabase targetDb, string serviceName, int? nbUsers = null, string options = null) {
-            return ProServe(targetDb, null, serviceName, nbUsers, options);
+            // we updated .db, now update the .st with the .db
+            UpdateStructureFile(targetDb);
         }
 
         /// <summary>
@@ -572,19 +398,12 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="targetDb"></param>
         /// <param name="hostname"></param>
         /// <param name="serviceName"></param>
-        /// <param name="nbUsers"></param>
-        /// <param name="options"></param>
+        /// <param name="nbUsers">Set the expected number of users that will use this db simultaneously, it will set the options to have only one broker starting with that broker being able to handle that many users.</param>
+        /// <param name="options">https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm/database-startup-parameters.html</param>
         /// <exception cref="UoeDatabaseException"></exception>
         /// <returns>start parameters string</returns>
-        public string ProServe(UoeDatabase targetDb, string hostname, string serviceName, int? nbUsers = null, string options = null) {
+        public string Start(UoeDatabaseLocation targetDb, string hostname = null, string serviceName = null, int? nbUsers = null, string options = null) {
             targetDb.ThrowIfNotExist();
-
-            if (nbUsers != null) {
-                var mn = 1;
-                var ma = nbUsers;
-                var userOptions = $"-n {mn * ma + 1} -Mi {ma} -Ma {ma} -Mn {mn} -Mpb {mn}";
-                options = options == null ? userOptions : $"{userOptions} {options}";
-            }
 
             // check if busy
             DatabaseBusyMode busyMode = GetBusyMode(targetDb);
@@ -595,12 +414,18 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException("Database already used in multi user mode.");
             }
 
+            if (!string.IsNullOrEmpty(serviceName)) {
+                options = $"-S {serviceName} {options}";
+            }
+
             if (!string.IsNullOrEmpty(hostname)) {
                 options = $"-N TCP -H {hostname} {options}";
             }
 
-            if (!string.IsNullOrEmpty(serviceName)) {
-                options = $"-S {serviceName} {options}";
+            if (nbUsers != null) {
+                var mn = 1;
+                var ma = nbUsers;
+                options = $"-n {mn * ma + 1} -Mi {ma} -Ma {ma} -Mn {mn} -Mpb {mn} {options}";
             }
 
             options = $"{targetDb.PhysicalName} {options} {InternationalizationStartupParameters}".CliCompactWhitespaces();
@@ -645,7 +470,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="targetDb"></param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        public DatabaseBusyMode GetBusyMode(UoeDatabase targetDb) {
+        public DatabaseBusyMode GetBusyMode(UoeDatabaseLocation targetDb) {
             targetDb.ThrowIfNotExist();
 
             var proUtil = GetExecutable(ProUtilName);
@@ -667,6 +492,456 @@ namespace Oetools.Utilities.Openedge.Database {
                     return DatabaseBusyMode.SingleUser;
                 default:
                     return DatabaseBusyMode.NotBusy;
+            }
+        }
+
+        /// <summary>
+        /// Shutdown a database started in multi user mode
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="options"></param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void Shutdown(UoeDatabaseLocation targetDb, string options = null) {
+            targetDb.ThrowIfNotExist();
+
+            var proshut = GetExecutable(ProshutName);
+            proshut.WorkingDirectory = targetDb.DirectoryPath;
+
+            Log?.Info($"Shutting down database server for {targetDb.FullPath.PrettyQuote()}.");
+
+            proshut.TryExecute($"{targetDb.PhysicalName} -by {options} {InternationalizationStartupParameters}");
+
+            if (GetBusyMode(targetDb) != DatabaseBusyMode.NotBusy) {
+                throw new UoeDatabaseException(proshut.BatchOutputString);
+            }
+        }
+
+        /// <summary>
+        /// Deletes the database, expects the database to be stopped first. Does not delete the .st file.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void Delete(UoeDatabaseLocation targetDb) {
+            targetDb.ThrowIfNotExist();
+
+            var busyMode = GetBusyMode(targetDb);
+            if (busyMode != DatabaseBusyMode.NotBusy) {
+                throw new UoeDatabaseException($"The database is still in use: {busyMode}.");
+            }
+
+            try {
+                UpdateStructureFile(targetDb);
+            } catch (Exception e) {
+                Log?.Debug($"Caught exception while trying to generate the structure file: {e.Message}");
+            }
+
+            Log?.Info($"Deleting database files for {targetDb.FullPath.PrettyQuote()} using the content of {targetDb.PhysicalName}.st.");
+
+            foreach (var file in ListDatabaseFiles(targetDb, true)) {
+                Log?.Debug($"Deleting: {file.PrettyQuote()}.");
+                File.Delete(file);
+            }
+
+        }
+
+        /// <summary>
+        /// Creates the necessary directories to create the extents listed in the .st file.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="structureFile"></param>
+        internal void CreateExtentsDirectories(UoeDatabaseLocation targetDb, string structureFile) {
+            if (!File.Exists(structureFile)) {
+                throw new UoeDatabaseException($"The structure file does not exist: {structureFile}.");
+            }
+
+            foreach (var file in ListDatabaseFiles(targetDb, false, structureFile)) {
+                var dir = Path.GetDirectoryName(file);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+                    Log?.Debug($"Creating directory: {file.PrettyQuote()}.");
+                    Directory.CreateDirectory(dir);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get a list of files used by the database described by the given .st path.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="filesMustExist"></param>
+        /// <param name="structureFile"></param>
+        /// <returns></returns>
+        internal IEnumerable<String> ListDatabaseFiles(UoeDatabaseLocation targetDb, bool filesMustExist = true, string structureFile = null) {
+            var stRegex = new Regex(@"^(?<type>[abdt])(?<areainfo>\s""(?<areaname>[\w\s]+)""(:(?<areanum>[0-9]+))?(,(?<recsPerBlock>[0-9]+))?(;(?<blksPerCluster>[0-9]+))?)?\s((?<path>[^\s""!]+)|!""(?<pathquoted>[^""]+)"")(\s(?<extentType>[f|v])\s(?<extentSize>[0-9]+))?", RegexOptions.Multiline);
+
+            foreach (var ext in new List<string> { "lk", "lic", "lg", "db" }) {
+                var path = Path.ChangeExtension(targetDb.FullPath, ext);
+                if (!filesMustExist || File.Exists(path)) {
+                    yield return path;
+                }
+            }
+
+            structureFile = structureFile ?? targetDb.StructureFileFullPath;
+            if (!File.Exists(structureFile)) {
+                yield break;
+            }
+
+            var areas = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
+
+            var areaNumAuto = 6;
+            foreach (Match match in stRegex.Matches(File.ReadAllText(structureFile))) {
+                var path = match.Groups["pathquoted"].Value;
+                if (string.IsNullOrEmpty(path)) {
+                    path = match.Groups["path"].Value;
+                }
+
+                if (string.IsNullOrEmpty(path)) {
+                    continue;
+                }
+                path = path.MakePathAbsolute(targetDb.DirectoryPath);
+
+                var areaType = match.Groups["type"].Value;
+                var isSchemaOrData = areaType == "d";
+                var areaName = match.Groups["areaname"].Value;
+
+                var areaId = $"{areaType}{areaName}{match.Groups["areanum"].Value}";
+                if (!areas.ContainsKey(areaId)) {
+                    areas.Add(areaId, 1);
+                    if (isSchemaOrData) {
+                        areaNumAuto++;
+                    }
+                } else {
+                    areas[areaId]++;
+                }
+
+                var areaNum = match.Groups["areanum"].Success ? int.Parse(match.Groups["areanum"].Value) : areaNumAuto;
+                if (areaName.Equals("Schema Area", StringComparison.CurrentCultureIgnoreCase)) {
+                    areaNum = 6;
+                }
+
+                var suffix = isSchemaOrData && areaNum > 6 ? $"_{areaNum}" : "";
+                var fileName = $"{targetDb.PhysicalName}{suffix}.{areaType}{areas[areaId]}";
+                var filePath = path.EndsWith(fileName, StringComparison.OrdinalIgnoreCase) ? path : Path.Combine(path, fileName);
+
+                if (!filesMustExist || File.Exists(filePath)) {
+                    yield return filePath;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Generates a .st file at the given location, create all the needed AREA found in the given .df
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="sourceDfPath"></param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        /// <returns>file path to the created structure file</returns>
+        public string GenerateStructureFileFromDf(UoeDatabaseLocation targetDb, string sourceDfPath) {
+            sourceDfPath = sourceDfPath?.MakePathAbsolute();
+            if (string.IsNullOrEmpty(sourceDfPath) || !File.Exists(sourceDfPath)) {
+                throw new UoeDatabaseException($"The file path for data definition file .df does not exist: {sourceDfPath.PrettyQuote()}.");
+            }
+
+            var stContent = new StringBuilder("b .\n");
+            stContent.Append("d \"Schema Area\" .\n");
+            var areaAdded = new HashSet<string> { "Schema Area" };
+            foreach (Match areaName in new Regex("AREA \"([^\"]+)\"").Matches(File.ReadAllText(sourceDfPath, Encoding))) {
+                if (!areaAdded.Contains(areaName.Groups[1].Value)) {
+                    stContent.Append($"d \"{areaName.Groups[1].Value}\" .\n");
+                    areaAdded.Add(areaName.Groups[1].Value);
+                }
+            }
+
+            try {
+                File.WriteAllText(targetDb.StructureFileFullPath, stContent.ToString(), Encoding);
+            } catch (Exception e) {
+                throw new UoeDatabaseException($"Could not write {targetDb.StructureFileFullPath.PrettyQuote()}: {e.Message}.", e);
+            }
+
+            Log?.Info($"Generated database physical structure file {targetDb.StructureFileFullPath.PrettyQuote()} from schema definition file {sourceDfPath.PrettyQuote()}.");
+
+            return targetDb.StructureFileFullPath;
+        }
+
+        /// <summary>
+        /// Returns a connection string to use to connect to the given database.
+        /// Use this method when the state of the database is unknown and we need o connect to it whether in single or multi user mode.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="logicalName"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public UoeConnectionString GetConnectionString(UoeDatabaseLocation targetDb, string logicalName = null) {
+            targetDb.ThrowIfNotExist();
+
+            if (GetBusyMode(targetDb) == DatabaseBusyMode.NotBusy) {
+                return UoeConnectionString.NewSingleUserConnection(targetDb, logicalName);
+            }
+
+            var logFilePath = Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg");
+            Log?.Debug($"Reading database log file to figure out the connection string: {logFilePath.PrettyQuote()}.");
+            ReadLogFile(logFilePath, out string hostName, out string serviceName);
+            if (string.IsNullOrEmpty(serviceName) || serviceName.Equals("0", StringComparison.Ordinal)) {
+                serviceName = null;
+                hostName = null;
+            }
+            return UoeConnectionString.NewMultiUserConnection(targetDb, logicalName, hostName, serviceName);
+        }
+
+        /// <summary>
+        /// Truncates the log file. If the database is started, it will re-log the database startup parameters to the log file.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void TruncateLog(UoeDatabaseLocation targetDb) {
+            targetDb.ThrowIfNotExist();
+
+            var dbUtil = GetExecutable(DbUtilName);
+            dbUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+            string online =  null;
+            if (GetBusyMode(targetDb) == DatabaseBusyMode.MultiUser) {
+                online = " -online";
+                Log?.Debug("The database is served for multi-users, using the `-online` option.");
+            }
+
+            try {
+                dbUtil.Execute($"prolog {targetDb.PhysicalName}{online} {InternationalizationStartupParameters}");
+            } catch(Exception) {
+                throw new UoeDatabaseException(dbUtil.BatchOutputString);
+            }
+        }
+
+        /// <summary>
+        /// Performs the following three functions:
+        /// - Uses the information in the before-image (BI) files to bring the database and after-image (AI) files up to date, waits to verify that the information has been successfully written to the disk, then truncates the before-image file to its original length.
+        /// - Sets the BI cluster size using the Before-image Cluster Size (-bi) parameter.
+        /// - Sets the BI block size using the Before-image Block Size (-biblocksize) parameter.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="options">{[ -G n]| -bi size| -biblocksize size }</param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void TruncateBi(UoeDatabaseLocation targetDb, string options = null) {
+            targetDb.ThrowIfNotExist();
+
+            Log?.Info($"Truncate BI for the database {targetDb.FullPath.PrettyQuote()}.");
+
+            var proUtil = GetExecutable(ProUtilName);
+            proUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C truncate bi {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
+            if (!executionOk) {
+                throw new UoeDatabaseException(proUtil.BatchOutputString);
+            }
+        }
+
+        /// <summary>
+        /// Rebuild the indexed of a database. By default, rebuilds all the active indexes.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void RebuildIndexes(UoeDatabaseLocation targetDb, string options = "activeindexes") {
+            targetDb.ThrowIfNotExist();
+
+            Log?.Info($"Rebuilding the indexes of {targetDb.FullPath.PrettyQuote()} with the option {options}.");
+
+            var proUtil = GetExecutable(ProUtilName);
+            proUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C idxbuild {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
+            if (!executionOk || !proUtil.BatchOutputString.Contains("(11465)")|| !proUtil.BatchOutputString.Contains(" 0 err")) {
+                // 1 indexes were rebuilt. (11465)
+                throw new UoeDatabaseException(proUtil.BatchOutputString);
+            }
+        }
+
+        /// <summary>
+        /// Dump binary data for the given table.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="dumpDirectoryPath"></param>
+        /// <param name="options"></param>
+        /// <param name="tableName"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void DumpBinaryData(UoeDatabaseLocation targetDb, string tableName, string dumpDirectoryPath, string options = null) {
+            targetDb.ThrowIfNotExist();
+
+            if (string.IsNullOrEmpty(dumpDirectoryPath)) {
+                throw new UoeDatabaseException("The data dump directory path can't be null.");
+            }
+            dumpDirectoryPath = dumpDirectoryPath.MakePathAbsolute();
+            if (!string.IsNullOrEmpty(dumpDirectoryPath) && !Directory.Exists(dumpDirectoryPath)) {
+                Directory.CreateDirectory(dumpDirectoryPath);
+            }
+
+            Log?.Info($"Dumping binary data of table {tableName} to directory {dumpDirectoryPath.PrettyQuote()} from {targetDb.FullPath.PrettyQuote()}.");
+
+            var proUtil = GetExecutable(ProUtilName);
+            proUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C dump {tableName} {dumpDirectoryPath.CliQuoter()} {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
+            if (!executionOk || !proUtil.BatchOutputString.Contains("(6254)")) {
+                // Binary Dump complete. (6254)
+                throw new UoeDatabaseException(proUtil.BatchOutputString);
+            }
+        }
+
+        /// <summary>
+        /// Load binary data to the given database.
+        /// The index of the loaded tables should be rebuilt afterward.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="rebuildIndexes"></param>
+        /// <param name="options"></param>
+        /// <param name="binDataFilePath"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void LoadBinaryData(UoeDatabaseLocation targetDb, string binDataFilePath, bool rebuildIndexes = true, string options = null) {
+            targetDb.ThrowIfNotExist();
+
+            binDataFilePath = binDataFilePath?.MakePathAbsolute();
+            if (!File.Exists(binDataFilePath)) {
+                throw new UoeDatabaseException($"The binary data file does not exist: {binDataFilePath.PrettyQuote()}.");
+            }
+
+            Log?.Info($"Loading binary data from {binDataFilePath.PrettyQuote()} to {targetDb.FullPath.PrettyQuote()}.");
+
+            var proUtil = GetExecutable(ProUtilName);
+            proUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C load {binDataFilePath.CliQuoter()} {options} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
+            if (!executionOk || !proUtil.BatchOutputString.Contains("(6256)")) {
+                if (options?.Contains("build indexes") ?? false) {
+                    Log?.Warn("The build indexes option was used and the load has failed. Be aware that all the indexes are inactive.");
+                }
+                // Binary Load complete. (6256)
+                throw new UoeDatabaseException(proUtil.BatchOutputString);
+            }
+            if (rebuildIndexes && (!options?.Contains("build indexes") ?? false)) {
+                RebuildIndexes(targetDb);
+            }
+        }
+
+        /// <summary>
+        /// Backup a database. The database can either be started (online backup) or stopped (offline backup).
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="targetBackupFile"></param>
+        /// <param name="verbose"></param>
+        /// <param name="scan"></param>
+        /// <param name="compressed"></param>
+        /// <param name="options"></param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void Backup(UoeDatabaseLocation targetDb, string targetBackupFile, bool verbose = true, bool scan = true, bool compressed = true, string options = null) {
+            targetDb.ThrowIfNotExist();
+
+            var busyMode = GetBusyMode(targetDb);
+            if (busyMode == DatabaseBusyMode.SingleUser) {
+                throw new ArgumentException($"The database is used in single user mode: {targetDb.FullPath.PrettyQuote()}.");
+            }
+
+            options = options?.Replace("online", "") ?? "";
+            if (busyMode == DatabaseBusyMode.MultiUser) {
+                // can't use -scan in online mode
+                options = options.Replace("-scan", "");
+            } else if (scan) {
+                options += " -scan";
+            }
+            if (compressed) {
+                options += " -com";
+            }
+            if (verbose) {
+                options += " -verbose";
+            }
+
+            targetBackupFile = targetBackupFile.MakePathAbsolute();
+            var dir = Path.GetDirectoryName(targetBackupFile);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+                Directory.CreateDirectory(dir);
+            }
+
+            if (GetBusyMode(targetDb) == DatabaseBusyMode.NotBusy) {
+                Log?.Debug($"Backing up database {targetDb.FullPath.PrettyQuote()} in offline mode to file {targetBackupFile.PrettyQuote()}.");
+
+                var dbUtil = GetExecutable(DbUtilName);
+                dbUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+                var executionOk = dbUtil.TryExecute($"probkup {targetDb.PhysicalName} {targetBackupFile.CliQuoter()} {options} {InternationalizationStartupParameters}");
+                if (!executionOk || !dbUtil.BatchOutputString.Contains("(3740)")) {
+                    // Backup complete. (3740)
+                    throw new UoeDatabaseException(dbUtil.BatchOutputString);
+                }
+            } else {
+                Log?.Debug($"Backing up database {targetDb.FullPath.PrettyQuote()} in online mode to file {targetBackupFile.PrettyQuote()}.");
+
+                var proShut = GetExecutable(ProshutName);
+                proShut.WorkingDirectory = targetDb.DirectoryPath;
+
+                var executionOk = proShut.TryExecute($"{targetDb.PhysicalName} -C backup online {targetBackupFile.CliQuoter()} {options} {InternationalizationStartupParameters}");
+                if (!executionOk || !proShut.BatchOutputString.Contains("(3740)")) {
+                    // Backup complete. (3740)
+                    throw new UoeDatabaseException(proShut.BatchOutputString);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Restores a full or incremental backup of a database (or verifies the integrity of a database backup).
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="backupFile"></param>
+        /// <param name="options"></param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void Restore(UoeDatabaseLocation targetDb, string backupFile, string options = null) {
+            backupFile = backupFile.MakePathAbsolute();
+            if (!File.Exists(backupFile)) {
+                throw new UoeDatabaseException($"The backup file does not exist: {backupFile.PrettyQuote()}.");
+            }
+
+            Log?.Debug($"Restoring database {targetDb.FullPath.PrettyQuote()} from file {backupFile.PrettyQuote()}.");
+
+            var dbUtil = GetExecutable(DbUtilName);
+            dbUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+            var executionOk = dbUtil.TryExecute($"prorest {targetDb.PhysicalName} {backupFile.CliQuoter()} {options} {InternationalizationStartupParameters}");
+            if (!executionOk) {
+                throw new UoeDatabaseException(dbUtil.BatchOutputString);
+            }
+        }
+
+        /// <summary>
+        /// Loads text data files into a database.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="descriptionFile"></param>
+        /// <param name="dataDirectoryPath"></param>
+        /// <param name="options"></param>
+        /// <remarks>
+        /// - BULKLOAD deactivates indexes on the tables being loaded. Indexes should be rebuilt before accessing data.
+        /// - https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm%2Fcreating-a-bulk-loader-description-file.html%23
+        /// </remarks>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void BulkLoad(UoeDatabaseLocation targetDb, string descriptionFile, string dataDirectoryPath, string options = null) {
+            targetDb.ThrowIfNotExist();
+
+            descriptionFile = descriptionFile?.MakePathAbsolute();
+            if (!File.Exists(descriptionFile)) {
+                throw new UoeDatabaseException($"The bulk loader description file does not exist: {descriptionFile.PrettyQuote()}.");
+            }
+
+            Log?.Info($"Bulk loading data from {dataDirectoryPath.PrettyQuote()} to {targetDb.FullPath.PrettyQuote()} using the description file {descriptionFile.PrettyQuote()}.");
+
+            var proUtil = GetExecutable(ProUtilName);
+            proUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C bulkload {descriptionFile.CliQuoter()} {options} datadir {dataDirectoryPath.CliQuoter()} {InternationalizationStartupParameters} {DatabaseAccessStartupParameters}");
+            if (!executionOk) {
+                throw new UoeDatabaseException(proUtil.BatchOutputString);
             }
         }
 
@@ -719,221 +994,6 @@ namespace Oetools.Utilities.Openedge.Database {
             } catch (Exception) {
                 return "localhost";
             }
-        }
-
-        /// <summary>
-        /// Shutdown a database started in multi user mode
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="options"></param>
-        /// <exception cref="UoeDatabaseException"></exception>
-        public void Proshut(UoeDatabase targetDb, string options = null) {
-            targetDb.ThrowIfNotExist();
-
-            var proshut = GetExecutable(ProshutName);
-            proshut.WorkingDirectory = targetDb.DirectoryPath;
-
-            Log?.Info($"Shutting down database server for {targetDb.FullPath.PrettyQuote()}.");
-
-            proshut.TryExecute($"{targetDb.PhysicalName} -by {options} {InternationalizationStartupParameters}");
-
-            if (GetBusyMode(targetDb) != DatabaseBusyMode.NotBusy) {
-                throw new UoeDatabaseException(proshut.BatchOutputString);
-            }
-        }
-
-        /// <summary>
-        /// Deletes the database, expects the database to be stopped first. Does not delete the .st file.
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <exception cref="UoeDatabaseException"></exception>
-        public void Delete(UoeDatabase targetDb) {
-            targetDb.ThrowIfNotExist();
-
-            var busyMode = GetBusyMode(targetDb);
-            if (busyMode != DatabaseBusyMode.NotBusy) {
-                throw new UoeDatabaseException($"The database is still in use: {busyMode}.");
-            }
-
-            if (!File.Exists(targetDb.StructureFileFullPath)) {
-                Log?.Debug($"The structure file does not exist, creating it: {targetDb.StructureFileFullPath.PrettyQuote()}");
-                UpdateStructureFile(targetDb);
-            }
-
-            Log?.Info($"Deleting database files for {targetDb.FullPath.PrettyQuote()} using the content of {targetDb.PhysicalName}.st.");
-
-            foreach (var file in ListDatabaseFiles(targetDb)) {
-                Log?.Debug($"Deleting: {file.PrettyQuote()}.");
-                File.Delete(file);
-            }
-
-        }
-
-        /// <summary>
-        /// Creates the necessary directories to create the extents listed in the .st file.
-        /// </summary>
-        /// <param name="targetDb"></param>
-        public void CreateExtentsDirectories(UoeDatabase targetDb) {
-            CreateStructureFileIfNeeded(targetDb);
-            if (!File.Exists(targetDb.StructureFileFullPath)) {
-                throw new UoeDatabaseException($"The structure file does not exist: {targetDb.StructureFileFullPath}.");
-            }
-
-            foreach (var file in ListDatabaseFiles(targetDb, false)) {
-                var dir = Path.GetDirectoryName(file);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
-                    Log?.Debug($"Creating directory: {file.PrettyQuote()}.");
-                    Directory.CreateDirectory(dir);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get a list of files used by the database described by the given .st path.
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="filesMustExist"></param>
-        /// <returns></returns>
-        public IEnumerable<String> ListDatabaseFiles(UoeDatabase targetDb, bool filesMustExist = true) {
-            var stRegex = new Regex(@"^(?<type>[abdt])(?<areainfo>\s""(?<areaname>[\w\s]+)""(:(?<areanum>[0-9]+))?(,(?<recsPerBlock>[0-9]+))?(;(?<blksPerCluster>[0-9]+))?)?\s((?<path>[^\s""!]+)|!""(?<pathquoted>[^""]+)"")(\s(?<extentType>[f|v])\s(?<extentSize>[0-9]+))?", RegexOptions.Multiline);
-
-            foreach (var ext in new List<string> { "lk", "lic", "lg", "db" }) {
-                var path = Path.ChangeExtension(targetDb.FullPath, ext);
-                if (!filesMustExist || File.Exists(path)) {
-                    yield return path;
-                }
-            }
-
-            if (string.IsNullOrEmpty(targetDb.FullPath) || !File.Exists(targetDb.FullPath)) {
-                yield break;
-            }
-
-            var areas = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
-
-            var areaNumAuto = 6;
-            foreach (Match match in stRegex.Matches(File.ReadAllText(targetDb.StructureFileFullPath))) {
-                var directory = match.Groups["pathquoted"].Value;
-                if (string.IsNullOrEmpty(directory)) {
-                    directory = match.Groups["path"].Value;
-                }
-
-                if (string.IsNullOrEmpty(directory)) {
-                    continue;
-                }
-                directory = directory.MakePathAbsolute(targetDb.DirectoryPath);
-
-                var areaType = match.Groups["type"].Value;
-                var isSchemaOrData = areaType == "d";
-                var areaName = match.Groups["areaname"].Value;
-
-                var areaId = $"{areaType}{areaName}{match.Groups["areanum"].Value}";
-                if (!areas.ContainsKey(areaId)) {
-                    areas.Add(areaId, 1);
-                    if (isSchemaOrData) {
-                        areaNumAuto++;
-                    }
-                } else {
-                    areas[areaId]++;
-                }
-
-                var areaNum = match.Groups["areanum"].Success ? int.Parse(match.Groups["areanum"].Value) : areaNumAuto;
-                if (areaName.Equals("Schema Area", StringComparison.CurrentCultureIgnoreCase)) {
-                    areaNum = 6;
-                }
-
-                var suffix = isSchemaOrData && areaNum > 6 ? $"_{areaNum}" : "";
-                var fileName = $"{targetDb.PhysicalName}{suffix}.{areaType}{areas[areaId]}";
-                var filePath = directory.EndsWith(fileName, StringComparison.OrdinalIgnoreCase) ? directory : Path.Combine(directory, fileName);
-
-                if (!filesMustExist || File.Exists(filePath)) {
-                    yield return filePath;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Generates a .st file at the given location, create all the needed AREA found in the given .df
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="sourceDfPath"></param>
-        /// <exception cref="UoeDatabaseException"></exception>
-        /// <returns>file path to the created structure file</returns>
-        public string GenerateStructureFileFromDf2(UoeDatabase targetDb, string sourceDfPath) {
-            sourceDfPath = sourceDfPath?.MakePathAbsolute();
-            if (string.IsNullOrEmpty(sourceDfPath) || !File.Exists(sourceDfPath)) {
-                throw new UoeDatabaseException($"The file path for data definition file .df does not exist: {sourceDfPath.PrettyQuote()}.");
-            }
-
-            var stContent = new StringBuilder("b .\n");
-            stContent.Append("d \"Schema Area\" .\n");
-            var areaAdded = new HashSet<string> { "Schema Area" };
-            foreach (Match areaName in new Regex("AREA \"([^\"]+)\"").Matches(File.ReadAllText(sourceDfPath, Encoding))) {
-                if (!areaAdded.Contains(areaName.Groups[1].Value)) {
-                    stContent.Append($"d {areaName.Groups[1].Value.CliQuoter()} .\n");
-                    areaAdded.Add(areaName.Groups[1].Value);
-                }
-            }
-
-            try {
-                File.WriteAllText(targetDb.StructureFileFullPath, stContent.ToString(), Encoding.ASCII);
-            } catch (Exception e) {
-                throw new UoeDatabaseException($"Could not write {targetDb.StructureFileFullPath.PrettyQuote()}: {e.Message}.", e);
-            }
-
-            Log?.Info($"Generated database physical structure file {targetDb.StructureFileFullPath.PrettyQuote()} from schema definition file {sourceDfPath.PrettyQuote()}.");
-
-            return targetDb.StructureFileFullPath;
-        }
-
-        /// <summary>
-        /// Copy a source .st file to the target database directory, replacing any specific path by the relative path "."
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="targetStFilePath"></param>
-        /// <returns></returns>
-        /// <exception cref="UoeDatabaseException"></exception>
-        public string MakeStructureFileUseRelativePath(UoeDatabase targetDb, string targetStFilePath = null) {
-            if (!File.Exists(targetDb.StructureFileFullPath)) {
-                throw new UoeDatabaseException($"Could not find the source structure file: {targetDb.StructureFileFullPath.PrettyQuote()}.");
-            }
-
-            targetStFilePath = targetStFilePath?.MakePathAbsolute() ?? targetDb.StructureFileFullPath;
-
-            var newContent = new Regex("^(?<firstpart>\\w\\s+(\"[^\"]+\"(:\\d+)?(,\\d+)?(;\\d+)?)?\\s+)(?<path>\\S+|\"[^\"]+\")(?<extendTypeSize>(\\s+\\w+\\s+\\d+)?\\s*)$", RegexOptions.Multiline)
-                .Replace(File.ReadAllText(targetStFilePath, Encoding), match => {
-                    return $"{match.Groups["firstpart"]}.{match.Groups["extendTypeSize"]}";
-                });
-
-            Utils.CreateDirectoryForFileIfNeeded(targetStFilePath);
-
-            File.WriteAllText(targetStFilePath, newContent, Encoding);
-
-            Log?.Info($"Copied database physical structure file to {targetStFilePath.PrettyQuote()}.");
-
-            return targetStFilePath;
-        }
-
-        /// <summary>
-        /// Returns a connection string to use to connect to the given database.
-        /// Use this method when the state of the database is unknown and we need o connect to it whether in single or multi user mode.
-        /// </summary>
-        /// <param name="targetDb"></param>
-        /// <param name="logicalName"></param>
-        /// <returns></returns>
-        /// <exception cref="UoeDatabaseException"></exception>
-        public UoeConnectionString GetConnectionString(UoeDatabase targetDb, string logicalName = null) {
-            targetDb.ThrowIfNotExist();
-            if (GetBusyMode(targetDb) == DatabaseBusyMode.NotBusy) {
-                return UoeConnectionString.NewSingleUserConnection(targetDb, logicalName);
-            }
-            var logFilePath = Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg");
-            Log?.Debug($"Reading database log file to figure out the connection string: {logFilePath.PrettyQuote()}.");
-            ReadLogFile(logFilePath, out string hostName, out string serviceName);
-            if (string.IsNullOrEmpty(serviceName) || serviceName.Equals("0", StringComparison.Ordinal)) {
-                serviceName = null;
-                hostName = null;
-            }
-            return UoeConnectionString.NewMultiUserConnection(targetDb, logicalName, hostName, serviceName);
         }
 
         /// <summary>

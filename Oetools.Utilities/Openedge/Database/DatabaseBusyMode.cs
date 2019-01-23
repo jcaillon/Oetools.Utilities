@@ -37,12 +37,24 @@
 // ========================================================================
 #endregion
 namespace Oetools.Utilities.Openedge.Database {
+
     /// <summary>
     /// Describes how a database is used.
     /// </summary>
     public enum DatabaseBusyMode {
+        /// <summary>
+        /// The database is available to be started for multi user or used by a single user in self service.
+        /// </summary>
         NotBusy,
+
+        /// <summary>
+        /// The database is used (locked) by a single user.
+        /// </summary>
         SingleUser,
+
+        /// <summary>
+        /// The database is ready to accept multi-user connections (broker started).
+        /// </summary>
         MultiUser
     }
 }

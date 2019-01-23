@@ -80,8 +80,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 return;
             }
 
-            var base1Db = new UoeDatabase(Path.Combine(TestFolder, "base1.db"));
-            var base2Db = new UoeDatabase(Path.Combine(TestFolder, "base2.db"));
+            var base1Db = new UoeDatabaseLocation(Path.Combine(TestFolder, "base1.db"));
+            var base2Db = new UoeDatabaseLocation(Path.Combine(TestFolder, "base2.db"));
 
             if (!base1Db.Exists()) {
                 var dfPath = Path.Combine(TestFolder, "base1.df");

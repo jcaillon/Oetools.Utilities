@@ -39,9 +39,13 @@
 namespace Oetools.Utilities.Openedge.Database {
 
     /// <summary>
-    /// Describes the block size of a database
+    /// Describes the block size of a database (the initial S stands for size, the number is the block size in bytes).
     /// </summary>
     public enum DatabaseBlockSize : byte {
+
+        /// <summary>
+        /// The default block size depending on the platform (linux/windows).
+        /// </summary>
         DefaultForCurrentPlatform = 0,
         S1024 = 1,
         S2048 = 2,

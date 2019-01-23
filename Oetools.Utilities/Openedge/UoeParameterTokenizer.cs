@@ -25,7 +25,6 @@ using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Lib.ParameterStringParser;
 using Oetools.Utilities.Openedge.Database;
-using Oetools.Utilities.Openedge.Database.ParameterStringParser;
 
 namespace Oetools.Utilities.Openedge {
 
@@ -36,7 +35,7 @@ namespace Oetools.Utilities.Openedge {
 
         protected int _tokenPos = -1;
 
-        protected List<Token> _tokenList;
+        protected List<ParameterStringToken> _tokenList;
 
         public UoeParameterTokenizer(string parameterString) {
             _tokenList = GetTokensFromParameterString(parameterString);
@@ -48,24 +47,24 @@ namespace Oetools.Utilities.Openedge {
         /// <param name="parameterString"></param>
         /// <returns></returns>
         /// <exception cref="UoeConnectionStringParseException"></exception>
-        private List<Token> GetTokensFromParameterString(string parameterString) {
-            var tokenizer = new Tokenizer(parameterString);
-            var output = new List<Token>();
+        private static List<ParameterStringToken> GetTokensFromParameterString(string parameterString) {
+            var tokenizer = new ParameterStringTokenizer(parameterString);
+            var output = new List<ParameterStringToken>();
             do {
                 var token = tokenizer.PeekAtToken(0);
-                if (token is TokenOption && token.Value.Equals("-pf", StringComparison.Ordinal)) {
+                if (token is ParameterStringTokenOption && token.Value.Equals("-pf", StringComparison.Ordinal)) {
                     var pfPath = tokenizer.PeekAtToken(2);
-                    if (pfPath is TokenValue) {
+                    if (pfPath is ParameterStringTokenValue) {
                         var pfFilePath = pfPath.Value.StripQuotes().MakePathAbsolute();
                         if (!File.Exists(pfFilePath)) {
                             throw new UoeConnectionStringParseException($"The parameter file {pfFilePath.PrettyQuote()} does not exist but is used in the parameter string: {parameterString.PrettyQuote()}.");
                         }
-                        _tokenList.AddRange(GetTokensFromParameterString(File.ReadAllText(pfFilePath)));
+                        output.AddRange(GetTokensFromParameterString(File.ReadAllText(pfFilePath)));
                     } else {
                         throw new UoeConnectionStringParseException($"Expecting a parameter file path after the -pf option in the parameter string: {parameterString.PrettyQuote()}.");
                     }
                 }
-                _tokenList.Add(token);
+                output.Add(token);
             } while (tokenizer.MoveToNextToken());
             return output;
         }
@@ -89,8 +88,17 @@ namespace Oetools.Utilities.Openedge {
         /// To use this lexer as an enumerator,
         /// peek at the current pos + x token of the list, returns a new TokenEof if can't find
         /// </summary>
-        public virtual Token PeekAtToken(int x) {
-            return _tokenPos + x >= _tokenList.Count || _tokenPos + x < 0 ? new TokenEof("") : _tokenList[_tokenPos + x];
+        public virtual ParameterStringToken PeekAtToken(int x) {
+            return _tokenPos + x >= _tokenList.Count || _tokenPos + x < 0 ? new ParameterStringTokenEof("") : _tokenList[_tokenPos + x];
+        }
+
+        /// <summary>
+        /// To use this lexer as an enumerator,
+        /// peek at the current pos + x token of the list, returns a new TokenEof if can't find
+        /// </summary>
+        public virtual ParameterStringToken MoveAndPeekAtToken(int x) {
+            _tokenPos += x;
+            return _tokenPos >= _tokenList.Count || _tokenPos < 0 ? new ParameterStringTokenEof("") : _tokenList[_tokenPos];
         }
     }
 }
