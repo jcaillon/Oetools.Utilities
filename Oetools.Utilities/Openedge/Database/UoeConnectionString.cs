@@ -98,7 +98,6 @@ namespace Oetools.Utilities.Openedge.Database {
             if (ExtraOptions.Length > 0) {
                 result.Append(' ').Append(ExtraOptions);
             }
-
             return result.TrimEnd().ToString();
         }
 

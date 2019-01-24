@@ -101,7 +101,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             if (PhysicalName.Any(c => !c.IsAsciiLetter() && !char.IsDigit(c) && c != '_' && c != '-')) {
-                throw new UoeDatabaseException($"The logical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters): {PhysicalName.PrettyQuote()}.");
+                throw new UoeDatabaseException($"The physical name of the database contains forbidden characters (should only contain english letters and numbers, underscore (_), and dash (-) characters): {PhysicalName.PrettyQuote()}.");
             }
 
             if (PhysicalName.Length > DbPhysicalNameMaxLength) {
