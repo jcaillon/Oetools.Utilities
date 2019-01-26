@@ -64,7 +64,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;
             }
-            env.DatabaseConnectionString = "-db random -db cool";
+            env.DatabaseConnections = UoeDatabaseConnection.GetConnectionStrings("-db random -db cool");
             using (var exec = new UoeExecutionDbExtractTableAndSequenceList(env)) {
                 exec.Start();
                 exec.WaitForExecutionEnd();
@@ -87,15 +87,15 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 var dfPath = Path.Combine(TestFolder, "base1.df");
                 File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
                 using (var dbAdministrator = new UoeDatabaseAdministrator(env.DlcDirectoryPath)) {
-                    dbAdministrator.Create(base1Db, dfPath);
-                    dbAdministrator.Create(base2Db, dfPath);
+                    dbAdministrator.CreateWithDf(base1Db, dfPath);
+                    dbAdministrator.CreateWithDf(base2Db, dfPath);
                 }
             }
 
-            env.DatabaseConnectionString = $"{UoeConnectionString.NewSingleUserConnection(base1Db)} {UoeConnectionString.NewSingleUserConnection(base2Db)}";
+            env.DatabaseConnections = new []{ UoeDatabaseConnection.NewSingleUserConnection(base1Db), UoeDatabaseConnection.NewSingleUserConnection(base2Db) };
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
-                    DatabaseLogicalName = "dummy",
+                    DatabaseLogicalName = "base1",
                     AliasLogicalName = "alias1"
                 }
             };
@@ -106,8 +106,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
 
-                Assert.AreEqual("dummy.sequence1,alias1.sequence1,base.sequence1", string.Join(",", exec.Sequences), "sequences");
-                Assert.AreEqual("dummy.table1,alias1.table1,dummy._Sequence,alias1._Sequence,base.table1,base._Sequence", string.Join(",", exec.TablesCrc.Keys), "tables");
+                Assert.AreEqual("base1.sequence1,alias1.sequence1,base2.sequence1", string.Join(",", exec.Sequences), "sequences");
+                Assert.AreEqual("base1.table1,alias1.table1,base1._Sequence,alias1._Sequence,base2.table1,base2._Sequence", string.Join(",", exec.TablesCrc.Keys), "tables");
             }
             env.Dispose();
         }

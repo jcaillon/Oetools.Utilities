@@ -127,6 +127,10 @@ namespace Oetools.Utilities.Openedge.Database {
             }
         }
 
+        /// <summary>
+        /// A string representation of a database location.
+        /// </summary>
+        /// <returns></returns>
         public override string ToString() => FullPath;
 
         /// <summary>

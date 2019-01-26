@@ -23,6 +23,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge;
 using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Execution;
@@ -718,7 +719,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
-            env.DatabaseConnectionString = UoeConnectionString.NewMultiUserConnection(DummyDatabaseLocation).ToString();
+            env.DatabaseConnections = UoeDatabaseConnection.NewMultiUserConnection(DummyDatabaseLocation).Yield();
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "dummy",
@@ -789,7 +790,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             env.ProPathList = new List<string> { TestFolder };
             env.UseProgressCharacterMode = true;
-            env.DatabaseConnectionString = UoeConnectionString.NewMultiUserConnection(DummyDatabaseLocation).ToString();
+            env.DatabaseConnections = UoeDatabaseConnection.NewMultiUserConnection(DummyDatabaseLocation).Yield();
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "dummy",

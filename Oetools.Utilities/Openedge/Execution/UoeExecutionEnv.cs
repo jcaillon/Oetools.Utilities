@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeExecutionEnv.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -27,15 +27,15 @@ using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database;
 
 namespace Oetools.Utilities.Openedge.Execution {
-    
+
     public class UoeExecutionEnv : AUoeExecutionEnv, IDisposable {
-        
+
         private string _iniFilePath;
         private string _tempIniFilePath;
         private bool? _canProVersionUseNoSplash;
         private string _dlcDirectoryPath;
         private string _tempDirectory;
-        private string _databaseConnectionString;
+        private IEnumerable<UoeDatabaseConnection> _databaseConnections;
         private Version _proVersion;
 
         /// <inheritdoc cref="AUoeExecutionEnv.DlcDirectoryPath"/>
@@ -52,19 +52,26 @@ namespace Oetools.Utilities.Openedge.Execution {
         public override bool UseProgressCharacterMode { get; set; }
 
         /// <summary>
-        /// Should we add the max try parameter to the connection string?
+        /// Should we add the max try parameter to each connection string?
         /// </summary>
         public bool DatabaseConnectionStringAppendMaxTryOne { get; set; } = true;
-        
-        /// <inheritdoc cref="AUoeExecutionEnv.DatabaseConnectionString"/>
-        public override string DatabaseConnectionString {
-            get => DatabaseConnectionStringAppendMaxTryOne ? UoeDatabaseOperator.AddMaxConnectionTry(_databaseConnectionString) : _databaseConnectionString;
-            set => _databaseConnectionString = value.CliCompactWhitespaces();
+
+        /// <inheritdoc cref="AUoeExecutionEnv.DatabaseConnections"/>
+        public override IEnumerable<UoeDatabaseConnection> DatabaseConnections {
+            get {
+                if (DatabaseConnectionStringAppendMaxTryOne) {
+                    foreach (var uoeDatabaseConnection in _databaseConnections.ToNonNullEnumerable()) {
+                        uoeDatabaseConnection.MaxConnectionTry = 1;
+                    }
+                }
+                return _databaseConnections;
+            }
+            set => _databaseConnections = value;
         }
 
         /// <inheritdoc cref="AUoeExecutionEnv.DatabaseAliases"/>
         public override IEnumerable<IUoeExecutionDatabaseAlias> DatabaseAliases { get; set; }
-        
+
         /// <inheritdoc cref="AUoeExecutionEnv.IniFilePath"/>
         public override string IniFilePath {
             get {
@@ -72,7 +79,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     if (!string.IsNullOrEmpty(_iniFilePath) && File.Exists(_iniFilePath)) {
                         _tempIniFilePath = Path.Combine(TempDirectory, $"ini_{DateTime.Now:HHmmssfff}_{Path.GetRandomFileName()}.ini");
 
-                        // we need to copy the .ini but we must delete the PROPATH= part, as stupid as it sounds, if we leave a huge PROPATH 
+                        // we need to copy the .ini but we must delete the PROPATH= part, as stupid as it sounds, if we leave a huge PROPATH
                         // in this file, it increases the compilation time by a stupid amount... unbelievable i know, but trust me, it does...
                         var fileContent = Utils.ReadAllText(_iniFilePath, GetIoEncoding());
                         var regex = new Regex("^PROPATH=.*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
@@ -92,16 +99,16 @@ namespace Oetools.Utilities.Openedge.Execution {
                 _iniFilePath = value;
             }
         }
-        
+
         /// <inheritdoc cref="AUoeExecutionEnv.ProPathList"/>
         public override List<string> ProPathList { get; set; }
-        
+
         /// <inheritdoc cref="AUoeExecutionEnv.ProExeCommandLineParameters"/>
         public override string ProExeCommandLineParameters { get; set; }
-        
+
         /// <inheritdoc cref="AUoeExecutionEnv.PreExecutionProgramPath"/>
         public override string PreExecutionProgramPath { get; set; }
-        
+
         /// <inheritdoc cref="AUoeExecutionEnv.PostExecutionProgramPath"/>
         public override string PostExecutionProgramPath { get; set; }
 
@@ -138,7 +145,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 return _proVersion;
             }
         }
-        
+
         /// <inheritdoc cref="AUoeExecutionEnv.IsProVersionHigherOrEqualTo"/>
         public override bool IsProVersionHigherOrEqualTo(Version version) {
             return ProVersion != null && version != null && ProVersion.CompareTo(version) >= 0;
@@ -184,9 +191,9 @@ namespace Oetools.Utilities.Openedge.Execution {
                 return _sequences;
             }
         }
-        
+
         private Dictionary<string, string> _tablesCrc;
-        
+
         private HashSet<string> _sequences;
         private Encoding _ioEncoding;
         private string _codePageName;

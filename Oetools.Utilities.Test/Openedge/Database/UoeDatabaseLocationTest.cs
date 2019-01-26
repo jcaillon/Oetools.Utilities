@@ -31,6 +31,19 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeDatabaseLocationTest)));
 
+        [ClassInitialize]
+        public static void Init(TestContext context) {
+            Cleanup();
+            Directory.CreateDirectory(TestFolder);
+        }
+
+        [ClassCleanup]
+        public static void Cleanup() {
+            if (Directory.Exists(TestFolder)) {
+                Directory.Delete(TestFolder, true);
+            }
+        }
+
         [TestMethod]
         public void UoeDatabaseLocation_() {
             var loc = UoeDatabaseLocation.FromOtherFilePath(Path.Combine(TestFolder, "data.st"));

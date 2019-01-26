@@ -132,7 +132,7 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Returns the command line used for the execution.
         /// </summary>
-        public string ExecutedCommandLine => $"{ExecutablePath?.CliQuoter()} {_startInfo?.Arguments}".CliCompactWhitespaces();
+        public string ExecutedCommandLine => $"{ExecutablePath?.ToCliArg()} {_startInfo?.Arguments}";
 
         private int? _exitCode;
 

@@ -91,6 +91,15 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
         }
 
         /// <summary>
+        /// To use this lexer as an enumerator,
+        /// peek at the current pos + x token of the list, returns a new TokenEof if can't find
+        /// </summary>
+        public virtual ParameterStringToken MoveAndPeekAtToken(int x) {
+            _tokenPos += x;
+            return _tokenPos >= _tokenList.Count || _tokenPos < 0 ? new ParameterStringTokenEof("") : _tokenList[_tokenPos];
+        }
+
+        /// <summary>
         /// Call this method to actually tokenize the string
         /// </summary>
         protected void Tokenize() {

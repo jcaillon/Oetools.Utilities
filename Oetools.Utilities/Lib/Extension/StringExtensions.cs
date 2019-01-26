@@ -177,7 +177,25 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="text"></param>
         /// <returns></returns>
         public static string PrettyQuote(this string text) {
-            return $"`{text ?? ""}`";
+            return $"`{text}`";
+        }
+
+        /// <summary>
+        /// A simple double quoter.
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static string Quote(this string text) {
+            return $"\"{text}\"";
+        }
+
+        /// <summary>
+        /// A simple double quoter.
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static string QuoteIfContainsSpace(this string text) {
+            return text.Any(char.IsWhiteSpace) ? $"\"{text}\"" : text;
         }
 
         /// <summary>
@@ -186,7 +204,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="args"></param>
         /// <param name="isWindows"></param>
         /// <returns></returns>
-        public static string EscapedCliArgs(this IEnumerable<string> args, bool? isWindows = null) => string.Join(" ", args.Select(arg => CliQuoter(arg, isWindows)));
+        public static string EscapedCliArgs(this IEnumerable<string> args, bool? isWindows = null) => string.Join(" ", args.Select(arg => ToCliArg(arg, isWindows)));
 
         /// <summary>
         /// Prepare a string representing an argument of a cmd line interface so that it is interpreted as a single argument.
@@ -200,7 +218,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// In linux, you need to escape \ with \\ but not in windows
         /// </remarks>
         /// <returns></returns>
-        public static string CliQuoter(this string text, bool? isWindows = null) {
+        public static string ToCliArg(this string text, bool? isWindows = null) {
             if (string.IsNullOrEmpty(text)) {
                 return @"""""";
             }

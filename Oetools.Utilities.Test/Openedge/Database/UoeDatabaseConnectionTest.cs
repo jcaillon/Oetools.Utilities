@@ -28,10 +28,24 @@ using Oetools.Utilities.Openedge.Database;
 namespace Oetools.Utilities.Test.Openedge.Database {
 
     [TestClass]
-    public class UoeConnectionStringTest {
+    public class UoeDatabaseConnectionTest {
+
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeConnectionStringTest)));
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeDatabaseConnectionTest)));
+
+        [ClassInitialize]
+        public static void Init(TestContext context) {
+            Cleanup();
+            Directory.CreateDirectory(TestFolder);
+        }
+
+        [ClassCleanup]
+        public static void Cleanup() {
+            if (Directory.Exists(TestFolder)) {
+                Directory.Delete(TestFolder, true);
+            }
+        }
 
         [DataRow(@"-db data -ld logi -H hostname -S 1024", 1)]
         [DataRow(@"-db data -ld logi -1", 1)]
@@ -40,17 +54,28 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         [DataRow(@"-option value -db data -ld logi -1 -db data2 -ld logi2 -H hostname -S 1024 -db data3 -ld logi3 -H hostname -S 1025", 3)]
         [DataTestMethod]
         public void GetConnectionStrings_NumberOfCsReturned(string input, int nb) {
-            var list = UoeConnectionString.GetConnectionStrings(input);
+            var list = UoeDatabaseConnection.GetConnectionStrings(input);
             Assert.AreEqual(nb, list.Count());
         }
 
         [DataRow(
-            @"-option value -db data -ld logi -1 -db data2 -option2 value2 -singleoption -ld logi2 -H hostname -S 1024 -db data3 -ld logi3 -H hostname -S 1025",
-            @"-db ""data"" -ld logi -1 -option value -db data2 -ld logi2 -H hostname -S 1024 -option2 value2 -singleoption -db data3 -ld logi3 -H hostname -S 1025")]
+            @"-option value -ct 2 -db data -ld logi -1 -db data2 -option2 value2 -singleoption -ld logi2 -H hostname -S 1024 -db data3 -ld logi3 -H hostname -S 1025",
+            @"-db ""data"" -ld logi -1 -ct 2 -option value -db data2 -ld logi2 -H hostname -S 1024 -option2 value2 -singleoption -db data3 -ld logi3 -H hostname -S 1025")]
         [DataTestMethod]
         public void GetConnectionString(string input, string output) {
-            output = output.Replace(@"""data""", "\"" + Path.Combine(Directory.GetCurrentDirectory(), "data.db") + "\"");
-            Assert.AreEqual(output, UoeConnectionString.GetConnectionString(UoeConnectionString.GetConnectionStrings(input)));
+            output = output.Replace(@"""data""", Path.Combine(Directory.GetCurrentDirectory(), "data.db").Quote());
+            Assert.AreEqual(output, UoeDatabaseConnection.GetConnectionString(UoeDatabaseConnection.GetConnectionStrings(input)));
+        }
+
+        [TestMethod]
+        public void GetConnectionString_WithPf() {
+            var pf1 = Path.Combine(TestFolder, "1.pf");
+            var pf2 = Path.Combine(TestFolder, "2.pf");
+            var pf3 = Path.Combine(TestFolder, "3.pf");
+            File.WriteAllText(pf1, "-pf " + pf2.Quote());
+            File.WriteAllText(pf2, "-db base1 -H hostname -S 1024");
+            File.WriteAllText(pf3, "-db base2\n-H hostname\n# ignore this line!\n-S 1025");
+            Assert.AreEqual("-db base1 -H hostname -S 1024 -db base2 -H hostname -S 1025", UoeDatabaseConnection.GetConnectionString(UoeDatabaseConnection.GetConnectionStrings("-pf " + pf1.Quote() + " -pf " + pf3.Quote())));
         }
 
         [DataRow(@"-option value value")] // 2 values
@@ -60,13 +85,15 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         [DataRow(@"-S -option")]
         [DataRow(@"-ld logi -H hostname -S 1024")] // no -db
         [DataRow(@"-db data -ld logi -H hostname -S 1024 -1")] // -1 with -S
+        [DataRow(@"-db data -1 -pf")] // -pf alone
+        [DataRow(@"-db data -1 -pf missing.pf")] // -pf not existing
         [DataTestMethod]
         public void GetConnectionStrings_Except(string input) {
             Exception e = null;
             try {
-                var list = UoeConnectionString.GetConnectionStrings(input);
+                var list = UoeDatabaseConnection.GetConnectionStrings(input);
                 Assert.AreEqual(1, list.Count());
-            } catch (UoeConnectionStringParseException ex) {
+            } catch (UoeDatabaseConnectionParseException ex) {
                 e = ex;
             }
             Assert.IsNotNull(e);
@@ -75,10 +102,10 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         [TestMethod]
         public void GetConnectionString_Multi_Single() {
 
-            var cs = UoeConnectionString.NewMultiUserConnection(new UoeDatabaseLocation("data")).ToString();
+            var cs = UoeDatabaseConnection.NewMultiUserConnection(new UoeDatabaseLocation("data")).ToString();
             Assert.IsTrue(!cs.Contains("-1") && !cs.Contains("-H"), $"Should have multi user connection string without hostname: {cs.PrettyQuote()}.");
 
-            cs = UoeConnectionString.NewSingleUserConnection(new UoeDatabaseLocation("data")).ToString();
+            cs = UoeDatabaseConnection.NewSingleUserConnection(new UoeDatabaseLocation("data")).ToString();
             Assert.IsTrue(cs.Contains("-1") && cs.Contains("-db"), $"Should have single user connection string.");
         }
     }

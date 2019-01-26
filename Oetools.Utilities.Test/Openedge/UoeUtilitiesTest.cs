@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeUtilitiesTest.cs) is part of Oetools.Utilities.Test.
-// 
+//
 // Oetools.Utilities.Test is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities.Test is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -23,29 +23,41 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Test.Openedge {
-    
+
     [TestClass]
     public class ProUtilitiesTest {
-        
+
         private static string _testFolder;
 
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ProUtilitiesTest)));
 
         [ClassInitialize]
-        public static void Init(TestContext context) {           
+        public static void Init(TestContext context) {
             Cleanup();
             Directory.CreateDirectory(TestFolder);
         }
-        
+
         [ClassCleanup]
         public static void Cleanup() {
             if (Directory.Exists(TestFolder)) {
                 Directory.Delete(TestFolder, true);
             }
+        }
+
+        [TestMethod]
+        public void GetCleanCliArgs() {
+            var pf1 = Path.Combine(TestFolder, "1.pf");
+            var pf2 = Path.Combine(TestFolder, "2.pf");
+            var pf3 = Path.Combine(TestFolder, "3.pf");
+            File.WriteAllText(pf1, "-pf " + pf2.Quote());
+            File.WriteAllText(pf2, "-db \"base1 allo\"    -H hostname     -S 1024");
+            File.WriteAllText(pf3, "-db base2     \n-H hostname\n# ignore this line!\n    -S 1025");
+            Assert.AreEqual("-db \"base1 allo\" -H hostname -S 1024 -db base2 -H hostname -S 1025", UoeUtilities.GetCleanCliArgs("-pf " + pf1.Quote() + " -pf " + pf3.Quote()));
         }
 
         [TestMethod]
@@ -56,12 +68,12 @@ namespace Oetools.Utilities.Test.Openedge {
 
             var output = UoeUtilities.GetProgressSessionDefaultPropath(dlcPath, true);
             Assert.IsTrue(output.Exists(p => p.Contains("tty")));
-            
+
             output = UoeUtilities.GetProgressSessionDefaultPropath(dlcPath, false);
             Assert.IsTrue(output.Exists(p => p.Contains("gui")));
 
         }
-        
+
         [TestMethod]
         [DataRow(49)] // This Technical Support Knowled...
         [DataRow(1)] // The -nb parameter is followed by a number that sp...
@@ -71,15 +83,15 @@ namespace Oetools.Utilities.Test.Openedge {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
             }
-            
+
             var res = UoeUtilities.GetOpenedgeProMessage(dlcPath, errorNumber);
             Debug.WriteLine(res);
             Assert.IsNotNull(res, "null");
         }
-        
+
         [TestMethod]
         public void GetProPathFromIniFile_TestEnvVarReplacement() {
-           
+
             var iniPath = Path.Combine(TestFolder, "test.ini");
             File.WriteAllText(iniPath, "[Startup]\nPROPATH=t:\\error:exception\";C:\\Windows,%TEMP%;z:\\nooooop");
 
@@ -89,7 +101,7 @@ namespace Oetools.Utilities.Test.Openedge {
             Assert.IsTrue(list.ToList().Exists(s => s.Equals("C:\\Windows")));
             Assert.IsTrue(list.ToList().Exists(s => s.Equals(Environment.GetEnvironmentVariable("TEMP"))));
         }
-        
+
         [DataTestMethod]
         [DataRow(@"OpenEdge Release 11.7 as of Mon Mar 27 10:21:54 EDT 2017", 11, 7, 0)]
         [DataRow(@"OpenEdge Release 9.1D05 as of Mon Mar 27 10:21:54 EDT 2017", 9, 1, 5)]
@@ -101,7 +113,7 @@ namespace Oetools.Utilities.Test.Openedge {
             File.WriteAllText(versionFilePath, version);
             Assert.AreEqual(new Version(major, minor, patch), UoeUtilities.GetProVersionFromDlc(TestFolder));
         }
-        
+
         [DataTestMethod]
         [DataRow(@"1250", "Windows-1250", true)]
         [DataRow(@"iso8859-1", "iso-8859-1", true)]
@@ -114,7 +126,7 @@ namespace Oetools.Utilities.Test.Openedge {
                 Assert.AreEqual(Encoding.GetEncoding(expectedEncoding), encoding);
             }
         }
-        
+
         [DataTestMethod]
         [DataRow("Windows-1250", @"1250")]
         [DataRow("iso-8859-1", @"iso8859-1")]
@@ -122,21 +134,21 @@ namespace Oetools.Utilities.Test.Openedge {
         public void GetOpenedgeCodePageFromEncoding_Test(string encoding, string codePage) {
             Assert.AreEqual(UoeUtilities.GetOpenedgeCodePageFromEncoding(Encoding.GetEncoding(encoding)).ToLower(), codePage);
         }
-        
+
         [TestMethod]
         public void GetGuiCodePageFromDlc_Test() {
             var versionFilePath = Path.Combine(TestFolder, "startup.pf");
             File.WriteAllText(versionFilePath, "#\n\n-cpinternal UTF-8\n-cpstream ISO8859-15\n-cpcoll Basic\n-cpcase French");
             Assert.AreEqual("UTF-8", UoeUtilities.GetGuiCodePageFromDlc(TestFolder));
         }
-        
+
         [TestMethod]
         public void GetIoCodePageFromDlc_Test() {
             var versionFilePath = Path.Combine(TestFolder, "startup.pf");
             File.WriteAllText(versionFilePath, "#\n\n-cpinternal UTF-8\n-cpstream ISO8859-15\n-cpcoll Basic\n-cpcase French");
             Assert.AreEqual("ISO8859-15", UoeUtilities.GetIoCodePageFromDlc(TestFolder));
         }
-        
+
         [TestMethod]
         public void GetProExecutableFromDlc_Test() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
@@ -147,7 +159,7 @@ namespace Oetools.Utilities.Test.Openedge {
             Assert.ThrowsException<UoeExecutionParametersException>(() => UoeUtilities.GetProExecutableFromDlc(TestFolder, true));
             Assert.ThrowsException<UoeExecutionParametersException>(() => UoeUtilities.GetProExecutableFromDlc(TestFolder));
         }
-        
+
         [TestMethod]
         public void ListProlibFilesInDirectory_Test() {
             var prolib = Path.Combine(TestFolder, "prolib");
@@ -160,15 +172,15 @@ namespace Oetools.Utilities.Test.Openedge {
             File.WriteAllText(Path.Combine(prolib, "sub", "5.pl"), "");
 
             var plList = UoeUtilities.ListProlibFilesInDirectory(prolib);
-            
+
             Assert.AreEqual(2, plList.Count);
             Assert.IsTrue(plList.Exists(s => Path.GetFileName(s ?? "").Equals("2.pl")));
             Assert.IsTrue(plList.Exists(s => Path.GetFileName(s ?? "").Equals("4.pl")));
         }
-        
+
         [TestMethod]
         [DataRow(@"   -db test
-# comment line  
+# comment line
    -ld   logicalname #other comment
 -H     localhost   -S portnumber", @"-db test -ld logicalname -H localhost -S portnumber")]
         [DataRow(@"", @"")]
@@ -184,37 +196,37 @@ namespace Oetools.Utilities.Test.Openedge {
 
             Assert.AreEqual(expected, connectionString);
         }
-        
+
         [TestMethod]
         [DataRow(@"
 ""C:\folder space\file.p"" ""C:\folder space\file.p"" 4 ACCESS random.sequence1 SEQUENCE
 /*MESSAGE STRING(CURRENT-VALUE(sequence1)).*/
 ""C:\folder space\file.p"" ""C:\folder space\file.p"" 7 UPDATE random.sequence2 SEQUENCE
 /*ASSIGN CURRENT-VALUE(sequence1) = 1.*/
- ""C:\folder space\file.p"" ""C:\folder space\file.p"" 10 SEARCH random.table1 idx_1 WHOLE-INDEX 
+ ""C:\folder space\file.p"" ""C:\folder space\file.p"" 10 SEARCH random.table1 idx_1 WHOLE-INDEX
 /*FIND FIRST table1.*/
-""C:\folder space\file.p"" ""C:\folder space\file.p"" 16 ACCESS random.table2 field1 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 16 ACCESS random.table2 field1
 ""C:\folder space\file.p"" ""C:\folder space\file.p"" 16 SEARCH random.table3 idx_1 WHOLE-INDEX
 /*FOR EACH table1 BY table1.field1:*/
 /*END.*/
- ""C:\folder space\file.p"" ""C:\folder space\file.p"" 20 CREATE random.table4  
+ ""C:\folder space\file.p"" ""C:\folder space\file.p"" 20 CREATE random.table4
 /*CREATE table1.*/
-""C:\folder space\file.p"" ""C:\folder space\file.p"" 24 ACCESS DATA-MEMBER random.table5 field1 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 24 ACCESS DATA-MEMBER random.table5 field1
 ""C:\folder space\file.p"" ""C:\folder space\file.p"" 24 UPDATE random.table6 field1
 /*ASSIGN table1.field1 = """".*/
-""C:\folder space\file.p"" ""C:\folder space\file.p"" 27 DELETE random.table7 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 27 DELETE random.table7
 /*DELETE table1.*/
-""C:\folder space\file.p"" ""C:\folder space\file.p"" 32 REFERENCE random.table8 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 32 REFERENCE random.table8
 ""C:\folder space\file.p"" ""C:\folder space\file.p"" 32 NEW-SHR-WORKFILE WORKtable1 LIKE random.table9
 /*DEFINE NEW SHARED WORKFILE wftable1 NO-UNDO LIKE table1.*/
 /*DEFINE NEW SHARED WORK-TABLE wttable1 NO-UNDO LIKE table1.  same thing as WORKFILE */
-""C:\folder space\file.p"" ""C:\folder space\file.p"" 38 REFERENCE random.table10 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 38 REFERENCE random.table10
 ""C:\folder space\file.p"" ""C:\folder space\file.p"" 38 SHR-WORKFILE WORKtable LIKE random.table11
 /*DEFINE SHARED WORKFILE wftable2 NO-UNDO LIKE table1.*/
 /*DEFINE SHARED WORK-TABLE wttable2 NO-UNDO LIKE table1.  same thing as WORKFILE */
-""C:\folder space\file.p"" ""C:\folder space\file.p"" 42 REFERENCE random.table12 field1 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 42 REFERENCE random.table12 field1
 /*DEFINE VARIABLE lc_ LIKE table1.field1 NO-UNDO.*/
-""C:\folder space\file.p"" ""C:\folder space\file.p"" 45 REFERENCE random.table13 
+""C:\folder space\file.p"" ""C:\folder space\file.p"" 45 REFERENCE random.table13
 /*DEFINE TEMP-TABLE tt1 LIKE table1.*/
 ", @"random.sequence1,random.sequence2,random.table1,random.table2,random.table3,random.table4,random.table5,random.table6,random.table7,random.table8,random.table9,random.table10,random.table11,random.table12,random.table13")]
         public void GetDatabaseReferencesFromXrefFile_Test(string fileContent, string expected) {
@@ -222,7 +234,7 @@ namespace Oetools.Utilities.Test.Openedge {
             var l = UoeUtilities.GetDatabaseReferencesFromXrefFile(Path.Combine(TestFolder, "test.xrf"), Encoding.Default);
             Assert.AreEqual(expected, string.Join(",", l));
         }
-        
+
         [TestMethod]
         [DataRow(@"
 [18/08/12@13:28:48.082+0200] P-005932 T-006876 1 4GL -- Logging level set to = 2

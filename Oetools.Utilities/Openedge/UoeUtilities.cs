@@ -25,10 +25,15 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Lib.ParameterStringParser;
 using Oetools.Utilities.Openedge.Exceptions;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Openedge {
+
+    /// <summary>
+    /// Utilities for openedge.
+    /// </summary>
     public static class UoeUtilities {
 
         /// <summary>
@@ -224,7 +229,7 @@ namespace Oetools.Utilities.Openedge {
 
             public override string ToString() {
                 var cat = Category;
-                return string.Format("{0}{1}{2}", cat != null ? $"({cat}) " : "", Description, KnowledgeBase.Length > 2 ? $" ({KnowledgeBase.StripQuotes()})" : "");
+                return $"{(cat != null ? $"({cat}) " : "")}{Description}{(KnowledgeBase.Length > 2 ? $" ({KnowledgeBase.StripQuotes()})" : "")}";
             }
         }
 
@@ -240,7 +245,6 @@ namespace Oetools.Utilities.Openedge {
                     return new Version(int.Parse(matches[0].Groups[1].Value), int.Parse(matches[0].Groups[2].Value), int.Parse(matches[0].Groups[3].Success ? matches[0].Groups[3].Value : matches[0].Groups[5].Success ? matches[0].Groups[5].Value : "0"));
                 }
             }
-
             return null;
         }
 
@@ -406,6 +410,23 @@ namespace Oetools.Utilities.Openedge {
         }
 
         /// <summary>
+        /// Parses pro arguments supplied by the user, explorer every .pf and returns a clean string to be used as a pro arguments.
+        /// </summary>
+        /// <param name="originalCliArgs"></param>
+        /// <returns></returns>
+        public static string GetCleanCliArgs(string originalCliArgs) {
+            var sb = new StringBuilder();
+            var tokenizer = new UoeParameterTokenizer(originalCliArgs);
+            do {
+                var token = tokenizer.PeekAtToken(0);
+                if (token is ParameterStringTokenOption || token is ParameterStringTokenValue) {
+                    sb.Append(token.Value.StripQuotes().ToCliArg()).Append(' ');
+                }
+            } while (tokenizer.MoveToNextToken());
+            return sb.TrimEnd().ToString();
+        }
+
+        /// <summary>
         /// Reads a database connection string from a progress parameter file (takes comment into account)
         /// </summary>
         /// <param name="pfPath"></param>
@@ -413,7 +434,6 @@ namespace Oetools.Utilities.Openedge {
         public static string GetConnectionStringFromPfFile(string pfPath) {
             if (!File.Exists(pfPath))
                 return string.Empty;
-
             var connectionString = new StringBuilder();
             Utils.ForEachLine(pfPath, new byte[0], (nb, line) => {
                 if (!string.IsNullOrEmpty(line)) {
@@ -421,7 +441,6 @@ namespace Oetools.Utilities.Openedge {
                     connectionString.Append(line);
                 }
             });
-            connectionString.Append(" ");
             return connectionString.CliCompactWhitespaces().ToString();
         }
 

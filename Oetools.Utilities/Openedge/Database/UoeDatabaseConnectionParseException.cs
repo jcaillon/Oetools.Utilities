@@ -25,8 +25,8 @@ namespace Oetools.Utilities.Openedge.Database {
     /// <summary>
     /// Exception thrown when a problem occurs while parsing a connection string.
     /// </summary>
-    public class UoeConnectionStringParseException : Exception {
+    public class UoeDatabaseConnectionParseException : Exception {
 
-        internal UoeConnectionStringParseException(string message) : base(message) { }
+        internal UoeDatabaseConnectionParseException(string message) : base(message) { }
     }
 }

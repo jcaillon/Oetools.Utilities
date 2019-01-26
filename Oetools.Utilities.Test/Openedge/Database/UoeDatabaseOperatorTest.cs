@@ -55,10 +55,6 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             Assert.IsTrue(UoeDatabaseOperator.GetNextAvailablePort(0) > 0);
             Assert.IsTrue(UoeDatabaseOperator.GetNextAvailablePort(1025) >= 1025);
         }
-        [TestMethod]
-        public void AddMaxConnectionTry() {
-            Assert.IsTrue(UoeDatabaseOperator.AddMaxConnectionTry("-db mydb -1", 3).Contains("-ct 3"));
-        }
 
         [TestMethod]
         public void ReadLogFileTest() {
@@ -386,16 +382,16 @@ d ""schema Area"" .
 
             ope.Create(db);
 
-            Assert.IsTrue(ope.GetConnectionString(db).SingleUser);
-            Assert.IsTrue(string.IsNullOrEmpty(ope.GetConnectionString(db).Service));
-            Assert.AreEqual(null, ope.GetConnectionString(db).LogicalName);
-            Assert.AreEqual("test", ope.GetConnectionString(db, "test").LogicalName);
+            Assert.IsTrue(ope.GetDatabaseConnection(db).SingleUser);
+            Assert.IsTrue(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).Service));
+            Assert.AreEqual(null, ope.GetDatabaseConnection(db).LogicalName);
+            Assert.AreEqual("test", ope.GetDatabaseConnection(db, "test").LogicalName);
 
             try {
                 ope.Start(db);
 
-                Assert.IsFalse(ope.GetConnectionString(db).SingleUser);
-                Assert.IsTrue(string.IsNullOrEmpty(ope.GetConnectionString(db).Service));
+                Assert.IsFalse(ope.GetDatabaseConnection(db).SingleUser);
+                Assert.IsTrue(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).Service));
             } finally {
                 ope.Shutdown(db);
             }
@@ -403,9 +399,9 @@ d ""schema Area"" .
             try {
                 ope.Start(db, null, UoeDatabaseOperator.GetNextAvailablePort().ToString());
 
-                Assert.IsFalse(ope.GetConnectionString(db).SingleUser);
-                Assert.IsFalse(string.IsNullOrEmpty(ope.GetConnectionString(db).Service));
-                Assert.IsFalse(string.IsNullOrEmpty(ope.GetConnectionString(db).HostName));
+                Assert.IsFalse(ope.GetDatabaseConnection(db).SingleUser);
+                Assert.IsFalse(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).Service));
+                Assert.IsFalse(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).HostName));
             } finally {
                 ope.Shutdown(db);
             }
@@ -436,7 +432,7 @@ d ""schema Area"" .
 
                 Assert.AreNotEqual(oldSize, newSize);
 
-                var cs = ope.GetConnectionString(db);
+                var cs = ope.GetDatabaseConnection(db);
                 Assert.IsFalse(cs.SingleUser);
                 Assert.IsTrue(string.IsNullOrEmpty(cs.Service));
             } finally {
@@ -464,7 +460,7 @@ d ""schema Area"" .
                     var table1Path = Path.Combine(dataDirectory, "table1.d");
                     // load data from .d
                     File.WriteAllText(table1Path, "\"value1\" 1\n\"value2\" 2\n");
-                    dataAdmin.LoadData(dataAdmin.GetConnectionString(db), dataDirectory);
+                    dataAdmin.LoadData(dataAdmin.GetDatabaseConnection(db), dataDirectory);
                     File.Delete(table1Path);
 
                     // dump binary
@@ -483,7 +479,7 @@ d ""schema Area"" .
                     dataAdmin.RebuildIndexes(db, "table table1");
 
                     // dump data .d
-                    dataAdmin.DumpData(dataAdmin.GetConnectionString(db), dataDirectory, "table1");
+                    dataAdmin.DumpData(dataAdmin.GetDatabaseConnection(db), dataDirectory, "table1");
                     Assert.IsTrue(File.Exists(table1Path));
                     var dataContent = File.ReadAllText(table1Path);
                     Assert.IsTrue(dataContent.Contains("\"value1\" 1"));

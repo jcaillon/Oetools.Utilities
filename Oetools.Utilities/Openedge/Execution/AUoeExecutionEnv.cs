@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Openedge.Database;
 
 namespace Oetools.Utilities.Openedge.Execution {
     
@@ -42,7 +43,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Connection string to use for the database connection in a CONNECT statement (there can be several databases)
         /// </summary>
-        public abstract string DatabaseConnectionString { get; set; }
+        public abstract IEnumerable<UoeDatabaseConnection> DatabaseConnections { get; set; }
 
         /// <summary>
         /// List of aliases to use for the connected databases

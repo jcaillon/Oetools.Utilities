@@ -25,6 +25,7 @@ using System.Text;
 using System.Threading;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 using Oetools.Utilities.Resources;
 
@@ -253,7 +254,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             SetPreprocessedVar("ErrorLogPath", _errorLogPath.ProPreProcStringify());
             SetPreprocessedVar("DbErrorLogPath", _dbErrorLogPath.ProPreProcStringify());
             SetPreprocessedVar("PropathFilePath", _propathFilePath.ProPreProcStringify());
-            SetPreprocessedVar("DbConnectString", Env.DatabaseConnectionString.ProPreProcStringify());
+            SetPreprocessedVar("DbConnectString", UoeDatabaseConnection.GetConnectionString(Env.DatabaseConnections).ProPreProcStringify());
             SetPreprocessedVar("DatabaseAliasList", (Env.DatabaseAliases != null ? string.Join(";", Env.DatabaseAliases.Select(a => $"{a.AliasLogicalName},{a.DatabaseLogicalName}")) : "").ProPreProcStringify()); // Format : ALIAS,DATABASE;ALIAS2,DATABASE;...
             SetPreprocessedVar("DbConnectionRequired", NeedDatabaseConnection.ToString());
             SetPreprocessedVar("PreExecutionProgramPath", Env.PreExecutionProgramPath.ProPreProcStringify());
@@ -273,19 +274,19 @@ namespace Oetools.Utilities.Openedge.Execution {
             File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.GetIoEncoding());
 
             // Parameters
-            _exeParameters = new StringBuilder($"-p {_runnerPath.CliQuoter()}");
+            _exeParameters = new StringBuilder($"-p {_runnerPath.ToCliArg()}");
             AppendProgressParameters(_exeParameters);
             if (!string.IsNullOrWhiteSpace(Env.ProExeCommandLineParameters)) {
                 _exeParameters.Append($" {Env.ProExeCommandLineParameters.Trim()}");
             }
 
             if (!string.IsNullOrEmpty(Env.IniFilePath)) {
-                _exeParameters.Append($" -ininame {Env.IniFilePath.CliQuoter()} -basekey {"INI".CliQuoter()}");
+                _exeParameters.Append($" -ininame {Env.IniFilePath.ToCliArg()} -basekey {"INI".ToCliArg()}");
             }
 
             if (!string.IsNullOrEmpty(WorkingDirectory) && Directory.Exists(WorkingDirectory)) {
                 _processStartDir = WorkingDirectory;
-                _exeParameters.Append($" -T {_tempDir.CliQuoter()}");
+                _exeParameters.Append($" -T {_tempDir.ToCliArg()}");
             }
 
             // start the process

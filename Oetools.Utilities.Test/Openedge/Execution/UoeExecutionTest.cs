@@ -301,7 +301,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             Assert.IsTrue(dbPn2.Exists());
 
             // try if connected well and can manage aliases
-            env.DatabaseConnectionString = $"{db.GetConnectionString(dbPn)} {db.GetConnectionString(dbPn2)}";
+            env.DatabaseConnections = new []{ db.GetDatabaseConnection(dbPn), db.GetDatabaseConnection(dbPn2) };
             env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
                 new UoeExecutionDatabaseAlias {
                     DatabaseLogicalName = "test1",
@@ -339,7 +339,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = true;
 
             // try if connected well and can manage aliases
-            env.DatabaseConnectionString = UoeConnectionString.NewSingleUserConnection(new UoeDatabaseLocation(Path.Combine(TestFolder, "random.db"))).ToString();
+            env.DatabaseConnections = UoeDatabaseConnection.NewSingleUserConnection(new UoeDatabaseLocation(Path.Combine(TestFolder, "random.db"))).Yield();
 
             using (var exec = new UoeExecutionCustomTest(env)) {
                 exec.NeedDatabaseConnection = true;

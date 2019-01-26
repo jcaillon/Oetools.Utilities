@@ -46,25 +46,26 @@ namespace Oetools.Utilities.Openedge {
         /// </summary>
         /// <param name="parameterString"></param>
         /// <returns></returns>
-        /// <exception cref="UoeConnectionStringParseException"></exception>
+        /// <exception cref="UoeDatabaseConnectionParseException"></exception>
         private static List<ParameterStringToken> GetTokensFromParameterString(string parameterString) {
             var tokenizer = new ParameterStringTokenizer(parameterString);
             var output = new List<ParameterStringToken>();
             do {
                 var token = tokenizer.PeekAtToken(0);
                 if (token is ParameterStringTokenOption && token.Value.Equals("-pf", StringComparison.Ordinal)) {
-                    var pfPath = tokenizer.PeekAtToken(2);
+                    var pfPath = tokenizer.MoveAndPeekAtToken(2);
                     if (pfPath is ParameterStringTokenValue) {
                         var pfFilePath = pfPath.Value.StripQuotes().MakePathAbsolute();
                         if (!File.Exists(pfFilePath)) {
-                            throw new UoeConnectionStringParseException($"The parameter file {pfFilePath.PrettyQuote()} does not exist but is used in the parameter string: {parameterString.PrettyQuote()}.");
+                            throw new UoeDatabaseConnectionParseException($"The parameter file {pfFilePath.PrettyQuote()} does not exist but is used in the parameter string: {parameterString.PrettyQuote()}.");
                         }
-                        output.AddRange(GetTokensFromParameterString(File.ReadAllText(pfFilePath)));
+                        output.AddRange(GetTokensFromParameterString(UoeUtilities.GetConnectionStringFromPfFile(pfFilePath)));
                     } else {
-                        throw new UoeConnectionStringParseException($"Expecting a parameter file path after the -pf option in the parameter string: {parameterString.PrettyQuote()}.");
+                        throw new UoeDatabaseConnectionParseException($"Expecting a parameter file path after the -pf option in the parameter string: {parameterString.PrettyQuote()}.");
                     }
+                } else {
+                    output.Add(token);
                 }
-                output.Add(token);
             } while (tokenizer.MoveToNextToken());
             return output;
         }

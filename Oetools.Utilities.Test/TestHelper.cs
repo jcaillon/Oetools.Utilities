@@ -59,7 +59,7 @@ namespace Oetools.Utilities.Test {
                 return;
             }
             using (var dbAdministrator = new UoeDatabaseAdministrator(dlcPath)) {
-                dbAdministrator.Create(new UoeDatabaseLocation(targetDatabasePath), dfPath);
+                dbAdministrator.CreateWithDf(new UoeDatabaseLocation(targetDatabasePath), dfPath);
             }
         }
 

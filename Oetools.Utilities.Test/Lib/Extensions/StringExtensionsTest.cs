@@ -183,7 +183,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow("mot\\", true, @"mot\", DisplayName = "special case 2 on windows no need to escape a final backslash if no surrounding quotes")]
         [DataRow("mot deux\\", true, @"""mot deux\\""", DisplayName = "special case 3 on windows, need to escape the last backslash because of the surrounding quotes")]
         public void CliQuoter_Test(string input, bool isWindows, string expected) {
-            Assert.AreEqual(expected, input.CliQuoter(isWindows));
+            Assert.AreEqual(expected, input.ToCliArg(isWindows));
         }
 
         [TestMethod]

@@ -18,6 +18,7 @@
 // ========================================================================
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Oetools.Utilities.Lib.Extension;
@@ -28,7 +29,7 @@ namespace Oetools.Utilities.Openedge.Database {
     /// <summary>
     /// A connection string to connect a database.
     /// </summary>
-    public class UoeConnectionString {
+    public class UoeDatabaseConnection {
 
         /// <summary>
         /// The database (-db name).
@@ -56,33 +57,57 @@ namespace Oetools.Utilities.Openedge.Database {
         public string HostName { get; private set; }
 
         /// <summary>
-        /// Extra connection options, listed in 'Client database connection parameters':
-        /// https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dpspr%2Fclient-database-connection-parameters.html%23.
+        /// Max connection try (-ct number).
         /// </summary>
-        public StringBuilder ExtraOptions { get; } = new StringBuilder();
+        public int? MaxConnectionTry { get; set; }
 
-        protected UoeConnectionString() {}
+        /// <summary>
+        /// Extra connection options that were not parsed by this class, listed in 'Client database connection parameters' from the oe docs.
+        /// </summary>
+        /// <remarks>
+        /// https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dpspr%2Fclient-database-connection-parameters.html%23.
+        /// </remarks>
+        public List<string> ExtraOptions { get; } = new List<string>();
+
+        protected UoeDatabaseConnection() {}
 
         /// <summary>
         /// Make sure the connection string is valid.
         /// </summary>
-        /// <exception cref="UoeConnectionStringParseException"></exception>
+        /// <exception cref="UoeDatabaseConnectionParseException"></exception>
         private void Validate(string connectionString) {
             if (DatabaseLocation == null) {
-                throw new UoeConnectionStringParseException($"Expecting to find at least one -db option in the connection string: {connectionString.PrettyQuote()}.");
+                throw new UoeDatabaseConnectionParseException($"Expecting to find at least one -db option in the connection string: {connectionString.PrettyQuote()}.");
             }
             if (SingleUser && (!string.IsNullOrEmpty(Service) || !string.IsNullOrEmpty(HostName))) {
-                throw new UoeConnectionStringParseException($"The single user mode (-1) can't be used with -S or -H options in the connection string: {connectionString.PrettyQuote()}.");
+                throw new UoeDatabaseConnectionParseException($"The single user mode (-1) can't be used with -S or -H options in the connection string: {connectionString.PrettyQuote()}.");
             }
         }
 
         /// <summary>
-        /// string representation of the connection string. To use in a CONNECT statement or as prowin parameters.
+        /// string representation of the connection string. To use in a CONNECT statement.
         /// </summary>
         /// <returns></returns>
         public override string ToString() {
+            return ToString(false);
+        }
+
+        /// <summary>
+        /// string representation of the connection string. To use in as args of a prowin command.
+        /// </summary>
+        /// <returns></returns>
+        public string ToCliArgs() {
+            return ToString(true);
+        }
+
+        /// <summary>
+        /// Get a string representation of this connection.
+        /// </summary>
+        /// <param name="forCliArgsUsage"></param>
+        /// <returns></returns>
+        protected string ToString(bool forCliArgsUsage) {
             var result = new StringBuilder();
-            result.Append("-db ").Append(string.IsNullOrEmpty(Service) ? DatabaseLocation.FullPath.CliQuoter() : DatabaseLocation.PhysicalName);
+            result.Append("-db ").Append(string.IsNullOrEmpty(Service) ? forCliArgsUsage ? DatabaseLocation.FullPath.ToCliArg() : DatabaseLocation.FullPath.Quote() : DatabaseLocation.PhysicalName);
             if (!string.IsNullOrEmpty(LogicalName)) {
                 result.Append(" -ld ").Append(LogicalName);
             }
@@ -95,8 +120,11 @@ namespace Oetools.Utilities.Openedge.Database {
             if (SingleUser) {
                 result.Append(" -1").Append(Service);
             }
-            if (ExtraOptions.Length > 0) {
-                result.Append(' ').Append(ExtraOptions);
+            if (MaxConnectionTry.HasValue) {
+                result.Append(" -ct ").Append(MaxConnectionTry.Value);
+            }
+            foreach (var option in ExtraOptions.ToNonNullEnumerable()) {
+                result.Append(' ').Append(forCliArgsUsage ? option.ToCliArg() : option.QuoteIfContainsSpace());
             }
             return result.TrimEnd().ToString();
         }
@@ -105,11 +133,12 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Returns a connection string composed of several connection strings.
         /// </summary>
         /// <param name="connectionStrings"></param>
+        /// <param name="forCliArgsUsage">True if you intend to use this connection as a prowin parameter. False if it is for a CONNECT statement.</param>
         /// <returns></returns>
-        public static string GetConnectionString(IEnumerable<UoeConnectionString> connectionStrings) {
+        public static string GetConnectionString(IEnumerable<UoeDatabaseConnection> connectionStrings, bool forCliArgsUsage = false) {
             var result = new StringBuilder();
             foreach (var connectionString in connectionStrings) {
-                result.Append(connectionString).Append(' ');
+                result.Append(connectionString.ToString(forCliArgsUsage)).Append(' ');
             }
             return result.TrimEnd().ToString();
         }
@@ -120,8 +149,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="databaseLocation"></param>
         /// <param name="logicalName"></param>
         /// <returns></returns>
-        public static UoeConnectionString NewSingleUserConnection(UoeDatabaseLocation databaseLocation, string logicalName = null) {
-            return new UoeConnectionString {
+        public static UoeDatabaseConnection NewSingleUserConnection(UoeDatabaseLocation databaseLocation, string logicalName = null) {
+            return new UoeDatabaseConnection {
                 DatabaseLocation = databaseLocation,
                 LogicalName = logicalName,
                 SingleUser = true
@@ -136,8 +165,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="host"></param>
         /// <param name="service"></param>
         /// <returns></returns>
-        public static UoeConnectionString NewMultiUserConnection(UoeDatabaseLocation databaseLocation, string logicalName = null, string host = null, string service = null) {
-            return new UoeConnectionString {
+        public static UoeDatabaseConnection NewMultiUserConnection(UoeDatabaseLocation databaseLocation, string logicalName = null, string host = null, string service = null) {
+            return new UoeDatabaseConnection {
                 DatabaseLocation = databaseLocation,
                 LogicalName = logicalName,
                 HostName = host,
@@ -146,27 +175,27 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Returns one or more <see cref="UoeConnectionString"/> parsed from the given <paramref name="connectionString"/>.
+        /// Returns one or more <see cref="UoeDatabaseConnection"/> parsed from the given <paramref name="connectionString"/>.
         /// </summary>
         /// <param name="connectionString"></param>
         /// <returns></returns>
-        /// <exception cref="UoeConnectionStringParseException"></exception>
-        public static IEnumerable<UoeConnectionString> GetConnectionStrings(string connectionString) {
+        /// <exception cref="UoeDatabaseConnectionParseException"></exception>
+        public static IEnumerable<UoeDatabaseConnection> GetConnectionStrings(string connectionString) {
             if (string.IsNullOrEmpty(connectionString))
                 yield break;
 
             var tokenizer = new UoeParameterTokenizer(connectionString);
 
             bool lastTokenWasValue = false;
-            var currentConnectionString = new UoeConnectionString();
+            var currentConnectionString = new UoeDatabaseConnection();
             do {
                 var token = tokenizer.PeekAtToken(0);
                 if (token is ParameterStringTokenValue) {
                     if (lastTokenWasValue) {
-                        throw new UoeConnectionStringParseException($"The value {token.Value.PrettyQuote()} does not seem to belong to any option in the connection string: {connectionString.PrettyQuote()}.");
+                        throw new UoeDatabaseConnectionParseException($"The value {token.Value.PrettyQuote()} does not seem to belong to any option in the connection string: {connectionString.PrettyQuote()}.");
                     }
                     lastTokenWasValue = true;
-                    currentConnectionString.ExtraOptions.Append(token.Value).Append(' ');
+                    currentConnectionString.ExtraOptions.Add(token.Value.StripQuotes());
                     continue;
                 }
                 lastTokenWasValue = false;
@@ -175,15 +204,14 @@ namespace Oetools.Utilities.Openedge.Database {
                         case "-db":
                             if (currentConnectionString.DatabaseLocation != null) {
                                 currentConnectionString.Validate(connectionString);
-                                currentConnectionString.ExtraOptions.TrimEnd();
                                 yield return currentConnectionString;
-                                currentConnectionString = new UoeConnectionString();
+                                currentConnectionString = new UoeDatabaseConnection();
                             }
                             var dbName = tokenizer.MoveAndPeekAtToken(2);
                             if (dbName is ParameterStringTokenValue) {
                                 currentConnectionString.DatabaseLocation = new UoeDatabaseLocation(dbName.Value.StripQuotes());
                             } else {
-                                throw new UoeConnectionStringParseException($"Expecting a database name or database path after the -db option in the connection string: {connectionString.PrettyQuote()}.");
+                                throw new UoeDatabaseConnectionParseException($"Expecting a database name or database path after the -db option in the connection string: {connectionString.PrettyQuote()}.");
                             }
                             break;
                         case "-ld":
@@ -191,7 +219,7 @@ namespace Oetools.Utilities.Openedge.Database {
                             if (logicalName is ParameterStringTokenValue) {
                                 currentConnectionString.LogicalName = logicalName.Value.StripQuotes();
                             } else {
-                                throw new UoeConnectionStringParseException($"Expecting a logical name after the -ld option in the connection string: {connectionString.PrettyQuote()}.");
+                                throw new UoeDatabaseConnectionParseException($"Expecting a logical name after the -ld option in the connection string: {connectionString.PrettyQuote()}.");
                             }
                             break;
                         case "-1":
@@ -202,7 +230,7 @@ namespace Oetools.Utilities.Openedge.Database {
                             if (serviceName is ParameterStringTokenValue) {
                                 currentConnectionString.Service = serviceName.Value.StripQuotes();
                             } else {
-                                throw new UoeConnectionStringParseException($"Expecting a service name or port number after the -S option in the connection string: {connectionString.PrettyQuote()}.");
+                                throw new UoeDatabaseConnectionParseException($"Expecting a service name or port number after the -S option in the connection string: {connectionString.PrettyQuote()}.");
                             }
                             break;
                         case "-H":
@@ -210,18 +238,28 @@ namespace Oetools.Utilities.Openedge.Database {
                             if (hostName is ParameterStringTokenValue) {
                                 currentConnectionString.HostName = hostName.Value.StripQuotes();
                             } else {
-                                throw new UoeConnectionStringParseException($"Expecting a host name after the -H option in the connection string: {connectionString.PrettyQuote()}.");
+                                throw new UoeDatabaseConnectionParseException($"Expecting a host name after the -H option in the connection string: {connectionString.PrettyQuote()}.");
                             }
                             break;
+                        case "-ct":
+                            var maxTry = tokenizer.MoveAndPeekAtToken(2);
+                            if (maxTry is ParameterStringTokenValue) {
+                                try {
+                                    currentConnectionString.MaxConnectionTry = int.Parse(maxTry.Value.StripQuotes());
+                                    break;
+                                } catch (FormatException) {
+                                    // throw later
+                                }
+                            }
+                            throw new UoeDatabaseConnectionParseException($"Expecting a number value after the -ct option in the connection string: {connectionString.PrettyQuote()}.");
                         default:
-                            currentConnectionString.ExtraOptions.Append(token.Value).Append(' ');
+                            currentConnectionString.ExtraOptions.Add(token.Value.StripQuotes());
                             break;
                     }
                 }
             } while (tokenizer.MoveToNextToken());
 
             currentConnectionString.Validate(connectionString);
-            currentConnectionString.ExtraOptions.TrimEnd();
             yield return currentConnectionString;
         }
     }
