@@ -178,15 +178,33 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             File.Delete(tgtDb.StructureFileFullPath);
 
-            ope.UpdateStructureFile(tgtDb, false);
+            ope.UpdateStructureFile(tgtDb, false, false);
 
+            Assert.IsTrue(File.ReadAllText(tgtDb.StructureFileFullPath).Contains(Path.Combine(tgtDb.DirectoryPath, "updatest.b1")));
+
+            File.Delete(tgtDb.StructureFileFullPath);
+
+            ope.UpdateStructureFile(tgtDb, false, true);
+
+            Assert.IsFalse(File.ReadAllText(tgtDb.StructureFileFullPath).Contains(Path.Combine(tgtDb.DirectoryPath, "updatest.b1")));
+            Assert.IsTrue(File.ReadAllText(tgtDb.StructureFileFullPath).Contains(tgtDb.DirectoryPath));
+
+            File.Delete(tgtDb.StructureFileFullPath);
+
+            ope.UpdateStructureFile(tgtDb, true, false);
+
+            Assert.IsFalse(File.ReadAllText(tgtDb.StructureFileFullPath).Contains(Path.Combine(tgtDb.DirectoryPath, "updatest.b1")));
+            Assert.IsFalse(File.ReadAllText(tgtDb.StructureFileFullPath).Contains(tgtDb.DirectoryPath));
             Assert.IsTrue(File.ReadAllText(tgtDb.StructureFileFullPath).Contains("updatest.b1"));
 
             File.Delete(tgtDb.StructureFileFullPath);
 
-            ope.UpdateStructureFile(tgtDb);
+            ope.UpdateStructureFile(tgtDb, true, true);
 
+            Assert.IsFalse(File.ReadAllText(tgtDb.StructureFileFullPath).Contains(Path.Combine(tgtDb.DirectoryPath, "updatest.b1")));
+            Assert.IsFalse(File.ReadAllText(tgtDb.StructureFileFullPath).Contains(tgtDb.DirectoryPath));
             Assert.IsFalse(File.ReadAllText(tgtDb.StructureFileFullPath).Contains("updatest.b1"));
+            Assert.IsTrue(File.ReadAllText(tgtDb.StructureFileFullPath).Contains("."));
         }
 
         [TestMethod]

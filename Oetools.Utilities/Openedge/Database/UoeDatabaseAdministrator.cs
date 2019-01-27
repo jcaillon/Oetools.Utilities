@@ -94,8 +94,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="stFilePath"></param>
         /// <param name="blockSize"></param>
         /// <param name="codePage"></param>
-        /// <param name="newInstance"></param>
-        /// <param name="relativePath"></param>
+        /// <param name="newInstance">Specifies that a new GUID be created for the target database.</param>
+        /// <param name="relativePath">Use relative path in the structure file.</param>
         /// <exception cref="UoeDatabaseException"></exception>
         public void CreateWithDf(UoeDatabaseLocation targetDb, string dfFilePath, string stFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
             if (string.IsNullOrEmpty(stFilePath) && !string.IsNullOrEmpty(dfFilePath)) {
@@ -119,7 +119,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
         public void LoadSchemaDefinition(UoeDatabaseConnection databaseConnection, string dfFilePath) {
-            dfFilePath = dfFilePath?.MakePathAbsolute();
+            dfFilePath = dfFilePath?.ToAbsolutePath();
             if (!File.Exists(dfFilePath)) {
                 throw new UoeDatabaseException($"The schema definition file does not exist: {dfFilePath.PrettyQuote()}.");
             }
@@ -142,7 +142,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException("The definition file path can't be null.");
             }
 
-            dfDumpFilePath = dfDumpFilePath.MakePathAbsolute();
+            dfDumpFilePath = dfDumpFilePath.ToAbsolutePath();
             var dir = Path.GetDirectoryName(dfDumpFilePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
@@ -167,7 +167,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 Log?.Info($"Using rename file {renameFilePath.PrettyQuote()}.");
             }
 
-            incDfDumpFilePath = incDfDumpFilePath.MakePathAbsolute();
+            incDfDumpFilePath = incDfDumpFilePath.ToAbsolutePath();
             var dir = Path.GetDirectoryName(incDfDumpFilePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
@@ -225,7 +225,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException("The sequence data file path can't be null.");
             }
 
-            dumpFilePath = dumpFilePath.MakePathAbsolute();
+            dumpFilePath = dumpFilePath.ToAbsolutePath();
             var dir = Path.GetDirectoryName(dumpFilePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
@@ -244,7 +244,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
         public void LoadSequenceData(UoeDatabaseConnection databaseConnection, string sequenceDataFilePath) {
-            sequenceDataFilePath = sequenceDataFilePath?.MakePathAbsolute();
+            sequenceDataFilePath = sequenceDataFilePath?.ToAbsolutePath();
             if (!File.Exists(sequenceDataFilePath)) {
                 throw new UoeDatabaseException($"The sequence data file does not exist: {sequenceDataFilePath.PrettyQuote()}.");
             }
@@ -265,7 +265,7 @@ namespace Oetools.Utilities.Openedge.Database {
             if (string.IsNullOrEmpty(dumpDirectoryPath)) {
                 throw new UoeDatabaseException("The data dump directory path can't be null.");
             }
-            dumpDirectoryPath = dumpDirectoryPath.MakePathAbsolute();
+            dumpDirectoryPath = dumpDirectoryPath.ToAbsolutePath();
             if (!string.IsNullOrEmpty(dumpDirectoryPath) && !Directory.Exists(dumpDirectoryPath)) {
                 Directory.CreateDirectory(dumpDirectoryPath);
             }
@@ -283,7 +283,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="tableName"></param>
         /// <exception cref="UoeDatabaseException"></exception>
         public void LoadData(UoeDatabaseConnection databaseConnection, string dataDirectoryPath, string tableName = "ALL") {
-            dataDirectoryPath = dataDirectoryPath?.MakePathAbsolute();
+            dataDirectoryPath = dataDirectoryPath?.ToAbsolutePath();
 
             if (!Directory.Exists(dataDirectoryPath)) {
                 throw new UoeDatabaseException($"The data directory does not exist: {dataDirectoryPath.PrettyQuote()}.");

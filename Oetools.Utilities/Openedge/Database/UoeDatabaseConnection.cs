@@ -136,6 +136,9 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="forCliArgsUsage">True if you intend to use this connection as a prowin parameter. False if it is for a CONNECT statement.</param>
         /// <returns></returns>
         public static string GetConnectionString(IEnumerable<UoeDatabaseConnection> connectionStrings, bool forCliArgsUsage = false) {
+            if (connectionStrings == null) {
+                return null;
+            }
             var result = new StringBuilder();
             foreach (var connectionString in connectionStrings) {
                 result.Append(connectionString.ToString(forCliArgsUsage)).Append(' ');

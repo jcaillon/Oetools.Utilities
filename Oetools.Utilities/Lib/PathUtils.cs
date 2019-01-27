@@ -51,7 +51,12 @@ namespace Oetools.Utilities.Lib {
             return homePath;
         }
 
-
+        /// <summary>
+        /// Enumerable to file list.
+        /// </summary>
+        /// <param name="list"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
         public static PathList<T> ToFileList<T>(this IEnumerable<T> list) where T : IPathListItem {
             var output = new PathList<T>();
             output.TryAddRange(list);
@@ -120,7 +125,7 @@ namespace Oetools.Utilities.Lib {
         /// <param name="path"></param>
         /// <param name="currentDirectory"></param>
         /// <returns></returns>
-        public static string MakePathAbsolute(this string path, string currentDirectory = null) {
+        public static string ToAbsolutePath(this string path, string currentDirectory = null) {
             if (IsPathRooted(path)) {
                 return path;
             }
@@ -128,33 +133,17 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        ///     Replaces all invalid characters found in the provided name
-        /// </summary>
-        /// <param name="fileName">A file name without directory information</param>
-        /// <param name="replacementChar"></param>
-        /// <returns></returns>
-        public static string ToValidLocalFileName(this string fileName, char replacementChar = '_') {
-            return ReplaceAllChars(fileName, Path.GetInvalidFileNameChars(), replacementChar);
-        }
-
-        private static string ReplaceAllChars(string str, char[] oldChars, char newChar) {
-            var sb = new StringBuilder(str);
-            foreach (var c in oldChars)
-                sb.Replace(c, newChar);
-            return sb.ToString();
-        }
-
-        /// <summary>
         /// Transforms an absolute path into a relative one
         /// </summary>
         /// <param name="absolute"></param>
         /// <param name="pathToDelete"></param>
+        /// <param name="startAtDot"></param>
         /// <returns></returns>
-        public static string FromAbsolutePathToRelativePath(this string absolute, string pathToDelete) {
+        public static string ToRelativePath(this string absolute, string pathToDelete, bool startAtDot = false) {
             if (string.IsNullOrEmpty(absolute) || string.IsNullOrEmpty(pathToDelete)) {
                 return absolute;
             }
-            var relative = absolute.Replace(pathToDelete, "");
+            var relative = absolute.Replace(pathToDelete, startAtDot ? "." : "");
             return relative.Length == absolute.Length ? absolute : relative.TrimStartDirectorySeparator();
         }
 
@@ -429,6 +418,23 @@ namespace Oetools.Utilities.Lib {
         /// <returns></returns>
         public static string GetRandomName() {
             return $"{DateTime.Now:fff}{Path.GetRandomFileName()}";
+        }
+
+        /// <summary>
+        ///     Replaces all invalid characters found in the provided name
+        /// </summary>
+        /// <param name="fileName">A file name without directory information</param>
+        /// <param name="replacementChar"></param>
+        /// <returns></returns>
+        public static string ToValidLocalFileName(this string fileName, char replacementChar = '_') {
+            return ReplaceAllChars(fileName, Path.GetInvalidFileNameChars(), replacementChar);
+        }
+
+        private static string ReplaceAllChars(string str, char[] oldChars, char newChar) {
+            var sb = new StringBuilder(str);
+            foreach (var c in oldChars)
+                sb.Replace(c, newChar);
+            return sb.ToString();
         }
 
         /// <summary>

@@ -38,7 +38,7 @@ namespace Oetools.Utilities.Openedge.Database {
         private const int DbLogicalNameMaxLength = 32;
 
         /// <summary>
-        /// The full directory path in which the database is located.
+        /// The full directory path in which the database is located (w/o the ending dir separator).
         /// </summary>
         public string DirectoryPath { get; }
 
@@ -79,7 +79,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException("Invalid path, can't be null.");
             }
 
-            databasePath = databasePath.MakePathAbsolute();
+            databasePath = databasePath.ToAbsolutePath();
             DirectoryPath = Path.GetDirectoryName(databasePath);
 
             if (string.IsNullOrEmpty(DirectoryPath)) {

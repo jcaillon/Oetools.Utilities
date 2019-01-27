@@ -107,7 +107,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="structureFilePath">Path to the .st file, a prostrct create will be executed with it to create the database</param>
         /// <exception cref="UoeDatabaseException"></exception>
         public void ValidateStructureFile(UoeDatabaseLocation targetDb, string structureFilePath) {
-            structureFilePath = structureFilePath?.MakePathAbsolute();
+            structureFilePath = structureFilePath?.ToAbsolutePath();
             if (!File.Exists(structureFilePath)) {
                 throw new UoeDatabaseException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
             }
@@ -137,7 +137,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
             }
 
-            structureFilePath = structureFilePath?.MakePathAbsolute();
+            structureFilePath = structureFilePath?.ToAbsolutePath();
             if (!File.Exists(structureFilePath)) {
                 throw new UoeDatabaseException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
             }
@@ -166,8 +166,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="structureFilePath">Path to the .st file, a prostrct create will be executed with it to create the database</param>
         /// <param name="blockSize">Block size for the database prostrct create</param>
         /// <param name="codePage">Database codepage (copy from $DLC/prolang/codepage/emptyX)</param>
-        /// <param name="newInstance">Use -newinstance in procopy command</param>
-        /// <param name="relativePath">Use -relativepath in procopy command</param>
+        /// <param name="newInstance">Specifies that a new GUID be created for the target database.</param>
+        /// <param name="relativePath">Use relative path in the structure file.</param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <exception cref="UoeDatabaseException"></exception>
         public void Create(UoeDatabaseLocation targetDb, string structureFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true, string databaseAccessStartupParameters = null) {
@@ -187,8 +187,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="targetDb">Path to the target database</param>
         /// <param name="blockSize">Block size for the database prostrct create</param>
         /// <param name="codePage">Database codepage (copy from $DLC/prolang/codepage/emptyX)</param>
-        /// <param name="newInstance">Use -newinstance in procopy command</param>
-        /// <param name="relativePath">Use -relativepath in procopy command</param>
+        /// <param name="newInstance">Specifies that a new GUID be created for the target database.</param>
+        /// <param name="relativePath">Use relative path in the structure file.</param>
         /// <exception cref="UoeDatabaseException"></exception>
         internal void ProcopyEmpty(UoeDatabaseLocation targetDb, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
             if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
@@ -219,8 +219,8 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         /// <param name="targetDb">Path to the target database</param>
         /// <param name="sourceDb">Path of the procopy source database</param>
-        /// <param name="newInstance">Use -newinstance in procopy command</param>
-        /// <param name="relativePath">Use -relativepath in procopy command</param>
+        /// <param name="newInstance">Specifies that a new GUID be created for the target database.</param>
+        /// <param name="relativePath">Use relative path in the structure file.</param>
         /// <exception cref="UoeDatabaseException"></exception>
         public void Copy(UoeDatabaseLocation targetDb, UoeDatabaseLocation sourceDb, bool newInstance = true, bool relativePath = true) {
             sourceDb.ThrowIfNotExist();
@@ -234,7 +234,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Copying database {sourceDb.FullPath.PrettyQuote()} to {targetDb.FullPath.PrettyQuote()}.");
 
-            var executionOk = dbUtil.TryExecute($"procopy {sourceDb.FullPath.ToCliArg()} {targetDb.PhysicalName}{(newInstance ? " -newinstance" : "")}{(relativePath ? " -relative" : "")} {InternationalizationStartupParameters}");
+            var executionOk = dbUtil.TryExecute($"procopy {sourceDb.FullPath.ToCliArg()} {targetDb.PhysicalName}{(newInstance ? " -newinstance" : "")} {InternationalizationStartupParameters}");
             if (!executionOk || !dbUtil.BatchOutputString.Contains("(1365)")) {
                 // db copied from C:\progress\client\v117x_dv\dlc\empty1. (1365)
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
@@ -242,8 +242,8 @@ namespace Oetools.Utilities.Openedge.Database {
 
             targetDb.ThrowIfNotExist();
 
-            if (!File.Exists(targetDb.StructureFileFullPath)) {
-                UpdateStructureFile(targetDb);
+            if (!File.Exists(targetDb.StructureFileFullPath) || relativePath) {
+                UpdateStructureFile(targetDb, relativePath);
             }
         }
 
@@ -251,10 +251,11 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Creates/updates a structure description (.st) file from the .db file.
         /// </summary>
         /// <param name="targetDb"></param>
+        /// <param name="relativePath">Use relative path in the structure file.</param>
         /// <param name="extentPathAsDirectory">By default, listing will output file path to each extent, this option allows to output directory path instead.</param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void UpdateStructureFile(UoeDatabaseLocation targetDb, bool extentPathAsDirectory = true, string databaseAccessStartupParameters = null) {
+        public void UpdateStructureFile(UoeDatabaseLocation targetDb, bool relativePath = true, bool extentPathAsDirectory = true, string databaseAccessStartupParameters = null) {
             targetDb.ThrowIfNotExist();
 
             var dbUtil = GetExecutable(DbUtilName);
@@ -268,19 +269,31 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
             }
 
-            if (extentPathAsDirectory) {
+            if (extentPathAsDirectory || relativePath) {
+                var dbDirectory = targetDb.DirectoryPath;
+
                 // we can simplify the .st a bit because prostrct list will put the file path instead of the directory path for extents
                 var newContent = new Regex(@"^(?<beforepath>(?<type>[abdt])(?<areainfo>\s""(?<areaname>[\w\s]+)""(:(?<areanum>[0-9]+))?(,(?<recsPerBlock>[0-9]+))?(;(?<blksPerCluster>[0-9]+))?)?\s)((?<path>[^\s""!]+)|!""(?<pathquoted>[^""]+)"")(?<afterpath>(\s(?<extentType>[f|v])\s(?<extentSize>[0-9]+))?)", RegexOptions.Multiline).Replace(File.ReadAllText(targetDb.StructureFileFullPath, Encoding), match => {
                     var path = match.Groups["pathquoted"].Value;
                     if (string.IsNullOrEmpty(path)) {
                         path = match.Groups["path"].Value;
                     }
-                    if (!string.IsNullOrEmpty(path) && File.Exists(path.MakePathAbsolute(targetDb.DirectoryPath))) {
-                        var dir = Path.GetDirectoryName(path);
-                        if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) {
-                            dir = dir.Contains(' ') ? $"!\"{dir.TrimEndDirectorySeparator()}\"" : dir.TrimEndDirectorySeparator();
-                            return $"{match.Groups["beforepath"]}{dir}{match.Groups["afterpath"]}";
+                    if (!string.IsNullOrEmpty(path)) {
+                        if (File.Exists(path.ToAbsolutePath(targetDb.DirectoryPath))) {
+                            if (extentPathAsDirectory) {
+                                var dir = Path.GetDirectoryName(path);
+                                if (!string.IsNullOrEmpty(dir)) {
+                                    path = dir;
+                                }
+                            }
+                        } else {
+                            path = path.TrimEndDirectorySeparator();
                         }
+                        if (relativePath) {
+                            path = path.ToRelativePath(dbDirectory, true);
+                        }
+                        path = path.Contains(' ') ? $"!\"{path}\"" : path;
+                        return $"{match.Groups["beforepath"]}{path}{match.Groups["afterpath"]}";
                     }
                     return match.Value;
                 });
@@ -326,7 +339,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public void AddStructureDefinition(UoeDatabaseLocation targetDb, string structureFilePath, bool validate = false, string databaseAccessStartupParameters = null) {
             targetDb.ThrowIfNotExist();
 
-            structureFilePath = structureFilePath?.MakePathAbsolute();
+            structureFilePath = structureFilePath?.ToAbsolutePath();
             if (!File.Exists(structureFilePath)) {
                 throw new UoeDatabaseException($"The structure file does not exist: {structureFilePath.PrettyQuote()}.");
             }
@@ -601,7 +614,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 if (string.IsNullOrEmpty(path)) {
                     continue;
                 }
-                path = path.MakePathAbsolute(targetDb.DirectoryPath);
+                path = path.ToAbsolutePath(targetDb.DirectoryPath);
 
                 var areaType = match.Groups["type"].Value;
                 var isSchemaOrData = areaType == "d";
@@ -640,7 +653,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <exception cref="UoeDatabaseException"></exception>
         /// <returns>file path to the created structure file</returns>
         public string GenerateStructureFileFromDf(UoeDatabaseLocation targetDb, string sourceDfPath) {
-            sourceDfPath = sourceDfPath?.MakePathAbsolute();
+            sourceDfPath = sourceDfPath?.ToAbsolutePath();
             if (string.IsNullOrEmpty(sourceDfPath) || !File.Exists(sourceDfPath)) {
                 throw new UoeDatabaseException($"The file path for data definition file .df does not exist: {sourceDfPath.PrettyQuote()}.");
             }
@@ -779,7 +792,7 @@ namespace Oetools.Utilities.Openedge.Database {
             if (string.IsNullOrEmpty(dumpDirectoryPath)) {
                 throw new UoeDatabaseException("The data dump directory path can't be null.");
             }
-            dumpDirectoryPath = dumpDirectoryPath.MakePathAbsolute();
+            dumpDirectoryPath = dumpDirectoryPath.ToAbsolutePath();
             if (!string.IsNullOrEmpty(dumpDirectoryPath) && !Directory.Exists(dumpDirectoryPath)) {
                 Directory.CreateDirectory(dumpDirectoryPath);
             }
@@ -810,7 +823,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public void LoadBinaryData(UoeDatabaseLocation targetDb, string binDataFilePath, bool rebuildIndexes = true, string databaseAccessStartupParameters = null, string options = null) {
             targetDb.ThrowIfNotExist();
 
-            binDataFilePath = binDataFilePath?.MakePathAbsolute();
+            binDataFilePath = binDataFilePath?.ToAbsolutePath();
             if (!File.Exists(binDataFilePath)) {
                 throw new UoeDatabaseException($"The binary data file does not exist: {binDataFilePath.PrettyQuote()}.");
             }
@@ -866,7 +879,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 options += " -verbose";
             }
 
-            targetBackupFile = targetBackupFile.MakePathAbsolute();
+            targetBackupFile = targetBackupFile.ToAbsolutePath();
             var dir = Path.GetDirectoryName(targetBackupFile);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
@@ -906,7 +919,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="UoeDatabaseException"></exception>
         public void Restore(UoeDatabaseLocation targetDb, string backupFile, string options = null) {
-            backupFile = backupFile.MakePathAbsolute();
+            backupFile = backupFile.ToAbsolutePath();
             if (!File.Exists(backupFile)) {
                 throw new UoeDatabaseException($"The backup file does not exist: {backupFile.PrettyQuote()}.");
             }
@@ -938,7 +951,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public void BulkLoad(UoeDatabaseLocation targetDb, string descriptionFile, string dataDirectoryPath, string databaseAccessStartupParameters = null, string options = null) {
             targetDb.ThrowIfNotExist();
 
-            descriptionFile = descriptionFile?.MakePathAbsolute();
+            descriptionFile = descriptionFile?.ToAbsolutePath();
             if (!File.Exists(descriptionFile)) {
                 throw new UoeDatabaseException($"The bulk loader description file does not exist: {descriptionFile.PrettyQuote()}.");
             }

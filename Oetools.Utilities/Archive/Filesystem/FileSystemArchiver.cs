@@ -66,7 +66,7 @@ namespace Oetools.Utilities.Archive.Filesystem {
                 .Select(path => {
                     var fileInfo = new FileInfo(path);
                     return new FileInFilesystem {
-                        PathInArchive = path.FromAbsolutePathToRelativePath(archivePathNormalized),
+                        PathInArchive = path.ToRelativePath(archivePathNormalized),
                         ArchivePath = archivePath,
                         SizeInBytes = (ulong) fileInfo.Length,
                         LastWriteTime = fileInfo.LastWriteTime

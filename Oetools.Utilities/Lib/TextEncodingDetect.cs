@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (TextEncodingDetect.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -28,7 +28,7 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     /// <remarks>Credits go to: https://github.com/AutoIt/text-encoding-detect</remarks>
     public class TextEncodingDetect {
-        
+
         public enum EncodingEnum {
             None, // Unknown or binary
             Ansi, // 0-255
@@ -49,7 +49,7 @@ namespace Oetools.Utilities.Lib {
         public static Encoding GetFileEncoding(string srcFile) {
             var encoding = Encoding.Default;
 
-            if (string.IsNullOrEmpty(srcFile) || !File.Exists(srcFile)) 
+            if (string.IsNullOrEmpty(srcFile) || !File.Exists(srcFile))
                 return encoding;
 
             // Read in the file in binary
@@ -124,7 +124,7 @@ namespace Oetools.Utilities.Lib {
             encodingEnum = CheckUtf8(buffer, size);
             if (encodingEnum != EncodingEnum.None) return encodingEnum;
 
-            // Now try UTF16 
+            // Now try UTF16
             encodingEnum = CheckUtf16NewlineChars(buffer, size);
             if (encodingEnum != EncodingEnum.None) return encodingEnum;
 
@@ -142,7 +142,7 @@ namespace Oetools.Utilities.Lib {
         // Checks if a buffer contains valid utf8. Returns:
         // None - not valid utf8
         // UTF8_NOBOM - valid utf8 encodings and multibyte sequences
-        // ASCII - Only data in the 0-127 range. 
+        // ASCII - Only data in the 0-127 range.
         ///////////////////////////////////////////////////////////////////////////////
 
         private EncodingEnum CheckUtf8(byte[] buffer, int size) {
@@ -193,7 +193,7 @@ namespace Oetools.Utilities.Lib {
         }
 
         ///////////////////////////////////////////////////////////////////////////////
-        // Checks if a buffer contains text that looks like utf16 by scanning for 
+        // Checks if a buffer contains text that looks like utf16 by scanning for
         // newline chars that would be present even in non-english text.
         // Returns:
         // None - not valid utf16
@@ -309,5 +309,33 @@ namespace Oetools.Utilities.Lib {
                 if (value > 0 && value < 100) _utf16UnexpectedNullPercent = value;
             }
         }
+
+        /*
+        public static Encoding GetFileEncoding(string srcFile)
+        {
+            // Use Default of Encoding.Default (Ansi CodePage)
+            Encoding enc = Encoding.Default;
+
+            // Detect byte order mark if any - otherwise assume default
+
+            byte[] buffer = new byte[5];
+            FileStream file = new FileStream(srcFile, FileMode.Open);
+            file.Read(buffer, 0, 5);
+            file.Close();
+
+            if (buffer[0] == 0xef && buffer[1] == 0xbb && buffer[2] == 0xbf)
+                enc = Encoding.UTF8;
+            else if (buffer[0] == 0xfe && buffer[1] == 0xff)
+                enc = Encoding.Unicode;
+            else if (buffer[0] == 0 && buffer[1] == 0 && buffer[2] == 0xfe && buffer[3] == 0xff)
+                enc = Encoding.UTF32;
+
+            else if (buffer[0] == 0x2b && buffer[1] == 0x2f && buffer[2] == 0x76)
+                enc = Encoding.UTF7;
+
+            return enc;
+        }
+        */
+
     }
 }

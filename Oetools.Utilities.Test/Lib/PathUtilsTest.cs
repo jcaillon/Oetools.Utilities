@@ -90,7 +90,7 @@ namespace Oetools.Utilities.Test.Lib {
             if (!Utils.IsRuntimeWindowsPlatform) {
                 return;
             }
-            Assert.AreEqual(expect, pattern.FromAbsolutePathToRelativePath(pathToDelete));
+            Assert.AreEqual(expect, pattern.ToRelativePath(pathToDelete));
         }
         
         [TestMethod]
