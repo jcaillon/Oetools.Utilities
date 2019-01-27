@@ -277,7 +277,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             _exeParameters = new StringBuilder($"-p {_runnerPath.ToCliArg()}");
             AppendProgressParameters(_exeParameters);
             if (!string.IsNullOrWhiteSpace(Env.ProExeCommandLineParameters)) {
-                _exeParameters.Append($" {Env.ProExeCommandLineParameters.Trim()}");
+                _exeParameters.Append($" {UoeUtilities.GetCleanCliArgs(Env.ProExeCommandLineParameters)}");
             }
 
             if (!string.IsNullOrEmpty(Env.IniFilePath)) {

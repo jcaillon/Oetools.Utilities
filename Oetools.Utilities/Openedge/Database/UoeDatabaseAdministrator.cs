@@ -158,9 +158,17 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Dumps an incremental schema definition file with the difference between two databases.
         /// The first database should be the database "after" and second "before".
         /// </summary>
+        /// <remarks>
+        /// renameFilePath : It is a plain text file used to identify database tables and fields that have changed names. This allows to avoid having a DROP then ADD table when you               /// changed only the name of said table.
+        /// The format of the file is simple (comma separated lines, don't forget to add a final empty line for IMPORT):
+        /// - T,old-table-name,new-table-name
+        /// - F,table-name,old-field-name,new-field-name
+        /// - S,old-sequence-name,new-sequence-name
+        /// Missing entries or entries with an empty new name are considered to have been deleted.
+        /// </remarks>
         /// <param name="databaseConnections">The connection string to the database.</param>
         /// <param name="incDfDumpFilePath"></param>
-        /// <param name="renameFilePath"></param>
+        /// <param name="renameFilePath">It is a plain text file used to identify database tables and fields that have changed names.</param>
         /// <exception cref="UoeDatabaseException"></exception>
         public void DumpIncrementalSchemaDefinitionFromDatabases(IEnumerable<UoeDatabaseConnection> databaseConnections, string incDfDumpFilePath, string renameFilePath = null) {
             if (!string.IsNullOrEmpty(renameFilePath)) {
