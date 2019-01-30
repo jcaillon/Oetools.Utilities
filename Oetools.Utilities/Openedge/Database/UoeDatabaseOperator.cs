@@ -123,7 +123,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
         /// <summary>
         /// Creates a void OpenEdge database from a previously defined structure description (.st) file.
-        /// You will need to add a schema to this void database by using <see cref="ProcopyEmpty"/>.
+        /// You will need to add a schema to this void database by using <see cref="CopyEmpty"/>.
         /// </summary>
         /// <param name="targetDb">Path to the target database</param>
         /// <param name="structureFilePath">Path to the .st file, a prostrct create will be executed with it to create the database</param>
@@ -178,7 +178,7 @@ namespace Oetools.Utilities.Openedge.Database {
             if (!string.IsNullOrEmpty(structureFilePath)) {
                 CreateVoidDatabase(targetDb, structureFilePath, blockSize, false, databaseAccessStartupParameters);
             }
-            ProcopyEmpty(targetDb, blockSize, codePage, newInstance, relativePath);
+            CopyEmpty(targetDb, blockSize, codePage, newInstance, relativePath);
         }
 
         /// <summary>
@@ -190,7 +190,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="newInstance">Specifies that a new GUID be created for the target database.</param>
         /// <param name="relativePath">Use relative path in the structure file.</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        internal void ProcopyEmpty(UoeDatabaseLocation targetDb, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
+        internal void CopyEmpty(UoeDatabaseLocation targetDb, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true) {
             if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
                 blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
             }
@@ -224,6 +224,9 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <exception cref="UoeDatabaseException"></exception>
         public void Copy(UoeDatabaseLocation targetDb, UoeDatabaseLocation sourceDb, bool newInstance = true, bool relativePath = true) {
             sourceDb.ThrowIfNotExist();
+            if (targetDb.Exists()) {
+                throw new UoeDatabaseException($"The database already exists: {targetDb.FullPath.PrettyQuote()}.");
+            }
 
             if (!Directory.Exists(targetDb.DirectoryPath)) {
                 Directory.CreateDirectory(targetDb.DirectoryPath);

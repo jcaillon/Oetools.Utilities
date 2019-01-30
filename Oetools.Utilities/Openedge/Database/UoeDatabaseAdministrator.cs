@@ -126,7 +126,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading schema definition file {dfFilePath.PrettyQuote()} in {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"load-df|{dfFilePath}".ToCliArg()}");
+            StartDataAdministratorProgram($"{databaseConnection.ToCliArgs()} -param {$"load-df|{dfFilePath}".ToCliArg()}");
         }
 
         /// <summary>
@@ -150,7 +150,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping schema definition to file {dfDumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"dump-df|{dfDumpFilePath}".ToCliArg()}|{tableName}");
+            StartDataAdministratorProgram($"{databaseConnection.ToCliArgs()} -param {$"dump-df|{dfDumpFilePath}".ToCliArg()}|{tableName}");
         }
 
         /// <inheritdoc cref="DumpIncrementalSchemaDefinition"/>
@@ -241,7 +241,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping sequence data to file {dumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"dump-seq|{dumpFilePath}".ToCliArg()}");
+            StartDataAdministratorProgram($"{databaseConnection.ToCliArgs()} -param {$"dump-seq|{dumpFilePath}".ToCliArg()}");
         }
 
         /// <summary>
@@ -259,7 +259,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading sequence data from file {sequenceDataFilePath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"load-seq|{sequenceDataFilePath}".ToCliArg()}");
+            StartDataAdministratorProgram($"{databaseConnection.ToCliArgs()} -param {$"load-seq|{sequenceDataFilePath}".ToCliArg()}");
         }
 
         /// <summary>
@@ -280,7 +280,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping data to directory {dumpDirectoryPath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"dump-d|{dumpDirectoryPath}|{tableName}".ToCliArg()}");
+            StartDataAdministratorProgram($"{databaseConnection.ToCliArgs()} -param {$"dump-d|{dumpDirectoryPath}|{tableName}".ToCliArg()}");
         }
 
         /// <summary>
@@ -299,7 +299,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading data from directory {dataDirectoryPath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"load-d|{dataDirectoryPath}|{tableName}".ToCliArg()}");
+            StartDataAdministratorProgram($"{databaseConnection.ToCliArgs()} -param {$"load-d|{dataDirectoryPath}|{tableName}".ToCliArg()}");
         }
 
 
