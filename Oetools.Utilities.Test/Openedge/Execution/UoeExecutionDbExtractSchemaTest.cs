@@ -17,7 +17,8 @@
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-using System.Collections.Generic;
+
+using System;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge.Database;
@@ -26,11 +27,11 @@ using Oetools.Utilities.Openedge.Execution;
 namespace Oetools.Utilities.Test.Openedge.Execution {
 
     [TestClass]
-    public class UoeExecutionDbExtractTableAndSequenceListTest {
+    public class UoeExecutionDbExtractSchemaTest {
 
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeExecutionDbExtractTableAndSequenceListTest)));
+        protected static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeExecutionDbExtractSchemaTest)));
 
         [ClassInitialize]
         public static void Init(TestContext context) {
@@ -46,36 +47,23 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
         }
 
         [TestMethod]
-        public void OeExecutionDbExtractTableAndSequenceListTest_Dump_no_db() {
+        public void DumpNoDatabase() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;
             }
-            using (var exec = new UoeExecutionDbExtractTableAndSequenceList(env)) {
+            using (var exec = new UoeExecutionDbExtractSchema(env)) {
                 exec.Start();
                 exec.WaitForExecutionEnd();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
+
+                //Assert.AreEqual(0, exec.);
             }
             env.Dispose();
         }
 
         [TestMethod]
-        public void OeExecutionDbExtractTableAndSequenceListTest_Wrong_db_connection() {
-            if (!GetEnvExecution(out UoeExecutionEnv env)) {
-                return;
-            }
-            env.DatabaseConnections = UoeDatabaseConnection.GetConnectionStrings("-db random -db cool");
-            using (var exec = new UoeExecutionDbExtractTableAndSequenceList(env)) {
-                exec.Start();
-                exec.WaitForExecutionEnd();
-                Assert.IsTrue(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
-                Assert.IsTrue(exec.DatabaseConnectionFailed, "DbConnectionFailed");
-            }
-            env.Dispose();
-        }
-
-        [TestMethod]
-        public void OeExecutionDbExtractTableAndSequenceListTest_Dump_db() {
+        public void Execute() {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;
             }
@@ -93,26 +81,20 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
 
             env.DatabaseConnections = new []{ UoeDatabaseConnection.NewSingleUserConnection(base1Db), UoeDatabaseConnection.NewSingleUserConnection(base2Db) };
-            env.DatabaseAliases = new List<IUoeExecutionDatabaseAlias> {
-                new UoeExecutionDatabaseAlias {
-                    DatabaseLogicalName = "base1",
-                    AliasLogicalName = "alias1"
-                }
-            };
+            env.DatabaseConnections = UoeDatabaseConnection.GetConnectionStrings(@"-db ""C:\data\cnaf\DATABASES\atlp_17_01\atlp_17_01.db"" -ld boi -1");
 
-            using (var exec = new UoeExecutionDbExtractTableAndSequenceList(env)) {
+            using (var exec = new UoeExecutionDbExtractSchema(env)) {
                 exec.Start();
                 exec.WaitForExecutionEnd();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
 
-                Assert.AreEqual("base1.sequence1,alias1.sequence1,base2.sequence1", string.Join(",", exec.Sequences), "sequences");
-                Assert.AreEqual("base1.table1,alias1.table1,base1._Sequence,alias1._Sequence,base2.table1,base2._Sequence", string.Join(",", exec.TablesCrc.Keys), "tables");
+
             }
             env.Dispose();
         }
 
-        private bool GetEnvExecution(out UoeExecutionEnv env) {
+        protected bool GetEnvExecution(out UoeExecutionEnv env) {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 env = null;
                 return false;

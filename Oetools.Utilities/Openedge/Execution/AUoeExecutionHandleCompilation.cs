@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeExecutionHandleCompilation.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -30,19 +30,19 @@ using Oetools.Utilities.Resources;
 namespace Oetools.Utilities.Openedge.Execution {
 
     public abstract class AUoeExecutionHandleCompilation : UoeExecution {
-        
+
         /// <summary>
         /// Immediately stop the compilation process when a compilation error (include warnings) is found,
         /// the remaining files will not get compiled
         /// </summary>
         public bool StopOnCompilationError { get; set; }
-        
+
         /// <summary>
         /// Immediately stop the compilation process when a compilation warning is found,
         /// the remaining files will not get compiled
         /// </summary>
         public bool StopOnCompilationWarning { get; set; }
-        
+
         /// <summary>
         ///     When true, we activate the log just before compiling with FileId active + we use xref list the referenced
         ///     tables/sequences of the .r
@@ -54,7 +54,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// - xref-xml has a strong tendency to fail to generate!
         /// </remarks>
         public bool CompileInAnalysisMode { get; set; }
-       
+
         /// <summary>
         /// A "cheapest" analysis mode where we don't compute the database references from the xref file but use the
         /// RCODE-INFO:TABLE-LIST instead
@@ -67,40 +67,40 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// each line is numbered
         /// </summary>
         public bool CompileWithDebugList { get; set; }
-        
+
         /// <summary>
         /// Activate the xref compile option
         /// </summary>
         public bool CompileWithXref { get; set; }
-        
+
         /// <summary>
         /// Activate the listing compile option
         /// </summary>
         public bool CompileWithListing { get; set; }
-        
+
         /// <summary>
         /// Activate the xml-xref compile option,
         /// it is incompatible with <see cref="CompileInAnalysisMode"/> but you can analyze and generate xml-xref at the same time
         /// using <see cref="AnalysisModeSimplifiedDatabaseReferences"/>
         /// </summary>
         public bool CompileUseXmlXref { get; set; }
-        
+
         /// <summary>
         /// Activate the preprocess compile option which is a listing file exactly like <see cref="CompileWithDebugList"/> except it
         /// doesn't print the line numbers
         /// </summary>
         public bool CompileWithPreprocess { get; set; }
-        
+
         /// <summary>
         /// Sets the COMPILER:MULTI-COMPILE value
         /// </summary>
         public bool CompilerMultiCompile { get; set; }
-        
+
         /// <summary>
         /// Extra options to add to the compile statement, for instance "MIN-SIZE = TRUE"
         /// </summary>
         public string CompileStatementExtraOptions { get; set; }
-        
+
         /// <summary>
         /// OPTIONS option of COMPILE only since 11.7 : require-full-names,require-field-qualifiers,require-full-keywords
         /// </summary>
@@ -141,11 +141,11 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Path to the file containing the COMPILE output
         /// </summary>
         private string _compilationLog;
-        
+
         private string _filesListPath;
-        
+
         private bool _useXmlXref;
-        
+
         /// <summary>
         /// Path to a file used to determine the progression of a compilation (useful when compiling multiple programs)
         /// 1 byte = 1 file treated
@@ -171,7 +171,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected override void SetExecutionInfo() {
 
             _useXmlXref = CompileUseXmlXref && (!CompileInAnalysisMode || AnalysisModeSimplifiedDatabaseReferences);
-            
+
             base.SetExecutionInfo();
 
             // for each file of the list
@@ -190,7 +190,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 if (!CompiledFiles.TryAdd(compiledFile)) {
                     continue;
                 }
-                
+
                 // get the output directory that will be use to generate the .r (and listing debug-list...)
                 if (Path.GetExtension(file.Path ?? "").Equals(UoeConstants.ExtCls)) {
                     // for *.cls files, as many *.r files are generated, we need to compile in a temp directory
@@ -211,7 +211,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 if (CompileWithListing) {
                     compiledFile.CompilationListingFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{UoeConstants.ExtListing}");
                 }
-                
+
                 if (CompileWithXref && !_useXmlXref) {
                     compiledFile.CompilationXrefFilePath = Path.Combine(compiledFile.CompilationOutputDirectory, $"{baseFileName}{UoeConstants.ExtXref}");
                 }
@@ -226,7 +226,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 }
 
                 compiledFile.IsAnalysisMode = CompileInAnalysisMode;
-                
+
                 if (CompileInAnalysisMode) {
                     compiledFile.CompilationFileIdLogFilePath = Path.Combine(localSubTempDir, $"{baseFileName}{UoeConstants.ExtFileIdLog}");
                     if (AnalysisModeSimplifiedDatabaseReferences) {
@@ -261,8 +261,8 @@ namespace Oetools.Utilities.Openedge.Execution {
 
                 count++;
             }
-            
-           
+
+
             File.WriteAllText(_filesListPath, filesListcontent.ToString(), Env.GetIoEncoding());
 
             SetPreprocessedVar("CompileListFilePath", _filesListPath.ProPreProcStringify());
@@ -283,17 +283,15 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected override void AppendProgramToRun(StringBuilder runnerProgram) {
             base.AppendProgramToRun(runnerProgram);
-            runnerProgram.AppendLine(ProgramProgressCompile);
+            runnerProgram.AppendLine(OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution_handle_compilation.p"));
         }
-        
-        private string ProgramProgressCompile => OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution_handle_compilation.p");
 
         /// <summary>
         /// Get the results for each compiled files
         /// </summary>
         protected override void GetProcessResults() {
             base.GetProcessResults();
-            
+
             // end of successful execution action
             if (!ExecutionFailed) {
                 try {
@@ -301,7 +299,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         file.ReadCompilationResults(Env.GetIoEncoding(), _processStartDir);
                         file.ComputeRequiredDatabaseReferences(Env, AnalysisModeSimplifiedDatabaseReferences);
                     });
-                    
+
                     // set UoeExecutionCompilationStoppedException exception
                     for (int i = 0; i < HandledExceptions.Count; i++) {
                         if (HandledExceptions[i] is UoeExecutionOpenedgeException oeException) {
@@ -318,7 +316,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 }
             }
         }
-        
+
     }
-    
+
 }

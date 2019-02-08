@@ -17,9 +17,10 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System;
 
-namespace Oetools.Utilities.Openedge.Database {
+namespace Oetools.Utilities.Openedge.Database.Exceptions {
 
     /// <summary>
     /// An exception thrown when a database operation fails.

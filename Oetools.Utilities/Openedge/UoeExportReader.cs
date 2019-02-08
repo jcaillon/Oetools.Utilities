@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeExportReader.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -52,7 +52,7 @@ namespace Oetools.Utilities.Openedge {
         public void Dispose() {
             _stream?.Dispose();
         }
-        
+
         /// <summary>
         /// Get the current record number, only when moving between fields with <see cref="MoveToNextRecordField"/>
         /// </summary>
@@ -95,30 +95,30 @@ namespace Oetools.Utilities.Openedge {
         public bool MoveToNextRecordField() {
             return MoveToNextRecordFieldInternal();
         }
-        
+
         /// <summary>
         /// Reads a entire record and output it, returns false when reaching the end of the stream
         /// (you should not use public properties of this class when using this method as they will not output what you expect)
         /// </summary>
-        /// <param name="record"></param>
-        /// <param name="recordNumber"></param>
-        /// <param name="noQuotesValues"></param>
+        /// <param name="fields"></param>
+        /// <param name="recordNumber">the current record number.</param>
+        /// <param name="noQuotesValues">true to keep the surrounding quotes of the field if they exist in the file.</param>
         /// <returns></returns>
-        public bool ReadRecord(out List<string> record, out int recordNumber, bool noQuotesValues = false) {
-            record = new List<string>();
+        public bool ReadRecord(out List<string> fields, out int recordNumber, bool noQuotesValues = false) {
+            fields = new List<string>();
             if (_recordNb > 0 && _type != ReadType.EndOfStream) {
-                record.Add(noQuotesValues ? RecordValueNoQuotes : RecordValue);
+                fields.Add(noQuotesValues ? RecordValueNoQuotes : RecordValue);
             }
             recordNumber = _recordNb;
             do {
                 var canRead = MoveToNextRecordFieldInternal();
                 if (canRead && _recordNb == recordNumber) {
-                    record.Add(noQuotesValues ? RecordValueNoQuotes : RecordValue);
+                    fields.Add(noQuotesValues ? RecordValueNoQuotes : RecordValue);
                 } else {
                     break;
                 }
             } while (true);
-            return record.Count > 0;
+            return fields.Count > 0;
         }
 
         private bool MoveToNextRecordFieldInternal() {
@@ -146,8 +146,8 @@ namespace Oetools.Utilities.Openedge {
                 }
             } while (_type != ReadType.EndOfStream);
             return false;
-        }        
-        
+        }
+
         private string GetRecordValueInternal(bool stripQuotes) {
             var recordLength = _stream.Position - _fieldStartPosition - 1;
             _stream.Position = _fieldStartPosition;
@@ -195,16 +195,16 @@ namespace Oetools.Utilities.Openedge {
             string Read(int length);
 
             ReadType ReadToNextFieldEnd();
-            
+
             void ReadToNextQuotes();
 
             char Peek(int offset);
         }
 
         private class OeStringStream : IOeExportStream {
-            
+
             private char[] _endOfFieldChars = { ' ', '\t', '\r', '\n', '"' };
-            
+
             private string _input;
 
             private int _position;

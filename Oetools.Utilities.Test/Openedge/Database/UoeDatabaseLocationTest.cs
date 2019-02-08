@@ -22,6 +22,7 @@ using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database;
+using Oetools.Utilities.Openedge.Database.Exceptions;
 
 namespace Oetools.Utilities.Test.Openedge.Database {
 

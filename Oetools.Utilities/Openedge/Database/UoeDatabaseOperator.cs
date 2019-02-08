@@ -29,6 +29,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Openedge.Database.Exceptions;
 
 namespace Oetools.Utilities.Openedge.Database {
 

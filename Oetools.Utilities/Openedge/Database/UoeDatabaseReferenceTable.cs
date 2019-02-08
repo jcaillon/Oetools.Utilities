@@ -17,7 +17,7 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-namespace Oetools.Utilities.Openedge {
+namespace Oetools.Utilities.Openedge.Database {
     public class UoeDatabaseReferenceTable : UoeDatabaseReference {
         public virtual string Crc { get; set; }
     }

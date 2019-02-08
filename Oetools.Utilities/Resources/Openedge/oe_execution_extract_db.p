@@ -4,8 +4,6 @@ This file was created with the 3P :  https://jcaillon.github.io/3P/
 */
 
 /* When executed, the preprocessed variables below are set to real values */
-/* if ExecutionType not already defined */
-
 &IF DEFINED(ErrorLogPath) = 0 &THEN
     &SCOPED-DEFINE ErrorLogPath "out.log"
     DEFINE STREAM str_rw.
@@ -18,6 +16,8 @@ This file was created with the 3P :  https://jcaillon.github.io/3P/
     &SCOPED-DEFINE DatabaseExtractCandoTblType "T"
     &SCOPED-DEFINE DatabaseExtractCandoTblName "*"
     &SCOPED-DEFINE DatabaseExtractFilePath "out.dbdump"
+    &SCOPED-DEFINE DatabaseExtractType ""
+    &SCOPED-DEFINE DatabaseExtractExternalProgramPath ""
 &ENDIF
 
 /* ***************************  Definitions  ************************** */
@@ -30,25 +30,48 @@ PROCEDURE program_to_run PRIVATE:
 
     DEFINE VARIABLE li_db AS INTEGER NO-UNDO.
 
-    OUTPUT STREAM str_rw TO VALUE({&DatabaseExtractFilePath}) APPEND BINARY.
+    &IF {&DatabaseExtractType} = "all" &THEN
+    
+        REPEAT li_db = 1 TO NUM-DBS:        
+            CREATE ALIAS "ALIAS4DB" FOR DATABASE VALUE(LDBNAME(li_db)) NO-ERROR.
+            IF NOT fi_output_last_error(INPUT {&ErrorLogPath}) THEN DO:
+                RUN VALUE({&DatabaseExtractExternalProgramPath}) (INPUT {&DatabaseExtractFilePath}, INPUT LDBNAME(li_db), INPUT PDBNAME(li_db), INPUT {&DatabaseExtractCandoTblType}, INPUT {&DatabaseExtractCandoTblName}) NO-ERROR.
+                fi_output_last_error(INPUT {&ErrorLogPath}).
+                DELETE ALIAS "ALIAS4DB".
+            END.
+        END.
 
-    CREATE WIDGET-POOL.
-    REPEAT li_db = 1 TO NUM-DBS:
-        PUT STREAM str_rw UNFORMATTED "D " + QUOTER(LDBNAME(li_db)) SKIP.    
-        RUN pi_DumpTableListAndSequences (INPUT LDBNAME(li_db), INPUT "S", INPUT "_Sequence,_Seq-Name", INPUT "") NO-ERROR.
-        fi_output_last_error(INPUT {&ErrorLogPath}).
-        RUN pi_DumpTableListAndSequences (INPUT LDBNAME(li_db), INPUT "T", INPUT "_FILE,_FILE-NAME,_CRC", INPUT " WHERE CAN-DO(" + QUOTER({&DatabaseExtractCandoTblType}) + ", " + LDBNAME(li_db) + "._FILE._Tbl-Type) AND CAN-DO(" + QUOTER({&DatabaseExtractCandoTblName}) + ", " + LDBNAME(li_db) + "._FILE._FILE-NAME)") NO-ERROR.
-        fi_output_last_error(INPUT {&ErrorLogPath}).
-    END.
-    DELETE WIDGET-POOL.
+    &ELSE
 
-    OUTPUT STREAM str_rw CLOSE.
+        OUTPUT STREAM str_rw TO VALUE({&DatabaseExtractFilePath}) APPEND BINARY.
+
+        CREATE WIDGET-POOL.
+        REPEAT li_db = 1 TO NUM-DBS:
+            PUT STREAM str_rw UNFORMATTED "D " + QUOTER(LDBNAME(li_db)) SKIP.
+
+            &IF {&DatabaseExtractType} = "crc" &THEN
+                RUN pi_DumpTablesFieldsValues (INPUT LDBNAME(li_db), INPUT "S", INPUT "_Sequence,_Seq-Name", INPUT "") NO-ERROR.
+                fi_output_last_error(INPUT {&ErrorLogPath}).
+                RUN pi_DumpTablesFieldsValues (INPUT LDBNAME(li_db), INPUT "T", INPUT "_FILE,_FILE-NAME,_CRC", INPUT " WHERE CAN-DO(" + QUOTER({&DatabaseExtractCandoTblType}) + ", " + LDBNAME(li_db) + "._FILE._Tbl-Type) AND CAN-DO(" + QUOTER({&DatabaseExtractCandoTblName}) + ", " + LDBNAME(li_db) + "._FILE._FILE-NAME)") NO-ERROR.
+                fi_output_last_error(INPUT {&ErrorLogPath}).
+
+            &ELSEIF {&DatabaseExtractType} = "last_schema_update" &THEN
+                RUN pi_DumpTablesFieldsValues (INPUT LDBNAME(li_db), INPUT "M", INPUT "_DbStatus,_dbstatus-cachestamp", INPUT "") NO-ERROR.
+                fi_output_last_error(INPUT {&ErrorLogPath}).
+
+            &ENDIF
+        END.
+        DELETE WIDGET-POOL.
+
+        OUTPUT STREAM str_rw CLOSE.
+
+    &ENDIF
 
     RETURN "".
 
 END PROCEDURE.
 
-PROCEDURE pi_DumpTableListAndSequences PRIVATE:
+PROCEDURE pi_DumpTablesFieldsValues PRIVATE:
 
     DEFINE INPUT PARAMETER ipc_database AS CHARACTER NO-UNDO.
     DEFINE INPUT PARAMETER ipc_prefix AS CHARACTER NO-UNDO.
@@ -90,7 +113,7 @@ PROCEDURE pi_DumpTableListAndSequences PRIVATE:
 
             DO li_field_loop = 2 TO li_num_fields + 1:
 
-                PUT STREAM str_rw UNFORMATTED " ".
+                PUT STREAM str_rw UNFORMATTED "~t".
 
                 ASSIGN
                     lc_field_name = ENTRY(li_field_loop, lc_table_info, ",")

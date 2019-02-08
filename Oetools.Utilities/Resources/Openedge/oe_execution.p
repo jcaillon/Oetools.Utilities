@@ -4,8 +4,6 @@ This file was created with the 3P :  https://jcaillon.github.io/3P/
 */
 
 /* When executed, the preprocessed variables below are set to real values */
-/* if ExecutionType not already defined */
-
 &IF DEFINED(ErrorLogPath) = 0 &THEN
     &SCOPED-DEFINE ErrorLogPath ".log"
     &SCOPED-DEFINE DbErrorLogPath ".db.log"
@@ -147,6 +145,7 @@ PROCEDURE main PRIVATE:
         ON ERROR  UNDO, LEAVE
             ON ENDKEY UNDO, LEAVE
             ON QUIT   UNDO, LEAVE:
+        /* the program to execute will be appended to this procedure so the internal procedure "program_to_run" exists at this point */
         RUN program_to_run NO-ERROR.
     END.
     fi_output_last_error(INPUT {&ErrorLogPath}).

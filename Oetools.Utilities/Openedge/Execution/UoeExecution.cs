@@ -269,7 +269,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 runnerProgram.AppendLine($"&SCOPED-DEFINE {var.Key} {var.Value}");
             }
 
-            runnerProgram.AppendLine(ProgramProgressRun);
+            runnerProgram.AppendLine(OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution.p"));
             AppendProgramToRun(runnerProgram);
             File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.GetIoEncoding());
 
@@ -510,8 +510,6 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
             _eventPublished = true;
         }
-
-        private string ProgramProgressRun => OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution.p");
 
     }
 }

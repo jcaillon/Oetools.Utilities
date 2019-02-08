@@ -199,7 +199,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         private string _codePageName;
 
         private void InitDatabasesInfo() {
-            using (var exec = new UoeExecutionDbExtractTableAndSequenceList(this)) {
+            using (var exec = new UoeExecutionDbExtractTableCrcAndSequenceList(this)) {
                 exec.Start();
                 exec.WaitForExecutionEnd();
                 _tablesCrc = exec.TablesCrc;

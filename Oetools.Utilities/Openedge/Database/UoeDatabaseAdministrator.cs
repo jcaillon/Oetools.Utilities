@@ -24,6 +24,7 @@ using System.Linq;
 using System.Text;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Openedge.Database.Exceptions;
 using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Resources;
 
@@ -68,6 +69,11 @@ namespace Oetools.Utilities.Openedge.Database {
             get => _tempFolder ?? (_tempFolder = Utils.CreateTempDirectory());
             set => _tempFolder = value;
         }
+
+        /// <summary>
+        /// Pro parameters to append to the execution of the progress process.
+        /// </summary>
+        public string ProExeCommandLineParameters { get; set; }
 
         /// <summary>
         /// Initialize a new instance.
@@ -304,8 +310,12 @@ namespace Oetools.Utilities.Openedge.Database {
 
 
         private void StartDataAdministratorProgram(string parameters, string workingDirectory = null) {
+            var arguments = $"-p {ProcedurePath.ToCliArg()} {parameters}{(!string.IsNullOrEmpty(workingDirectory) ? $" -T {TempFolder.ToCliArg()}" : "")}";
+            if (!string.IsNullOrWhiteSpace(ProExeCommandLineParameters)) {
+                arguments = $"{arguments} {UoeUtilities.GetCleanCliArgs(ProExeCommandLineParameters)}";
+            }
+
             Progres.WorkingDirectory = workingDirectory ?? TempFolder;
-            var arguments = $"-p {ProcedurePath.ToCliArg()} {parameters}";
 
             Log?.Debug($"Executing command:\n{Progres.ExecutablePath?.ToCliArg()} {arguments}");
             var executionOk = Progres.TryExecute(arguments);
