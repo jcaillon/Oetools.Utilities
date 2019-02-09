@@ -55,11 +55,21 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Hostname (-H name).
         /// </summary>
         public string HostName { get; private set; }
-
         /// <summary>
         /// Max connection try (-ct number).
         /// </summary>
         public int? MaxConnectionTry { get; set; }
+
+        /// <summary>
+        /// Userid (-U name).
+        /// </summary>
+        public string UserId { get; private set; }
+
+        /// <summary>
+        /// Password (-P name).
+        /// </summary>
+        public string Password { get; private set; }
+
 
         /// <summary>
         /// Extra connection options that were not parsed by this class, listed in 'Client database connection parameters' from the oe docs.
@@ -82,6 +92,14 @@ namespace Oetools.Utilities.Openedge.Database {
             if (SingleUser && (!string.IsNullOrEmpty(Service) || !string.IsNullOrEmpty(HostName))) {
                 throw new UoeDatabaseConnectionParseException($"The single user mode (-1) can't be used with -S or -H options in the connection string: {connectionString.PrettyQuote()}.");
             }
+        }
+
+        /// <summary>
+        /// string representation of the connection string. To use in a CONNECT statement.
+        /// </summary>
+        /// <returns></returns>
+        public string ToCliArgsJdbcConnectionString() {
+            return $"progress:T:{HostName ?? "localhost"}:{Service}:{DatabaseLocation?.PhysicalName}{(!string.IsNullOrEmpty(UserId) ? $",{UserId.ToCliArg()}": "")}{(!string.IsNullOrEmpty(Password) ? $",{Password.ToCliArg()}": "")}";
         }
 
         /// <summary>
@@ -119,6 +137,12 @@ namespace Oetools.Utilities.Openedge.Database {
             }
             if (SingleUser) {
                 result.Append(" -1").Append(Service);
+            }
+            if (!string.IsNullOrEmpty(UserId)) {
+                result.Append(" -U ").Append(UserId);
+                if (!string.IsNullOrEmpty(Password)) {
+                    result.Append(" -P ").Append(Password);
+                }
             }
             if (MaxConnectionTry.HasValue) {
                 result.Append(" -ct ").Append(MaxConnectionTry.Value);
@@ -242,6 +266,22 @@ namespace Oetools.Utilities.Openedge.Database {
                                 currentConnectionString.HostName = hostName.Value.StripQuotes();
                             } else {
                                 throw new UoeDatabaseConnectionParseException($"Expecting a host name after the -H option in the connection string: {connectionString.PrettyQuote()}.");
+                            }
+                            break;
+                        case "-U":
+                            var userId = tokenizer.MoveAndPeekAtToken(2);
+                            if (userId is ParameterStringTokenValue) {
+                                currentConnectionString.UserId = userId.Value.StripQuotes();
+                            } else {
+                                throw new UoeDatabaseConnectionParseException($"Expecting a userid after the -U option in the connection string: {connectionString.PrettyQuote()}.");
+                            }
+                            break;
+                        case "-P":
+                            var password = tokenizer.MoveAndPeekAtToken(2);
+                            if (password is ParameterStringTokenValue) {
+                                currentConnectionString.Password = password.Value.StripQuotes();
+                            } else {
+                                throw new UoeDatabaseConnectionParseException($"Expecting a password after the -P option in the connection string: {connectionString.PrettyQuote()}.");
                             }
                             break;
                         case "-ct":

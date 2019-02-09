@@ -40,6 +40,10 @@ namespace Oetools.Utilities.Openedge.Database {
         private string _procedurePath;
         private string _tempFolder;
 
+        private string SqlSchemaName => Utils.IsRuntimeWindowsPlatform ? "_sqlschema.exe" : "_sqlschema";
+        private string SqlLoadName => Utils.IsRuntimeWindowsPlatform ? "_sqlload.exe.exe" : "_sqlload.exe";
+        private string SqlDumpName => Utils.IsRuntimeWindowsPlatform ? "_sqldump.exe.exe" : "_sqldump.exe";
+
         private string ProcedurePath {
             get {
                 if (_procedurePath == null) {
@@ -306,6 +310,24 @@ namespace Oetools.Utilities.Openedge.Database {
             Log?.Info($"Loading data from directory {dataDirectoryPath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()}.");
 
             StartDataAdministratorProgram($"{databaseConnection.ToCliArgs()} -param {$"load-d|{dataDirectoryPath}|{tableName}".ToCliArg()}");
+        }
+
+        public void DumpSqlSchema(UoeDatabaseConnection databaseConnection, string userName, string password, string dumpFilePath, string options = "-f %.% -g %.% -G %.% -n %.% -p %.% -q %.% -Q %.% -s %.% -t %.% -T %.%") {
+            dumpFilePath = dumpFilePath.ToAbsolutePath();
+            var dir = Path.GetDirectoryName(dumpFilePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+                Directory.CreateDirectory(dir);
+            }
+
+            var sqlSchema = GetExecutable(SqlSchemaName);
+            sqlSchema.WorkingDirectory = TempFolder;
+
+            Log?.Info($"Dump sql-92 schema for {databaseConnection.ToString().PrettyQuote()} to {dumpFilePath.PrettyQuote()}.");
+
+            var executionOk = sqlSchema.TryExecute($"-u {userName.ToCliArg()} -a {password.ToCliArg()} -o {dumpFilePath.ToCliArg()} {UoeUtilities.GetCleanCliArgs(options)} {databaseConnection.ToCliArgsJdbcConnectionString()}");
+            if (!executionOk || !sqlSchema.BatchOutputString.Contains("(11465)")) {
+                throw new UoeDatabaseException(sqlSchema.BatchOutputString);
+            }
         }
 
 

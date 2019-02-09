@@ -20,6 +20,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Execution;
@@ -81,7 +82,12 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
 
             env.DatabaseConnections = new []{ UoeDatabaseConnection.NewSingleUserConnection(base1Db), UoeDatabaseConnection.NewSingleUserConnection(base2Db) };
-            env.DatabaseConnections = UoeDatabaseConnection.GetConnectionStrings(@"-db ""C:\data\cnaf\DATABASES\atlp_17_01\atlp_17_01.db"" -ld boi -1");
+            //env.DatabaseConnections = UoeDatabaseConnection.GetConnectionStrings(@"-db ""C:\Users\Julien\Desktop\formation\new\test.db"" -ld boi -1");
+            env.DatabaseConnections = UoeDatabaseConnection.GetConnectionStrings(@"-db test -S 1024");
+
+            using (var admin = new UoeDatabaseAdministrator(env.DlcDirectoryPath)) {
+                admin.DumpSqlSchema(env.DatabaseConnections.First(), null, null, Path.Combine(TestFolder, "out.sql"));
+            }
 
             using (var exec = new UoeExecutionDbExtractSchema(env)) {
                 exec.Start();

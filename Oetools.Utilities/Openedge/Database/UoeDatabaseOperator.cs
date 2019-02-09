@@ -225,9 +225,6 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <exception cref="UoeDatabaseException"></exception>
         public void Copy(UoeDatabaseLocation targetDb, UoeDatabaseLocation sourceDb, bool newInstance = true, bool relativePath = true) {
             sourceDb.ThrowIfNotExist();
-            if (targetDb.Exists()) {
-                throw new UoeDatabaseException($"The database already exists: {targetDb.FullPath.PrettyQuote()}.");
-            }
 
             if (!Directory.Exists(targetDb.DirectoryPath)) {
                 Directory.CreateDirectory(targetDb.DirectoryPath);

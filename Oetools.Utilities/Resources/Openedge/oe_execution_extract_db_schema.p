@@ -12,10 +12,10 @@ DEFINE INPUT PARAMETER ipc_candoFileName AS CHARACTER NO-UNDO. /* */
 &SCOPED-DEFINE sep "~t"
 &SCOPED-DEFINE format_database "#D~t<YYYYMMDD>~t<HH:MM:SS>~t<logical_name>~t<physical_name>~t<proversion>~t<version.minor_version>~t<codepage>"
 &SCOPED-DEFINE format_sequence "#S~t<name>~t<cycle?>~t<increment>~t<initial>~t<min>~t<max>"
-&SCOPED-DEFINE format_table    "#T~t<name>~t<dump_name>~t<number>~t<crc>~t<label>~t<desc>~t<hidden?>~t<frozen?>~t<area>~t<type>"
-&SCOPED-DEFINE format_trigger  "#X~t<event>~t<proc_name>~t<overridable?>~t<crc>"
-&SCOPED-DEFINE format_index    "#I~t<name>~t<active?>~t<primary?>~t<unique?>~t<crc>~t<area>~t<fields>~t<desc>"
-&SCOPED-DEFINE format_field    "#F~t<name>~t<data_type>~t<format>~t<order>~t<mandatory?>~t<case_sensitive?>~t<extent>~t<in_index?>~t<in_pk?>~t<initial>~t<width>~t<label>~t<column_label>~t<desc>~t<help>"
+&SCOPED-DEFINE format_table    "#T~t<name>~t<dump_name>~t<crc>~t<label>~t<sa>~t<desc>~t<hidden?>~t<frozen?>~t<area>~t<type>~t<valid_expr>~t<valid_mess>~t<sa>"
+&SCOPED-DEFINE format_trigger  "#X~t<event>~t<field_name>~t<proc_name>~t<overridable?>~t<crc>"
+&SCOPED-DEFINE format_index    "#I~t<name>~t<active?>~t<primary?>~t<unique?>~t<word?>~t<crc>~t<area>~t<fields>~t<desc>"
+&SCOPED-DEFINE format_field    "#F~t<name>~t<data_type>~t<format>~t<sa>~t<order>~t<pos>~t<mandatory?>~t<case_sensitive?>~t<extent>~t<in_index?>~t<in_pk?>~t<initial>~t<sa>~t<width>~t<label>~t<sa>~t<column_label>~t<sa>~t<desc>~t<help>~t<sa>"
 
 DEFINE VARIABLE gc_fieldList AS CHARACTER NO-UNDO.
 DEFINE VARIABLE gc_fieldListWithSort AS CHARACTER NO-UNDO.
@@ -69,14 +69,17 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
         "T" + {&sep} +
         ALIAS4DB._File._File-Name + {&sep} +
         QUOTER(ALIAS4DB._File._Dump-name) + {&sep} +
-        STRING(ALIAS4DB._File._File-Number) + {&sep} +
         STRING(ALIAS4DB._File._CRC) + {&sep} +
         QUOTER(ALIAS4DB._File._File-Label) + {&sep} +
+        QUOTER(ALIAS4DB._File._File-Label-SA) + {&sep} +
         QUOTER(ALIAS4DB._File._Desc) + {&sep} +
         STRING(ALIAS4DB._File._Hidden, "1/0") + {&sep} +
         STRING(ALIAS4DB._File._Frozen, "1/0") + {&sep} +
         QUOTER(ALIAS4DB._Area._Area-name) + {&sep} +
-        ALIAS4DB._File._Tbl-Type
+        ALIAS4DB._File._Tbl-Type + {&sep} +
+        QUOTER(ALIAS4DB._File._Valexp) + {&sep} +
+        QUOTER(ALIAS4DB._File._Valmsg) + {&sep} +
+        QUOTER(ALIAS4DB._File._Valmsg-SA)
         SKIP.
     PUT STREAM str_out UNFORMATTED "#" SKIP.
 
@@ -86,9 +89,21 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
         PUT STREAM str_out UNFORMATTED
             "X" + {&sep} +
             ALIAS4DB._File-Trig._Event + {&sep} +
+            QUOTER(?) + {&sep} +
             QUOTER(ALIAS4DB._File-Trig._Proc-Name) + {&sep} +
             STRING(ALIAS4DB._File-Trig._Override, "1/0") + {&sep} +
             QUOTER(ALIAS4DB._File-Trig._Trig-Crc)
+            SKIP.
+    END.
+    FOR EACH ALIAS4DB._Field-Trig NO-LOCK OF ALIAS4DB._File,
+        FIRST ALIAS4DB._Field NO-LOCK WHERE RECID(ALIAS4DB._Field) = ALIAS4DB._Field-Trig._Field-Recid:
+        PUT STREAM str_out UNFORMATTED
+            "X" + {&sep} +
+            ALIAS4DB._Field-Trig._Event + {&sep} +
+            ALIAS4DB._Field._Field-Name + {&sep} +
+            QUOTER(ALIAS4DB._Field-Trig._Proc-Name) + {&sep} +
+            STRING(ALIAS4DB._Field-Trig._Override, "1/0") + {&sep} +
+            QUOTER(ALIAS4DB._Field-Trig._Trig-Crc)
             SKIP.
     END.
     PUT STREAM str_out UNFORMATTED "#" SKIP.
@@ -111,7 +126,7 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
         FOR EACH ALIAS4DB._Index-Field NO-LOCK OF ALIAS4DB._Index,
             FIRST ALIAS4DB._Field NO-LOCK OF ALIAS4DB._Index-Field:
             ASSIGN gc_fieldList = gc_fieldList + ALIAS4DB._Field._Field-Name + ",".
-            ASSIGN gc_fieldListWithSort = gc_fieldListWithSort + ALIAS4DB._Field._Field-Name + STRING(ALIAS4DB._Index-Field._Ascending, "+/-") + ",".
+            ASSIGN gc_fieldListWithSort = gc_fieldListWithSort + ALIAS4DB._Field._Field-Name + STRING(ALIAS4DB._Index-Field._Ascending, "+/-") + STRING(ALIAS4DB._Index-Field._Abbreviate, "1/0") + ",".
         END.
 
         IF RECID(ALIAS4DB._Index) = ALIAS4DB._File._Prime-Index THEN
@@ -124,6 +139,7 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
             STRING(ALIAS4DB._Index._Active, "1/0") + {&sep} +
             STRING(RECID(ALIAS4DB._Index) = ALIAS4DB._File._Prime-Index, "1/0") + {&sep} +
             STRING(ALIAS4DB._Index._Unique, "1/0") + {&sep} +
+            STRING(ALIAS4DB._Index._Idxmethod = "W", "1/0") + {&sep} +
             STRING(ALIAS4DB._Index._Idx-CRC) + {&sep} +
             QUOTER(gb_area._Area-name) + {&sep} +
             RIGHT-TRIM(gc_fieldListWithSort, ",") + {&sep} +
@@ -145,18 +161,24 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
             ALIAS4DB._Field._Field-Name + {&sep} +
             ALIAS4DB._Field._Data-Type + {&sep} +
             QUOTER(ALIAS4DB._Field._Format) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Format-SA) + {&sep} +
             STRING(ALIAS4DB._Field._Order) + {&sep} +
+            STRING(ALIAS4DB._Field._field-rpos) + {&sep} +
             STRING(ALIAS4DB._Field._Mandatory, "1/0") + {&sep} +
             STRING(ALIAS4DB._Field._Fld-case, "1/0") + {&sep} +
             STRING(ALIAS4DB._Field._Extent) + {&sep} +
             STRING(LOOKUP(ALIAS4DB._Field._Field-Name, gc_champIndex) > 0, "1/0") + {&sep} +
             STRING(LOOKUP(ALIAS4DB._Field._Field-Name, gc_champPK) > 0, "1/0") + {&sep} +
             QUOTER(ALIAS4DB._Field._Initial) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Initial-SA) + {&sep} +
             QUOTER(ALIAS4DB._Field._Width) + {&sep} +
             QUOTER(ALIAS4DB._Field._Label) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Label-SA) + {&sep} +
             QUOTER(ALIAS4DB._Field._Col-label) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Col-label-SA) + {&sep} +
             QUOTER(ALIAS4DB._Field._Desc) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Help)
+            QUOTER(ALIAS4DB._Field._Help) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Help-SA)
             SKIP.
     END.
     PUT STREAM str_out UNFORMATTED "#" SKIP.
