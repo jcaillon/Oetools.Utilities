@@ -98,8 +98,9 @@ namespace Oetools.Utilities.Openedge.Database {
         /// string representation of the connection string. To use in a CONNECT statement.
         /// </summary>
         /// <returns></returns>
-        public string ToCliArgsJdbcConnectionString() {
-            return $"progress:T:{HostName ?? "localhost"}:{Service}:{DatabaseLocation?.PhysicalName}{(!string.IsNullOrEmpty(UserId) ? $",{UserId.ToCliArg()}": "")}{(!string.IsNullOrEmpty(Password) ? $",{Password.ToCliArg()}": "")}";
+        public string ToCliArgsJdbcConnectionString(bool includeUserId) {
+            var login = includeUserId ? $"{(!string.IsNullOrEmpty(UserId) ? $",{UserId.ToCliArg()}": "")}{(!string.IsNullOrEmpty(Password) ? $",{Password.ToCliArg()}": "")}" : null;
+            return $"progress:T:{HostName ?? "localhost"}:{Service}:{DatabaseLocation?.PhysicalName}{login}";
         }
 
         /// <summary>

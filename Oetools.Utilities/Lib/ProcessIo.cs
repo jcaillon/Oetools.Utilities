@@ -26,6 +26,9 @@ using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib {
 
+    /// <summary>
+    /// Wrapper around process.
+    /// </summary>
     public class ProcessIo {
 
         /// <summary>

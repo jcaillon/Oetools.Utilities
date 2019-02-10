@@ -312,7 +312,7 @@ namespace Oetools.Utilities.Openedge.Database {
             StartDataAdministratorProgram($"{databaseConnection.ToCliArgs()} -param {$"load-d|{dataDirectoryPath}|{tableName}".ToCliArg()}");
         }
 
-        public void DumpSqlSchema(UoeDatabaseConnection databaseConnection, string userName, string password, string dumpFilePath, string options = "-f %.% -g %.% -G %.% -n %.% -p %.% -q %.% -Q %.% -s %.% -t %.% -T %.%") {
+        public void DumpSqlSchema(UoeDatabaseConnection databaseConnection, string dumpFilePath, string options = "-f %.% -g %.% -G %.% -n %.% -p %.% -q %.% -Q %.% -s %.% -t %.% -T %.%") {
             dumpFilePath = dumpFilePath.ToAbsolutePath();
             var dir = Path.GetDirectoryName(dumpFilePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
@@ -324,12 +324,27 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dump sql-92 schema for {databaseConnection.ToString().PrettyQuote()} to {dumpFilePath.PrettyQuote()}.");
 
-            var executionOk = sqlSchema.TryExecute($"-u {userName.ToCliArg()} -a {password.ToCliArg()} -o {dumpFilePath.ToCliArg()} {UoeUtilities.GetCleanCliArgs(options)} {databaseConnection.ToCliArgsJdbcConnectionString()}");
-            if (!executionOk || !sqlSchema.BatchOutputString.Contains("(11465)")) {
+            var executionOk = TryExecuteWithDatabaseStarted(sqlSchema, $"-u {databaseConnection.UserId.ToCliArg()} -a {databaseConnection.Password.ToCliArg()} -o {dumpFilePath.ToCliArg()} {UoeUtilities.GetCleanCliArgs(options)} {databaseConnection.ToCliArgsJdbcConnectionString(false)}", databaseConnection);
+            if (!executionOk || sqlSchema.BatchOutputString.Length > 0) {
                 throw new UoeDatabaseException(sqlSchema.BatchOutputString);
             }
         }
 
+        private bool TryExecuteWithDatabaseStarted(ProcessIoWithLog process, string arguments, UoeDatabaseConnection databaseConnection) {
+            bool executionOk;
+            var busyMode = GetBusyMode(databaseConnection.DatabaseLocation);
+            if (string.IsNullOrEmpty(databaseConnection.Service) && busyMode == DatabaseBusyMode.NotBusy) {
+                Log?.Info($"The database needs to be started for this operation, starting it.");
+                using (new UoeDatabaseStarted(this, databaseConnection.DatabaseLocation)) {
+                    executionOk = process.TryExecute(arguments);
+                }
+            } else if (string.IsNullOrEmpty(databaseConnection.Service)) {
+                throw new UoeDatabaseException("The database needs to be either not busy or started for multi-user mode with service port.");
+            } else {
+                executionOk = process.TryExecute(arguments);
+            }
+            return executionOk;
+        }
 
         private void StartDataAdministratorProgram(string parameters, string workingDirectory = null) {
             var arguments = $"-p {ProcedurePath.ToCliArg()} {parameters}{(!string.IsNullOrEmpty(workingDirectory) ? $" -T {TempFolder.ToCliArg()}" : "")}";

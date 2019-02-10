@@ -82,13 +82,6 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
 
             env.DatabaseConnections = new []{ UoeDatabaseConnection.NewSingleUserConnection(base1Db), UoeDatabaseConnection.NewSingleUserConnection(base2Db) };
-            //env.DatabaseConnections = UoeDatabaseConnection.GetConnectionStrings(@"-db ""C:\Users\Julien\Desktop\formation\new\test.db"" -ld boi -1");
-            env.DatabaseConnections = UoeDatabaseConnection.GetConnectionStrings(@"-db test -S 1024");
-
-            using (var admin = new UoeDatabaseAdministrator(env.DlcDirectoryPath)) {
-                admin.DumpSqlSchema(env.DatabaseConnections.First(), null, null, Path.Combine(TestFolder, "out.sql"));
-            }
-
             using (var exec = new UoeExecutionDbExtractSchema(env)) {
                 exec.Start();
                 exec.WaitForExecutionEnd();

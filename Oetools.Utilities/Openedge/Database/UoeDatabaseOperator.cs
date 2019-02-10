@@ -1078,49 +1078,5 @@ namespace Oetools.Utilities.Openedge.Database {
             return _lastUsedProcess;
         }
 
-        protected class ProcessIoWithLog : ProcessIo {
-
-            /// <summary>
-            /// A logger.
-            /// </summary>
-            public ILog Log { get; set; }
-
-            public ProcessIoWithLog(string executablePath) : base(executablePath) { }
-
-            protected override void PrepareStart(string arguments, bool silent) {
-                base.PrepareStart(arguments, silent);
-                _batchOutput = null;
-                Log?.Debug($"Executing command:\n{ExecutedCommandLine}");
-            }
-
-            private string _batchOutput;
-
-            /// <summary>
-            /// Returns all the messages sent to the standard or error output, should be used once the process has exited
-            /// </summary>
-            public string BatchOutputString {
-                get {
-                    if (_batchOutput == null) {
-                        var batchModeOutput = new StringBuilder();
-                        foreach (var s in ErrorOutputArray.ToNonNullEnumerable()) {
-                            batchModeOutput.AppendLine(s.Trim());
-                        }
-                        foreach (var s in StandardOutputArray.ToNonNullEnumerable()) {
-                            batchModeOutput.AppendLine(s.Trim());
-                        }
-                        _batchOutput = batchModeOutput.ToString();
-                    }
-
-                    return _batchOutput;
-                }
-            }
-
-            public override bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
-                var result = base.Execute(arguments, silent, timeoutMs);
-                Log?.Debug($"Command output:\n{BatchOutputString}");
-                return result;
-            }
-        }
-
     }
 }

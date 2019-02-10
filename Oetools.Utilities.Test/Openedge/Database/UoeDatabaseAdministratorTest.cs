@@ -232,5 +232,36 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             }
 
         }
+
+        [TestMethod]
+        public void Sql() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            // create .df
+            var dfPath = Path.Combine(TestFolder, "sql.df");
+            File.WriteAllText(dfPath, "ADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD FIELD \"field2\" OF \"table1\" AS integer \n  DESCRIPTION \"field two\"\n  FORMAT \"9\"\n  INITIAL 0\n  POSITION 3\n  ORDER 20\n");
+
+            using (var dataAdmin = new UoeDatabaseAdministrator(dlcPath)) {
+                var db = GetDb("sql");
+                dataAdmin.CreateWithDf(db, dfPath);
+
+                var dbConnect = dataAdmin.GetDatabaseConnection(db);
+
+                // load data from .d
+                var table1Path = Path.Combine(TestFolder, "table1.d");
+                File.WriteAllText(table1Path, "\"value1\" 1\n\"value2\" 2\n");
+                dataAdmin.LoadData(dbConnect, TestFolder);
+                File.Delete(table1Path);
+
+                // dump sql schema
+                var dump = Path.Combine(TestFolder, $"out{UoeDatabaseLocation.SqlSchemaExtension}");
+                dataAdmin.DumpSqlSchema(dbConnect, dump);
+                Assert.IsTrue(File.Exists(dump));
+
+            }
+
+        }
     }
 }

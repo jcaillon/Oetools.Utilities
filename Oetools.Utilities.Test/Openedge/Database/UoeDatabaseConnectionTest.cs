@@ -59,8 +59,8 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         }
 
         [DataRow(
-            @"-option value -ct 2 -db data -ld logi -1 -db data2 -option2 value2 -singleoption -ld logi2 -H hostname -S 1024 -db data3 -ld logi3 -H hostname -S 1025",
-            @"-db ""data"" -ld logi -1 -ct 2 -option value -db data2 -ld logi2 -H hostname -S 1024 -option2 value2 -singleoption -db data3 -ld logi3 -H hostname -S 1025")]
+            @"-P pass -U user -option value -ct 2 -db data -ld logi -1 -db data2 -option2 value2 -singleoption -ld logi2 -H hostname -S 1024 -db data3 -ld logi3 -H hostname -S 1025",
+            @"-db ""data"" -ld logi -1 -U user -P pass -ct 2 -option value -db data2 -ld logi2 -H hostname -S 1024 -option2 value2 -singleoption -db data3 -ld logi3 -H hostname -S 1025")]
         [DataTestMethod]
         public void GetConnectionString(string input, string output) {
             output = output.Replace(@"""data""", Path.Combine(Directory.GetCurrentDirectory(), "data.db").Quote());
@@ -87,6 +87,8 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         [DataRow(@"-db data -ld logi -H hostname -S 1024 -1")] // -1 with -S
         [DataRow(@"-db data -1 -pf")] // -pf alone
         [DataRow(@"-db data -1 -pf missing.pf")] // -pf not existing
+        [DataRow(@"-db data -U")] // user no value
+        [DataRow(@"-db data -P")] // user no value
         [DataTestMethod]
         public void GetConnectionStrings_Except(string input) {
             Exception e = null;
