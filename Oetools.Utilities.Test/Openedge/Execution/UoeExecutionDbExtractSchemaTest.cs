@@ -70,25 +70,21 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
 
             var base1Db = new UoeDatabaseLocation(Path.Combine(TestFolder, "base1.db"));
-            var base2Db = new UoeDatabaseLocation(Path.Combine(TestFolder, "base2.db"));
 
             if (!base1Db.Exists()) {
                 var dfPath = Path.Combine(TestFolder, "base1.df");
-                File.WriteAllText(dfPath, "ADD SEQUENCE \"sequence1\"\n  INITIAL 0\n  INCREMENT 1\n  CYCLE-ON-LIMIT no\n\nADD TABLE \"table1\"\n  AREA \"Schema Area\"\n  DESCRIPTION \"table one\"\n  DUMP-NAME \"table1\"\n\nADD FIELD \"field1\" OF \"table1\" AS character \n  DESCRIPTION \"field one\"\n  FORMAT \"x(8)\"\n  INITIAL \"\"\n  POSITION 2\n  MAX-WIDTH 16\n  ORDER 10\n\nADD INDEX \"idx_1\" ON \"table1\" \n  AREA \"Schema Area\"\n  PRIMARY\n  INDEX-FIELD \"field1\" ASCENDING");
+                File.WriteAllBytes(dfPath, Resources.Resources.GetBytesFromResource("database.complete.df"));
                 using (var dbAdministrator = new UoeDatabaseAdministrator(env.DlcDirectoryPath)) {
                     dbAdministrator.CreateWithDf(base1Db, dfPath);
-                    dbAdministrator.CreateWithDf(base2Db, dfPath);
                 }
             }
 
-            env.DatabaseConnections = new []{ UoeDatabaseConnection.NewSingleUserConnection(base1Db), UoeDatabaseConnection.NewSingleUserConnection(base2Db) };
+            env.DatabaseConnections = new []{ UoeDatabaseConnection.NewSingleUserConnection(base1Db) };
             using (var exec = new UoeExecutionDbExtractSchema(env)) {
                 exec.Start();
                 exec.WaitForExecutionEnd();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
-
-
             }
             env.Dispose();
         }

@@ -1,0 +1,168 @@
+ADD SEQUENCE "theseq1"
+  INITIAL 20
+  INCREMENT 2
+  CYCLE-ON-LIMIT yes
+  MAX-VAL 200
+
+ADD SEQUENCE "theseq2"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+
+ADD TABLE "thetable1"
+  AREA "Data Area"
+  LABEL "thelabel1"
+  LABEL-SA "T"
+  DESCRIPTION "thedesc1"
+  VALEXP "false"
+  VALMSG "not true"
+  VALMSG-SA "R"
+  DUMP-NAME "thedump1"
+  FOREIGN-NAME "theforeignname"
+  FILE-MISC26 "thereplication1"
+  TABLE-TRIGGER "CREATE" OVERRIDE PROCEDURE "theproc1" CRC "?"
+
+ADD FIELD "thefield1" OF "thetable1" AS character
+  DESCRIPTION "thedesc1"
+  FORMAT "x(10)"
+  FORMAT-SA "T"
+  INITIAL "theinitial1"
+  INITIAL-SA "T"
+  LABEL "thelabel1"
+  LABEL-SA "T"
+  POSITION 2
+  MAX-WIDTH 44
+  VIEW-AS "VIEW-AS TEXT"
+  COLUMN-LABEL "thecollabel1"
+  COLUMN-LABEL-SA "T"
+  VALEXP "false"
+  VALMSG "is true?"
+  VALMSG-SA "T"
+  HELP "thehelp1"
+  HELP-SA "T"
+  EXTENT 2
+  ORDER 10
+  MANDATORY
+  CASE-SENSITIVE
+
+ADD FIELD "thefield2" OF "thetable1" AS integer
+  FORMAT "9999"
+  INITIAL "0"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+  FIELD-TRIGGER "ASSIGN" OVERRIDE PROCEDURE "theproc1.p" CRC "?"
+
+ADD FIELD "thefield3" OF "thetable1" AS character
+  FORMAT "x(8)"
+  INITIAL ""
+  POSITION 4
+  MAX-WIDTH 16
+  ORDER 30
+
+ADD INDEX "theindex2" ON "thetable1"
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  DESCRIPTION "desc2"
+  INDEX-FIELD "thefield2" ASCENDING
+
+ADD INDEX "theindex1" ON "thetable1"
+  AREA "Index Area"
+  WORD
+  DESCRIPTION "thedesc1"
+  INDEX-FIELD "thefield1" ASCENDING
+
+ADD INDEX "theindex3" ON "thetable1"
+  AREA "Index Area"
+  INDEX-FIELD "thefield3" DESCENDING ABBREVIATED
+
+ADD TABLE "thetable2"
+  AREA "Data Area"
+  DUMP-NAME "thetable2"
+
+ADD FIELD "thechar" OF "thetable2" AS character
+  FORMAT "x(8)"
+  INITIAL ""
+  POSITION 2
+  MAX-WIDTH 16
+  ORDER 10
+
+ADD FIELD "theblob" OF "thetable2" AS blob
+  FORMAT "x(8)"
+  INITIAL ?
+  POSITION 3
+  LOB-AREA "Data Area"
+  LOB-BYTES 106954752
+  LOB-SIZE 102M
+  ORDER 20
+
+ADD FIELD "theclob" OF "thetable2" AS clob
+  FORMAT "x(8)"
+  INITIAL ?
+  POSITION 4
+  LOB-AREA "Data Area"
+  LOB-BYTES 108003328
+  LOB-SIZE 103M
+  CLOB-CODEPAGE "1250"
+  CLOB-COLLATION "CROATIAN"
+  CLOB-TYPE 2
+  ORDER 30
+
+ADD FIELD "thedecimal" OF "thetable2" AS decimal
+  FORMAT "->>,>>9.99"
+  INITIAL "0"
+  POSITION 5
+  MAX-WIDTH 55
+  DECIMALS 5
+  ORDER 40
+
+ADD FIELD "theraw" OF "thetable2" AS raw
+  FORMAT "x(8)"
+  INITIAL ""
+  POSITION 7
+  MAX-WIDTH 16
+  ORDER 50
+
+ADD FIELD "thedate" OF "thetable2" AS date
+  FORMAT "99/99/99"
+  INITIAL ?
+  POSITION 8
+  MAX-WIDTH 4
+  ORDER 60
+
+ADD FIELD "thein64" OF "thetable2" AS int64
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  POSITION 9
+  MAX-WIDTH 8
+  ORDER 70
+
+ADD FIELD "thelogical" OF "thetable2" AS logical
+  FORMAT "yes/no"
+  INITIAL "no"
+  POSITION 10
+  MAX-WIDTH 1
+  ORDER 80
+
+ADD FIELD "thedatetime" OF "thetable2" AS datetime
+  FORMAT "99/99/9999 HH:MM:SS.SSS"
+  INITIAL ?
+  POSITION 11
+  MAX-WIDTH 8
+  ORDER 90
+
+ADD FIELD "thedatetimetz" OF "thetable2" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL ?
+  POSITION 12
+  MAX-WIDTH 12
+  ORDER 100
+
+ADD FIELD "therecid" OF "thetable2" AS recid
+  FORMAT ">>>>>>9"
+  INITIAL ?
+  POSITION 13
+  SQL-WIDTH 8
+  ORDER 110

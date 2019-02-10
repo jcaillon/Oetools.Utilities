@@ -67,20 +67,26 @@ namespace Oetools.Utilities.Lib {
             }
         }
 
-        public override bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
-            Log?.Debug("Command output:");
-            var result = base.Execute(arguments, silent, timeoutMs);
-            return result;
-        }
+        //public override bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
+        //    var result = base.Execute(arguments, silent, timeoutMs);
+        //    Log?.Debug($"Command output:\n{BatchOutputString}");
+        //    return result;
+        //}
 
         protected override void OnProcessOnErrorDataReceived(object sender, DataReceivedEventArgs args) {
             base.OnProcessOnErrorDataReceived(sender, args);
-            Log?.Debug(args?.Data?.Trim());
+            var line = args?.Data?.Trim();
+            if (!string.IsNullOrEmpty(line)) {
+                Log?.Debug(line);
+            }
         }
 
         protected override void OnProcessOnOutputDataReceived(object sender, DataReceivedEventArgs args) {
             base.OnProcessOnOutputDataReceived(sender, args);
-            Log?.Debug(args?.Data?.Trim());
+            var line = args?.Data?.Trim();
+            if (!string.IsNullOrEmpty(line)) {
+                Log?.Debug(line);
+            }
         }
     }
 }

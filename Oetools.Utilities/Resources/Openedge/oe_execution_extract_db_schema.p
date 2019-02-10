@@ -4,18 +4,18 @@
 */
 
 DEFINE INPUT PARAMETER ipc_filePath AS CHARACTER NO-UNDO.
-DEFINE INPUT PARAMETER ipc_logicalName AS CHARACTER NO-UNDO. /* */
-DEFINE INPUT PARAMETER ipc_physicalName AS CHARACTER NO-UNDO. /* */
-DEFINE INPUT PARAMETER ipc_candoTableType AS CHARACTER NO-UNDO. /* */
-DEFINE INPUT PARAMETER ipc_candoFileName AS CHARACTER NO-UNDO. /* */
+DEFINE INPUT PARAMETER ipc_logicalName AS CHARACTER NO-UNDO.
+DEFINE INPUT PARAMETER ipc_physicalName AS CHARACTER NO-UNDO.
+DEFINE INPUT PARAMETER ipc_candoTableType AS CHARACTER NO-UNDO.
+DEFINE INPUT PARAMETER ipc_candoFileName AS CHARACTER NO-UNDO.
 
 &SCOPED-DEFINE sep "~t"
-&SCOPED-DEFINE format_database "#D~t<YYYYMMDD>~t<HH:MM:SS>~t<logical_name>~t<physical_name>~t<proversion>~t<version.minor_version>~t<codepage>"
+&SCOPED-DEFINE format_database "#D~t<YYYYMMDD>~t<HH:MM:SS>~t<logical_name>~t<physical_name>~t<proversion>~t<version.minor_version>~t<charset>~t<collation>"
 &SCOPED-DEFINE format_sequence "#S~t<name>~t<cycle?>~t<increment>~t<initial>~t<min>~t<max>"
-&SCOPED-DEFINE format_table    "#T~t<name>~t<dump_name>~t<crc>~t<label>~t<sa>~t<desc>~t<hidden?>~t<frozen?>~t<area>~t<type>~t<valid_expr>~t<valid_mess>~t<sa>"
+&SCOPED-DEFINE format_table    "#T~t<name>~t<dump_name>~t<crc>~t<label>~t<sa>~t<desc>~t<hidden?>~t<frozen?>~t<area>~t<type>~t<valid_expr>~t<valid_mess>~t<sa>~t<replication>~t<foreign>"
 &SCOPED-DEFINE format_trigger  "#X~t<event>~t<field_name>~t<proc_name>~t<overridable?>~t<crc>"
 &SCOPED-DEFINE format_index    "#I~t<name>~t<active?>~t<primary?>~t<unique?>~t<word?>~t<crc>~t<area>~t<fields>~t<desc>"
-&SCOPED-DEFINE format_field    "#F~t<name>~t<data_type>~t<format>~t<sa>~t<order>~t<pos>~t<mandatory?>~t<case_sensitive?>~t<extent>~t<in_index?>~t<in_pk?>~t<initial>~t<sa>~t<width>~t<label>~t<sa>~t<column_label>~t<sa>~t<desc>~t<help>~t<sa>"
+&SCOPED-DEFINE format_field    "#F~t<name>~t<data_type>~t<format>~t<sa>~t<order>~t<pos>~t<mandatory?>~t<case_sensitive?>~t<extent>~t<in_index?>~t<in_pk?>~t<initial>~t<sa>~t<width>~t<label>~t<sa>~t<column_label>~t<sa>~t<desc>~t<help>~t<sa>~t<decimals>~t<charset>~t<collation>~t<size>~t<bytes>"
 
 DEFINE VARIABLE gc_fieldList AS CHARACTER NO-UNDO.
 DEFINE VARIABLE gc_fieldListWithSort AS CHARACTER NO-UNDO.
@@ -32,6 +32,7 @@ OUTPUT STREAM str_out TO VALUE(ipc_filePath) APPEND BINARY.
 PUT STREAM str_out UNFORMATTED "#______ " + ipc_logicalName + " ______" SKIP.
 PUT STREAM str_out UNFORMATTED {&format_database} SKIP.
 FIND FIRST ALIAS4DB._DbStatus NO-LOCK.
+FIND FIRST ALIAS4DB._Db NO-LOCK.
 PUT STREAM str_out UNFORMATTED "D" + {&sep} +
     STRING(YEAR(TODAY), "9999") + STRING(MONTH(TODAY), "99") + STRING(DAY(TODAY), "99") + {&sep} +
     STRING(TIME, "HH:MM:SS") + {&sep} +
@@ -39,7 +40,8 @@ PUT STREAM str_out UNFORMATTED "D" + {&sep} +
     QUOTER(ipc_physicalName) + {&sep} +
     PROVERSION + {&sep} +
     STRING(ALIAS4DB._DbStatus._DbStatus-DbVers) + "." + STRING(ALIAS4DB._DbStatus._DbStatus-DbVersMinor) + {&sep} +
-    QUOTER(ALIAS4DB._DbStatus._DbStatus-Codepage)
+    QUOTER(ALIAS4DB._Db._Db-xl-name) + {&sep} +
+    QUOTER(ALIAS4DB._Db._Db-coll-name)
     SKIP.
 PUT STREAM str_out UNFORMATTED "#" SKIP.
 
@@ -79,7 +81,9 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
         ALIAS4DB._File._Tbl-Type + {&sep} +
         QUOTER(ALIAS4DB._File._Valexp) + {&sep} +
         QUOTER(ALIAS4DB._File._Valmsg) + {&sep} +
-        QUOTER(ALIAS4DB._File._Valmsg-SA)
+        QUOTER(ALIAS4DB._File._Valmsg-SA) + {&sep} +
+        QUOTER(ALIAS4DB._File._Fil-misc2[6]) + {&sep} +
+        QUOTER(ALIAS4DB._File._For-Name)
         SKIP.
     PUT STREAM str_out UNFORMATTED "#" SKIP.
 
@@ -178,6 +182,12 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
             QUOTER(ALIAS4DB._Field._Col-label-SA) + {&sep} +
             QUOTER(ALIAS4DB._Field._Desc) + {&sep} +
             QUOTER(ALIAS4DB._Field._Help) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Help-SA) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Decimals) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Charset) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Collation) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Fld-misc2[1]) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Fld-Misc3[1]) + {&sep} +
             QUOTER(ALIAS4DB._Field._Help-SA)
             SKIP.
     END.
