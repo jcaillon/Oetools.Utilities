@@ -41,8 +41,8 @@ namespace Oetools.Utilities.Openedge.Database {
         private string _tempFolder;
 
         private string SqlSchemaName => Utils.IsRuntimeWindowsPlatform ? "_sqlschema.exe" : "_sqlschema";
-        private string SqlLoadName => Utils.IsRuntimeWindowsPlatform ? "_sqlload.exe.exe" : "_sqlload.exe";
-        private string SqlDumpName => Utils.IsRuntimeWindowsPlatform ? "_sqldump.exe.exe" : "_sqldump.exe";
+        private string SqlLoadName => Utils.IsRuntimeWindowsPlatform ? "_sqlload.exe" : "_sqlload";
+        private string SqlDumpName => Utils.IsRuntimeWindowsPlatform ? "_sqldump.exe" : "_sqldump";
 
         private string ProcedurePath {
             get {
@@ -312,6 +312,13 @@ namespace Oetools.Utilities.Openedge.Database {
             StartDataAdministratorProgram($"{databaseConnection.ToCliArgs()} -param {$"load-d|{dataDirectoryPath}|{tableName}".ToCliArg()}");
         }
 
+        /// <summary>
+        /// Dump sql database definition. SQL-92 format.
+        /// </summary>
+        /// <param name="databaseConnection"></param>
+        /// <param name="dumpFilePath"></param>
+        /// <param name="options"></param>
+        /// <exception cref="UoeDatabaseException"></exception>
         public void DumpSqlSchema(UoeDatabaseConnection databaseConnection, string dumpFilePath, string options = "-f %.% -g %.% -G %.% -n %.% -p %.% -q %.% -Q %.% -s %.% -t %.% -T %.%") {
             dumpFilePath = dumpFilePath.ToAbsolutePath();
             var dir = Path.GetDirectoryName(dumpFilePath);
@@ -322,26 +329,90 @@ namespace Oetools.Utilities.Openedge.Database {
             var sqlSchema = GetExecutable(SqlSchemaName);
             sqlSchema.WorkingDirectory = TempFolder;
 
-            Log?.Info($"Dump sql-92 schema for {databaseConnection.ToString().PrettyQuote()} to {dumpFilePath.PrettyQuote()}.");
+            Log?.Info($"Dump sql-92 definition from {databaseConnection.ToString().PrettyQuote()} to {dumpFilePath.PrettyQuote()}.");
 
-            var executionOk = TryExecuteWithDatabaseStarted(sqlSchema, $"-u {databaseConnection.UserId.ToCliArg()} -a {databaseConnection.Password.ToCliArg()} -o {dumpFilePath.ToCliArg()} {UoeUtilities.GetCleanCliArgs(options)} {databaseConnection.ToCliArgsJdbcConnectionString(false)}", databaseConnection);
-            if (!executionOk || sqlSchema.BatchOutputString.Length > 0) {
+            TryExecuteWithJdbcConnection(sqlSchema, $"-u {databaseConnection.UserId.ToCliArg()} -a {databaseConnection.Password.ToCliArg()} -o {dumpFilePath.ToCliArg()} {UoeUtilities.GetCleanCliArgs(options)}", databaseConnection);
+            if (sqlSchema.BatchOutputString.Length > 0) {
                 throw new UoeDatabaseException(sqlSchema.BatchOutputString);
             }
         }
 
-        private bool TryExecuteWithDatabaseStarted(ProcessIoWithLog process, string arguments, UoeDatabaseConnection databaseConnection) {
+        /// <summary>
+        /// Dump data in SQL-92 format.
+        /// </summary>
+        /// <param name="databaseConnection"></param>
+        /// <param name="dumpDirectoryPath"></param>
+        /// <param name="options"></param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void DumpSqlData(UoeDatabaseConnection databaseConnection, string dumpDirectoryPath, string options = "-t %.%") {
+            if (string.IsNullOrEmpty(dumpDirectoryPath)) {
+                throw new UoeDatabaseException("The data dump directory path can't be null.");
+            }
+            dumpDirectoryPath = dumpDirectoryPath.ToAbsolutePath();
+            if (!string.IsNullOrEmpty(dumpDirectoryPath) && !Directory.Exists(dumpDirectoryPath)) {
+                Directory.CreateDirectory(dumpDirectoryPath);
+            }
+
+            Log?.Info($"Dumping sql-92 data to directory {dumpDirectoryPath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
+
+            var sqlDump = GetExecutable(SqlDumpName);
+            sqlDump.WorkingDirectory = dumpDirectoryPath;
+
+            TryExecuteWithJdbcConnection(sqlDump, $"-u {databaseConnection.UserId.ToCliArg()} -a {databaseConnection.Password.ToCliArg()} {UoeUtilities.GetCleanCliArgs(options)}", databaseConnection);
+            if (sqlDump.ExitCode != 0) {
+                throw new UoeDatabaseException(sqlDump.BatchOutputString);
+            }
+
+            var output = sqlDump.ErrorOutput.ToString();
+            if (output.Length > 0) {
+                Log?.Warn(output);
+            }
+            output = sqlDump.StandardOutput.ToString();
+            if (output.Length > 0) {
+                Log?.Info(output);
+            }
+        }
+
+        public void LoadSqlData(UoeDatabaseConnection databaseConnection, string dataDirectoryPath, string options = "-t %.%") {
+            dataDirectoryPath = dataDirectoryPath?.ToAbsolutePath();
+
+            if (!Directory.Exists(dataDirectoryPath)) {
+                throw new UoeDatabaseException($"The data directory does not exist: {dataDirectoryPath.PrettyQuote()}.");
+            }
+
+            Log?.Info($"Loading sql-92 data from directory {dataDirectoryPath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()}.");
+
+            var sqlLoad = GetExecutable(SqlLoadName);
+            sqlLoad.WorkingDirectory = dataDirectoryPath;
+
+            TryExecuteWithJdbcConnection(sqlLoad, $"-u {databaseConnection.UserId.ToCliArg()} -a {databaseConnection.Password.ToCliArg()} {UoeUtilities.GetCleanCliArgs(options)}", databaseConnection);
+            if (sqlLoad.ExitCode != 0) {
+                throw new UoeDatabaseException(sqlLoad.BatchOutputString);
+            }
+
+            var output = sqlLoad.ErrorOutput.ToString();
+            if (output.Length > 0) {
+                Log?.Warn(output);
+            }
+            output = sqlLoad.StandardOutput.ToString();
+            if (output.Length > 0) {
+                Log?.Info(output);
+            }
+        }
+
+        private bool TryExecuteWithJdbcConnection(ProcessIoWithLog process, string arguments, UoeDatabaseConnection databaseConnection) {
             bool executionOk;
             var busyMode = GetBusyMode(databaseConnection.DatabaseLocation);
             if (string.IsNullOrEmpty(databaseConnection.Service) && busyMode == DatabaseBusyMode.NotBusy) {
-                Log?.Info($"The database needs to be started for this operation, starting it.");
-                using (new UoeDatabaseStarted(this, databaseConnection.DatabaseLocation)) {
-                    executionOk = process.TryExecute(arguments);
+                Log?.Debug("The database needs to be started for this operation, starting it.");
+                using (var db = new UoeDatabaseStarted(this, databaseConnection.DatabaseLocation)) {
+                    db.AllowsDatabaseShutdownWithKill = false;
+                    executionOk = process.TryExecute($"{arguments} {db.GetDatabaseConnection().ToCliArgsJdbcConnectionString(false)}");
                 }
             } else if (string.IsNullOrEmpty(databaseConnection.Service)) {
                 throw new UoeDatabaseException("The database needs to be either not busy or started for multi-user mode with service port.");
             } else {
-                executionOk = process.TryExecute(arguments);
+                executionOk = process.TryExecute($"{arguments} {databaseConnection.ToCliArgsJdbcConnectionString(false)}");
             }
             return executionOk;
         }

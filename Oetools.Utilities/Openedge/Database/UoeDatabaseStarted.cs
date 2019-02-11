@@ -38,6 +38,8 @@ namespace Oetools.Utilities.Openedge.Database {
 
         private UoeDatabaseLocation _targetDb;
 
+        private UoeDatabaseConnection _connection;
+
         private int _processId;
 
         /// <summary>
@@ -52,8 +54,10 @@ namespace Oetools.Utilities.Openedge.Database {
             _operator = @operator;
             _targetDb = targetDb;
 
+            _connection = UoeDatabaseConnection.NewMultiUserConnection(targetDb, null, sharedMemoryMode ? null : "localhost", sharedMemoryMode ? null : UoeDatabaseOperator.GetNextAvailablePort().ToString());
+
             var startTime = DateTime.Now;
-            _operator.Start(_targetDb, sharedMemoryMode ? null : "localhost", sharedMemoryMode ? null : UoeDatabaseOperator.GetNextAvailablePort().ToString(), nbUsers, options);
+            _operator.Start(_targetDb, _connection.HostName, _connection.Service, nbUsers, options);
 
             var newProcess = Process.GetProcesses()
                 .Where(p => {
@@ -70,19 +74,18 @@ namespace Oetools.Utilities.Openedge.Database {
             }
         }
 
+        /// <summary>
+        /// Get the connection for the started database.
+        /// </summary>
+        /// <returns></returns>
+        public UoeDatabaseConnection GetDatabaseConnection() => _connection;
+
+        /// <summary>
+        /// Called on instance disposal.
+        /// </summary>
         public void Dispose() {
-            if (AllowsDatabaseShutdownWithKill && _processId > 0) {
-                var mprosrv = Process.GetProcesses().FirstOrDefault(p => {
-                    try {
-                        return p.ProcessName.Contains("_mprosrv") && p.Id == _processId;
-                    } catch (Exception) {
-                        return false;
-                    }
-                });
-                if (mprosrv != null) {
-                    mprosrv.Kill();
-                    return;
-                }
+            if (AllowsDatabaseShutdownWithKill && _processId > 0 && _operator.KillBrokerServer(_processId, _targetDb)) {
+                return;
             }
             _operator.Shutdown(_targetDb);
         }

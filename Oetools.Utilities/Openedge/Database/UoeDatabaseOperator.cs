@@ -535,6 +535,30 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
+        /// Kill the broker of a database started in multi user mode
+        /// </summary>
+        /// <param name="processId"></param>
+        /// <param name="targetDb"></param>
+        /// <returns>success or not</returns>
+        public bool KillBrokerServer(int processId, UoeDatabaseLocation targetDb = null) {
+            if (processId > 0) {
+                var mprosrv = Process.GetProcesses().FirstOrDefault(p => {
+                    try {
+                        return p.ProcessName.Contains("_mprosrv") && p.Id == processId;
+                    } catch (Exception) {
+                        return false;
+                    }
+                });
+                if (mprosrv != null) {
+                    Log?.Info($"Stopping database broker started on process id {processId}{(targetDb != null ? $" for {targetDb.FullPath.PrettyQuote()}" : "")}.");
+                    mprosrv.Kill();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Deletes the database, expects the database to be stopped first. Does not delete the .st file.
         /// </summary>
         /// <param name="targetDb"></param>

@@ -67,11 +67,11 @@ namespace Oetools.Utilities.Lib {
             }
         }
 
-        //public override bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
-        //    var result = base.Execute(arguments, silent, timeoutMs);
-        //    Log?.Debug($"Command output:\n{BatchOutputString}");
-        //    return result;
-        //}
+        public override bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
+            var result = base.Execute(arguments, silent, timeoutMs);
+            Log?.Debug($"Program exit code: {ExitCode}.");
+            return result;
+        }
 
         protected override void OnProcessOnErrorDataReceived(object sender, DataReceivedEventArgs args) {
             base.OnProcessOnErrorDataReceived(sender, args);

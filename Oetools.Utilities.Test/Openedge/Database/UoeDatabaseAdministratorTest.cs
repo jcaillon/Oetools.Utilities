@@ -256,7 +256,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                 File.Delete(table1Path);
 
                 // dump sql schema
-                var dump = Path.Combine(TestFolder, $"out{UoeDatabaseLocation.SqlSchemaExtension}");
+                var dump = Path.Combine(TestFolder, $"out{UoeDatabaseLocation.SqlExtension}");
                 dataAdmin.DumpSqlSchema(dbConnect, dump);
                 Assert.IsTrue(File.Exists(dump));
 

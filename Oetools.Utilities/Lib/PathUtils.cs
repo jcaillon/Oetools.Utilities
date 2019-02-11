@@ -34,6 +34,16 @@ namespace Oetools.Utilities.Lib {
     public static partial class Utils {
 
         /// <summary>
+        /// Adds an extension to the file path given if the file does not have an extension already.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="fileExtension"></param>
+        /// <returns></returns>
+        public static string AddFileExtention(this string path, string fileExtension) {
+            return string.IsNullOrEmpty(path) || Path.HasExtension(path) ? path : $"{path}{fileExtension}";
+        }
+
+        /// <summary>
         /// Returns the home directory on windows (the user directory) and linux (/home/user).
         /// </summary>
         /// <returns></returns>
