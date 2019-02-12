@@ -32,6 +32,22 @@ namespace Oetools.Utilities.Lib.Extension {
     public static class StringExtensions {
 
         /// <summary>
+        /// Converts a valid version string to a version object. (vX.X.X.X-suffix)
+        /// </summary>
+        /// <param name="versionString"></param>
+        /// <returns></returns>
+        public static Version ToVersion(this string versionString) {
+            var idx = versionString.IndexOf('-');
+            versionString = idx > 0 ? versionString.Substring(0, idx) : versionString;
+            versionString = versionString.TrimStart('v');
+            var nbDots = versionString.Length - versionString.Replace(".", "").Length;
+            for (int i = 0; i < 3 - nbDots; i++) {
+                versionString += ".0";
+            }
+            return new Version(versionString);
+        }
+
+        /// <summary>
         /// Returns either the original string or a default if the original string is null or empty (whitespaces only)
         /// </summary>
         /// <param name="source"></param>
