@@ -249,17 +249,15 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
                 var dbConnect = dataAdmin.GetDatabaseConnection(db);
 
-                // load data from .d
-                var table1Path = Path.Combine(TestFolder, "table1.d");
+                // load sql
+                var table1Path = Path.Combine(TestFolder, "PUB.table1.dsql");
                 File.WriteAllText(table1Path, "\"value1\" 1\n\"value2\" 2\n");
-                dataAdmin.LoadData(dbConnect, TestFolder);
+                dataAdmin.LoadSqlData(dbConnect, TestFolder);
                 File.Delete(table1Path);
 
-                // dump sql schema
-                var dump = Path.Combine(TestFolder, $"out{UoeDatabaseLocation.SqlExtension}");
-                dataAdmin.DumpSqlSchema(dbConnect, dump);
-                Assert.IsTrue(File.Exists(dump));
-
+                // dump sql
+                dataAdmin.DumpSqlData(dbConnect, TestFolder);
+                Assert.IsTrue(File.Exists(table1Path));
             }
 
         }

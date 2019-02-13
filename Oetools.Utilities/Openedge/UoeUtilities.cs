@@ -410,23 +410,6 @@ namespace Oetools.Utilities.Openedge {
         }
 
         /// <summary>
-        /// Parses pro arguments supplied by the user, explorer every .pf and returns a clean string to be used as a pro arguments.
-        /// </summary>
-        /// <param name="originalCliArgs"></param>
-        /// <returns></returns>
-        public static string GetCleanCliArgs(string originalCliArgs) {
-            var sb = new StringBuilder();
-            var tokenizer = new UoeParameterTokenizer(originalCliArgs);
-            do {
-                var token = tokenizer.PeekAtToken(0);
-                if (token is ParameterStringTokenOption || token is ParameterStringTokenValue) {
-                    sb.Append(token.Value.StripQuotes().ToCliArg()).Append(' ');
-                }
-            } while (tokenizer.MoveToNextToken());
-            return sb.TrimEnd().ToString();
-        }
-
-        /// <summary>
         /// Reads a database connection string from a progress parameter file (takes comment into account)
         /// </summary>
         /// <param name="pfPath"></param>

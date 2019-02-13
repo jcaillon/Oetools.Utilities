@@ -274,19 +274,19 @@ namespace Oetools.Utilities.Openedge.Execution {
             File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.GetIoEncoding());
 
             // Parameters
-            _exeParameters = new StringBuilder($"-p {_runnerPath.ToCliArg()}");
+            _exeParameters = new StringBuilder($"-p {_runnerPath.Quoter()}");
             AppendProgressParameters(_exeParameters);
             if (!string.IsNullOrWhiteSpace(Env.ProExeCommandLineParameters)) {
-                _exeParameters.Append($" {UoeUtilities.GetCleanCliArgs(Env.ProExeCommandLineParameters)}");
+                _exeParameters.Append($" {Env.ProExeCommandLineParameters}");
             }
 
             if (!string.IsNullOrEmpty(Env.IniFilePath)) {
-                _exeParameters.Append($" -ininame {Env.IniFilePath.ToCliArg()} -basekey {"INI".ToCliArg()}");
+                _exeParameters.Append($" -ininame {Env.IniFilePath.Quoter()} -basekey INI");
             }
 
             if (!string.IsNullOrEmpty(WorkingDirectory) && Directory.Exists(WorkingDirectory)) {
                 _processStartDir = WorkingDirectory;
-                _exeParameters.Append($" -T {_tempDir.ToCliArg()}");
+                _exeParameters.Append($" -T {_tempDir.Quoter()}");
             }
 
             // start the process

@@ -50,17 +50,6 @@ namespace Oetools.Utilities.Test.Openedge {
         }
 
         [TestMethod]
-        public void GetCleanCliArgs() {
-            var pf1 = Path.Combine(TestFolder, "1.pf");
-            var pf2 = Path.Combine(TestFolder, "2.pf");
-            var pf3 = Path.Combine(TestFolder, "3.pf");
-            File.WriteAllText(pf1, "-pf " + pf2.Quote());
-            File.WriteAllText(pf2, "-db \"base1 allo\"    -H hostname     -S 1024");
-            File.WriteAllText(pf3, "-db base2     \n-H hostname\n# ignore this line!\n    -S 1025");
-            Assert.AreEqual("-db \"base1 allo\" -H hostname -S 1024 -db base2 -H hostname -S 1025", UoeUtilities.GetCleanCliArgs("-pf " + pf1.Quote() + " -pf " + pf3.Quote()));
-        }
-
-        [TestMethod]
         public void ReturnProgressSessionDefaultPropath_Test() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;

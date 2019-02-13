@@ -16,5 +16,6 @@
   </ItemGroup>
   <ItemGroup Label="Resources">
     <EmbeddedResource Include="Resources\Prolib\*" />
+    <EmbeddedResource Include="Resources\Database\*" />
   </ItemGroup>
 </Project>

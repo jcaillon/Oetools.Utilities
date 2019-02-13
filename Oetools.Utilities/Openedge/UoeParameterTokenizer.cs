@@ -55,7 +55,7 @@ namespace Oetools.Utilities.Openedge {
                 if (token is ParameterStringTokenOption && token.Value.Equals("-pf", StringComparison.Ordinal)) {
                     var pfPath = tokenizer.MoveAndPeekAtToken(2);
                     if (pfPath is ParameterStringTokenValue) {
-                        var pfFilePath = pfPath.Value.StripQuotes().ToAbsolutePath();
+                        var pfFilePath = pfPath.Value.ToAbsolutePath();
                         if (!File.Exists(pfFilePath)) {
                             throw new UoeDatabaseConnectionParseException($"The parameter file {pfFilePath.PrettyQuote()} does not exist but is used in the parameter string: {parameterString.PrettyQuote()}.");
                         }

@@ -24,6 +24,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using Oetools.Utilities.Lib.ParameterStringParser;
+using Oetools.Utilities.Openedge;
 
 [assembly: InternalsVisibleTo("Oetools.Utilities.Test")]
 
@@ -197,22 +199,41 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        /// A simple double quoter.
+        /// A quoter function:
+        /// - surround by double quote if the text contains spaces
+        /// - escape double quote with another double quote
         /// </summary>
-        /// <param name="text"></param>
+        /// <param name="arg"></param>
         /// <returns></returns>
-        public static string Quote(this string text) {
-            return $"\"{text}\"";
+        public static string Quoter(this string arg) {
+            if (string.IsNullOrEmpty(arg)) {
+                return @"""""";
+            }
+            var isQuoted = IsSurroundedWithDoubleQuotes(arg);
+            var hasWhiteSpaces = false;
+
+            var sb = new StringBuilder();
+
+            for (int i = isQuoted ? 1 : 0; i < arg.Length - (isQuoted ? 1 : 0); ++i) {
+                if (arg[i] == '"') {
+                    sb.Append('"');
+                } else if (char.IsWhiteSpace(arg[i])) {
+                    hasWhiteSpaces = true;
+                }
+                sb.Append(arg[i]);
+            }
+
+            return hasWhiteSpaces ? $"\"{sb.Append('"')}" : sb.ToString();
         }
 
         /// <summary>
-        /// A simple double quoter.
+        /// A quoter function:
+        /// - surround by double quote if the text contains spaces
+        /// - escape double quote with another double quote
         /// </summary>
-        /// <param name="text"></param>
+        /// <param name="args"></param>
         /// <returns></returns>
-        public static string QuoteIfContainsSpace(this string text) {
-            return text.Any(char.IsWhiteSpace) ? $"\"{text}\"" : text;
-        }
+        public static string Quoter(this IEnumerable<string> args) => string.Join(" ", args.Select(Quoter));
 
         /// <summary>
         ///  Undo the processing which took place to create string[] args in Main, so that the next process will receive the same string[] args.
@@ -230,7 +251,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="isWindows"></param>
         /// <remarks>
         /// In linux, you escape double quotes with \"
-        /// In windows, you escape doubles quotes with ""
+        /// In windows, you escape doubles quotes with \" ("" is also correct but we don't do that here)
         /// In linux, you need to escape \ with \\ but not in windows
         /// </remarks>
         /// <returns></returns>
@@ -293,6 +314,47 @@ namespace Oetools.Utilities.Lib.Extension {
                 }
             }
             return hasWhiteSpaces ? $"\"{sb.Append('"')}" : sb.ToString();
+        }
+
+        /// <summary>
+        /// Parses pro arguments supplied by the user, explorer every .pf and returns a clean string to be used as arguments (spaces and " are escaped with Quoter).
+        /// </summary>
+        /// <param name="originalCliArgs"></param>
+        /// <returns></returns>
+        public static string ToCleanQuoterArgs(this string originalCliArgs) {
+            if (string.IsNullOrEmpty(originalCliArgs)) {
+                return originalCliArgs;
+            }
+            var sb = new StringBuilder();
+            var tokenizer = new UoeParameterTokenizer(originalCliArgs);
+            do {
+                var token = tokenizer.PeekAtToken(0);
+                if (token is ParameterStringTokenOption || token is ParameterStringTokenValue) {
+                    sb.Append(token.Value.Quoter()).Append(' ');
+                }
+            } while (tokenizer.MoveToNextToken());
+            return sb.TrimEnd().ToString();
+        }
+
+        /// <summary>
+        /// Parses arguments supplied by the user and returns a clean string to be used as an argument of a CLI executable.
+        /// </summary>
+        /// <param name="originalCliArgs"></param>
+        /// <param name="isWindows"></param>
+        /// <returns></returns>
+        public static string ToCleanCliArgs(this string originalCliArgs, bool? isWindows = null) {
+            if (string.IsNullOrEmpty(originalCliArgs)) {
+                return originalCliArgs;
+            }
+            var sb = new StringBuilder();
+            var tokenizer = new ParameterStringTokenizer(originalCliArgs);
+            do {
+                var token = tokenizer.PeekAtToken(0);
+                if (token is ParameterStringTokenOption || token is ParameterStringTokenValue) {
+                    sb.Append(token.Value.ToCliArg(isWindows)).Append(' ');
+                }
+            } while (tokenizer.MoveToNextToken());
+            return sb.TrimEnd().ToString();
         }
 
         /// <summary>

@@ -36,7 +36,8 @@ namespace Oetools.Utilities.Openedge.Database {
         public const string Extension = ".db";
         public const string StructureFileExtension = ".st";
         public const string SchemaDefinitionExtension = ".df";
-        public const string SqlExtension = ".dfsql";
+        public const string SqlSchemaDefinitionExtension = ".dfsql";
+        public const string SqlDataExtension = ".dsql";
         public const string ProgressDumpFileExtention = ".d";
         private const int DbPhysicalNameMaxLength = 11;
         private const int DbLogicalNameMaxLength = 32;

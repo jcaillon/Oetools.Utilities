@@ -19,6 +19,7 @@
 #endregion
 using System;
 using System.ComponentModel;
+using System.IO;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
@@ -182,7 +183,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow("mot \\\"deux", true, @"""mot \\\""deux""", DisplayName = "special case 1 on windows, need 3 backslash here")]
         [DataRow("mot\\", true, @"mot\", DisplayName = "special case 2 on windows no need to escape a final backslash if no surrounding quotes")]
         [DataRow("mot deux\\", true, @"""mot deux\\""", DisplayName = "special case 3 on windows, need to escape the last backslash because of the surrounding quotes")]
-        public void CliQuoter_Test(string input, bool isWindows, string expected) {
+        public void ToCliArg(string input, bool isWindows, string expected) {
             Assert.AreEqual(expected, input.ToCliArg(isWindows));
         }
 
@@ -213,6 +214,42 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow("mot~cool\"\nde{ux\r\t", @"""mot~~~~cool""""~~nde~~{ux~~r~~t""")]
         public void PreProcQuoter_Test(string input, string expected) {
             Assert.AreEqual(expected, input.ProPreProcStringify());
+        }
+
+        [TestMethod]
+        [DataRow(null, @"""""")]
+        [DataRow(@"", @"""""")]
+        [DataRow("mot", @"mot")]
+        [DataRow("mot deux", @"""mot deux""")]
+        [DataRow("mot\"deux", @"mot""""deux")]
+        [DataRow("mot cool\"", @"""mot cool""""""")]
+        public void Quoter(string input, string expected) {
+            Assert.AreEqual(expected, input.Quoter());
+        }
+
+        [TestMethod]
+        public void ToCleanQuoterArgs() {
+            var pf1 = Path.Combine(TestFolder, "1.pf");
+            var pf2 = Path.Combine(TestFolder, "2.pf");
+            var pf3 = Path.Combine(TestFolder, "3.pf");
+            File.WriteAllText(pf1, "-pf " + pf2.Quoter());
+            File.WriteAllText(pf2, "-db \"base1 allo\"    -H hostname     -S 1024");
+            File.WriteAllText(pf3, "-db base2     \n-H hostname\n# ignore this line!\n    -S 1025");
+            Assert.AreEqual("-db \"base1 allo\" -H hostname -S 1024 -db base2 -H hostname -S 1025", ("-pf " + pf1.Quoter() + " -pf " + pf3.Quoter()).ToCleanQuoterArgs());
+        }
+
+
+        [TestMethod]
+        [DataRow(@"-opt""""val arg", true, @"-opt\""val arg", DisplayName = "")]
+        [DataRow(@"-opt""""val arg", false, @"-opt\""val arg", DisplayName = "")]
+        [DataRow(@"-opt""val arg", true, @"""-optval arg""", DisplayName = "")]
+        [DataRow(@"-opt""val arg", false, @"""-optval arg""", DisplayName = "")]
+        [DataRow(@"-opt:"" val arg""", true, @"""-opt: val arg""", DisplayName = "")]
+        [DataRow(@"-opt:"" val arg""", false, @"""-opt: val arg""", DisplayName = "")]
+        [DataRow(@"""-opt """"val""""""", true, @"""-opt \""val\""""")]
+        [DataRow(@"""-opt """"val""""""", false, @"""-opt \""val\""""")]
+        public void ToCleanCliArgs(string input, bool isWindows, string expected) {
+            Assert.AreEqual(expected, input.ToCleanCliArgs(isWindows));
         }
     }
 }

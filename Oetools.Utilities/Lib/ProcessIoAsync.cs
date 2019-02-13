@@ -31,6 +31,8 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Start the process, use <see cref="ProcessIo.OnProcessExit"/> event to know when the process is done
         /// </summary>
+        ///  <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
+        /// <param name="silent"></param>
         public void ExecuteAsync(string arguments = null, bool silent = true) {
             ExecuteAsyncProcess(arguments, silent);
         }

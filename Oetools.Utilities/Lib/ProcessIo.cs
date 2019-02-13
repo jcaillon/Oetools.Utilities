@@ -62,6 +62,16 @@ namespace Oetools.Utilities.Lib {
         public CancellationToken? CancelToken { get; set; }
 
         /// <summary>
+        /// A logger.
+        /// </summary>
+        public ILog Log { get; set; }
+
+        /// <summary>
+        /// Use <see cref="string.Trim()"/> on each output line.
+        /// </summary>
+        public bool TrimOutputLine { get; set; }
+
+        /// <summary>
         /// Standard output, to be called after the process exits
         /// </summary>
         public StringBuilder StandardOutput {
@@ -69,15 +79,13 @@ namespace Oetools.Utilities.Lib {
                 if (_standardOutput == null || _process != null && !_process.HasExited) {
                     _standardOutput = new StringBuilder();
                     foreach (var s in StandardOutputArray) {
-                        _standardOutput.AppendLine(s);
+                        _standardOutput.AppendLine(TrimOutputLine ? s.Trim() : s);
                     }
                     _standardOutput.TrimEnd();
                 }
                 return _standardOutput;
             }
         }
-
-        private StringBuilder _errorOutput;
 
         /// <summary>
         /// Error output, to be called after the process exits
@@ -87,7 +95,7 @@ namespace Oetools.Utilities.Lib {
                 if (_errorOutput == null || _process != null && !_process.HasExited) {
                     _errorOutput = new StringBuilder();
                     foreach (var s in ErrorOutputArray) {
-                        _errorOutput.AppendLine(s);
+                        _errorOutput.AppendLine(TrimOutputLine ? s.Trim() : s);
                     }
                     _errorOutput.TrimEnd();
                 }
@@ -95,32 +103,31 @@ namespace Oetools.Utilities.Lib {
             }
         }
 
-        private StringBuilder _batchModeOutput;
-
         /// <summary>
         /// Returns all the messages sent to the standard or error output, should be used once the process has exited
         /// </summary>
-        public virtual StringBuilder BatchOutput {
+        public StringBuilder BatchOutput {
             get {
                 if (_batchModeOutput == null || _process != null && !_process.HasExited) {
                     _batchModeOutput = new StringBuilder();
-                    if (ErrorOutputArray.Count > 0) {
-                        foreach (var s in ErrorOutputArray) {
-                            _batchModeOutput.AppendLine(s);
-                        }
-                        _batchModeOutput.TrimEnd();
+                    foreach (var s in ErrorOutputArray) {
+                        _batchModeOutput.AppendLine(TrimOutputLine ? s.Trim() : s);
                     }
+                    _batchModeOutput.TrimEnd();
 
-                    if (StandardOutputArray.Count > 0) {
-                        foreach (var s in StandardOutputArray) {
-                            _batchModeOutput.AppendLine(s);
-                        }
-                        _batchModeOutput.TrimEnd();
+                    foreach (var s in StandardOutputArray) {
+                        _batchModeOutput.AppendLine(TrimOutputLine ? s.Trim() : s);
                     }
+                    _batchModeOutput.TrimEnd();
                 }
                 return _batchModeOutput;
             }
         }
+
+        /// <summary>
+        /// Returns all the messages sent to the standard or error output, should be used once the process has exited
+        /// </summary>
+        public string BatchOutputString => _batchOutputString ?? (_batchOutputString = BatchOutput.ToString());
 
         /// <summary>
         /// Standard output, to be called after the process exits
@@ -163,7 +170,10 @@ namespace Oetools.Utilities.Lib {
 
         protected Process _process;
 
+        private string _batchOutputString;
         private StringBuilder _standardOutput;
+        private StringBuilder _batchModeOutput;
+        private StringBuilder _errorOutput;
 
         private bool _exitedEventPublished;
         private CancellationTokenRegistration? _cancelRegistration;
@@ -178,6 +188,9 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Start the process synchronously, catch the exceptions
         /// </summary>
+        /// <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
+        /// <param name="silent"></param>
+        /// <returns></returns>
         public virtual bool TryExecute(string arguments = null, bool silent = true) {
             try {
                 return Execute(arguments, silent) && ErrorOutputArray.Count == 0;
@@ -190,10 +203,18 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Start the process synchronously
         /// </summary>
+        /// <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
+        /// <param name="silent"></param>
+        /// <param name="timeoutMs"></param>
+        /// <returns></returns>
         public virtual bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
             ExecuteAsyncProcess(arguments, silent);
 
-            WaitUntilProcessExits(timeoutMs);
+            if (!WaitUntilProcessExits(timeoutMs)) {
+                return false;
+            }
+
+            Log?.Debug($"Program exit code: {ExitCode}.");
 
             return ExitCode == 0;
         }
@@ -201,8 +222,12 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Start the process asynchronously, use <see cref="OnProcessExit"/> event to know when the process is done
         /// </summary>
+        /// <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
+        /// <param name="silent"></param>
         protected virtual void ExecuteAsyncProcess(string arguments = null, bool silent = true) {
             PrepareStart(arguments, silent);
+
+            Log?.Debug($"Executing program:\n{ExecutedCommandLine}");
 
             _cancelRegistration = CancelToken?.Register(OnCancellation);
             _process.Start();
@@ -264,6 +289,7 @@ namespace Oetools.Utilities.Lib {
             ErrorOutputArray.Clear();
             _errorOutput = null;
             _batchModeOutput = null;
+            _batchOutputString = null;
             Killed = false;
             ExitCode = 0;
 
@@ -273,7 +299,7 @@ namespace Oetools.Utilities.Lib {
             };
 
             if (!string.IsNullOrEmpty(arguments)) {
-                _startInfo.Arguments = arguments;
+                _startInfo.Arguments = arguments.ToCleanCliArgs();
             }
 
             if (!string.IsNullOrEmpty(WorkingDirectory)) {
@@ -312,12 +338,24 @@ namespace Oetools.Utilities.Lib {
         protected virtual void OnProcessOnErrorDataReceived(object sender, DataReceivedEventArgs args) {
             if (!string.IsNullOrEmpty(args.Data)) {
                 ErrorOutputArray.Add(args.Data);
+                if (Log != null) {
+                    var line = TrimOutputLine ? args.Data?.Trim() : args.Data;
+                    if (!string.IsNullOrEmpty(line)) {
+                        Log.Debug(line);
+                    }
+                }
             }
         }
 
         protected virtual void OnProcessOnOutputDataReceived(object sender, DataReceivedEventArgs args) {
             if (!string.IsNullOrEmpty(args.Data)) {
                 StandardOutputArray.Add(args.Data);
+                if (Log != null) {
+                    var line = TrimOutputLine ? args.Data?.Trim() : args.Data;
+                    if (!string.IsNullOrEmpty(line)) {
+                        Log.Debug(line);
+                    }
+                }
             }
         }
 

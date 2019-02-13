@@ -20,6 +20,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
+using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Lib.ParameterStringParser {
 
@@ -166,7 +168,7 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
             if (char.IsWhiteSpace(ch)) {
                 return CreateWhitespaceToken();
             }
-            return IsOptionCharacter(ch) ? CreateOptionToken() : CreateValueToken(ch == '"');
+            return CreateToken(ch == '"', IsOptionCharacter(ch));
         }
 
         protected virtual bool IsOptionCharacter(char ch) {
@@ -185,30 +187,53 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
             return new ParameterStringTokenWhiteSpace(GetTokenValue());
         }
 
-        protected virtual ParameterStringToken CreateValueToken(bool quotedValue) {
+        protected virtual ParameterStringToken CreateToken(bool quotedValue, bool isOption) {
+            var sb = new StringBuilder();
+
+            var ch = PeekAtChr(0);
+
+            if (!quotedValue) {
+                sb.Append(ch);
+            }
+
             ReadChr();
+
+            if (quotedValue && !isOption) {
+                isOption = IsOptionCharacter(ch);
+            }
+
+            var openedQuote = false;
             while (true) {
-                var ch = PeekAtChr(0);
-                if (ch == Eof)
+                ch = PeekAtChr(0);
+                if (ch == Eof) {
                     break;
+                }
 
                 // quote char
-                if (quotedValue && ch == '"') {
+                if (ch == '"') {
                     ReadChr();
-                    if (PeekAtChr(0) == '"') {
+                    ch = PeekAtChr(0);
+                    if (ch == '"') {
+                        sb.Append(ch);
                         ReadChr();
+                        // correctly escaped quote, continue
                         continue;
                     }
-                    break; // done reading
+                    if (openedQuote || quotedValue) {
+                        break; // done reading
+                    }
+                    openedQuote = true;
                 }
 
-                if (!quotedValue && char.IsWhiteSpace(ch)) {
+                if (!openedQuote && !quotedValue && char.IsWhiteSpace(ch)) {
                     break;
                 }
 
+                sb.Append(ch);
                 ReadChr();
             }
-            return new ParameterStringTokenValue(GetTokenValue());
+
+            return isOption ? (ParameterStringToken) new ParameterStringTokenOption(sb.ToString()) : new ParameterStringTokenValue(sb.ToString());
         }
 
         protected virtual ParameterStringToken CreateOptionToken() {
