@@ -33,7 +33,7 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         ///  <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
         /// <param name="silent"></param>
-        public void ExecuteAsync(string arguments = null, bool silent = true) {
+        public void ExecuteAsync(ProcessArgs arguments = null, bool silent = true) {
             ExecuteAsyncProcess(arguments, silent);
         }
 

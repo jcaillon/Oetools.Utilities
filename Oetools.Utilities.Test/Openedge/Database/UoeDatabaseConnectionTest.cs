@@ -63,19 +63,8 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             @"-db ""data"" -ld logi -1 -U user -P pass -ct 2 -option val""""ue -db data2 -ld logi2 -H hostname -S 1024 -option2 value2 -singleoption -db data3 -ld logi3 -H hostname -S 1025")]
         [DataTestMethod]
         public void GetConnectionString(string input, string output) {
-            output = output.Replace(@"""data""", Path.Combine(Directory.GetCurrentDirectory(), "data.db").Quoter());
-            Assert.AreEqual(output, UoeDatabaseConnection.GetConnectionString(UoeDatabaseConnection.GetConnectionStrings(input)));
-        }
-
-        [TestMethod]
-        public void GetConnectionString_WithPf() {
-            var pf1 = Path.Combine(TestFolder, "1.pf");
-            var pf2 = Path.Combine(TestFolder, "2.pf");
-            var pf3 = Path.Combine(TestFolder, "3.pf");
-            File.WriteAllText(pf1, "-pf " + pf2.Quoter());
-            File.WriteAllText(pf2, "-db base1 -H hostname -S 1024");
-            File.WriteAllText(pf3, "-db base2\n-H hostname\n# ignore this line!\n-S 1025");
-            Assert.AreEqual("-db base1 -H hostname -S 1024 -db base2 -H hostname -S 1025", UoeDatabaseConnection.GetConnectionString(UoeDatabaseConnection.GetConnectionStrings("-pf " + pf1.Quoter() + " -pf " + pf3.Quoter())));
+            output = output.Replace(@"""data""", Path.Combine(Directory.GetCurrentDirectory(), "data.db").ToQuotedArg());
+            Assert.AreEqual(output, UoeDatabaseConnection.ToArgs(UoeDatabaseConnection.GetConnectionStrings(input)).ToQuotedArgs());
         }
 
         [DataRow(@"-option value value")] // 2 values

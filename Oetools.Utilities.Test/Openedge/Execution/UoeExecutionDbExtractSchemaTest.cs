@@ -73,7 +73,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             if (!base1Db.Exists()) {
                 var dfPath = Path.Combine(TestFolder, "base1.df");
-                File.WriteAllBytes(dfPath, Resources.Resources.GetBytesFromResource("database.complete.df"));
+                File.WriteAllBytes(dfPath, Resources.Resources.GetBytesFromResource("Database.complete.df"));
                 using (var dbAdministrator = new UoeDatabaseAdministrator(env.DlcDirectoryPath)) {
                     dbAdministrator.CreateWithDf(base1Db, dfPath);
                 }

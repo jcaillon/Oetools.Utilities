@@ -238,25 +238,25 @@ namespace Oetools.Utilities.Openedge.Execution {
 
                 // feed files list
                 filesListcontent
-                    .Append(file.CompiledPath.ProExportFormat())
+                    .Append(file.CompiledPath.ToQuotedArg())
                     .Append(" ")
-                    .Append(compiledFile.CompilationOutputDirectory.ProExportFormat())
+                    .Append(compiledFile.CompilationOutputDirectory.ToQuotedArg())
                     .Append(" ")
-                    .Append(compiledFile.CompilationErrorsFilePath.ProExportFormat())
+                    .Append(compiledFile.CompilationErrorsFilePath.ToQuotedArg())
                     .Append(" ")
-                    .Append(compiledFile.CompilationListingFilePath.ProExportFormat())
+                    .Append(compiledFile.CompilationListingFilePath.ToQuotedArg())
                     .Append(" ")
-                    .Append(compiledFile.CompilationXrefFilePath.ProExportFormat())
+                    .Append(compiledFile.CompilationXrefFilePath.ToQuotedArg())
                     .Append(" ")
-                    .Append(compiledFile.CompilationXmlXrefFilePath.ProExportFormat())
+                    .Append(compiledFile.CompilationXmlXrefFilePath.ToQuotedArg())
                     .Append(" ")
-                    .Append(compiledFile.CompilationDebugListFilePath.ProExportFormat())
+                    .Append(compiledFile.CompilationDebugListFilePath.ToQuotedArg())
                     .Append(" ")
-                    .Append(compiledFile.CompilationPreprocessedFilePath.ProExportFormat())
+                    .Append(compiledFile.CompilationPreprocessedFilePath.ToQuotedArg())
                     .Append(" ")
-                    .Append(compiledFile.CompilationFileIdLogFilePath.ProExportFormat())
+                    .Append(compiledFile.CompilationFileIdLogFilePath.ToQuotedArg())
                     .Append(" ")
-                    .Append(compiledFile.CompilationRcodeTableListFilePath.ProExportFormat())
+                    .Append(compiledFile.CompilationRcodeTableListFilePath.ToQuotedArg())
                     .AppendLine();
 
                 count++;

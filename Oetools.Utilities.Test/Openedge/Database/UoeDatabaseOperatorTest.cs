@@ -23,6 +23,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Database.Exceptions;
+using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Test.Openedge.Database {
 
@@ -286,7 +287,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             var nextPort = UoeDatabaseOperator.GetNextAvailablePort();
 
             try {
-                var option = ope.Start(tgtDb, "localhost", nextPort.ToString(), 20, "-minport 50000 -maxport 50100 -L 20000");
+                var option = ope.Start(tgtDb, "localhost", nextPort.ToString(), 20, new UoeProcessArgs().Append("-minport", "50000", "-maxport", "50100", "-L", "20000") as UoeProcessArgs);
 
                 Assert.IsTrue(nextPort > 0);
                 Assert.IsTrue(option.Contains($"-S {nextPort}"));
@@ -495,7 +496,7 @@ d ""schema Area"" .
                     dataAdmin.LoadBinaryData(db, binDataFilePath);
 
                     // re-rebuild index
-                    dataAdmin.RebuildIndexes(db, "table table1");
+                    dataAdmin.RebuildIndexes(db, new UoeProcessArgs().Append2("table", "table1"));
 
                     // dump data .d
                     dataAdmin.DumpData(dataAdmin.GetDatabaseConnection(db), dataDirectory, "table1");

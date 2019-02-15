@@ -30,6 +30,7 @@ using System.Threading;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database.Exceptions;
+using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Openedge.Database {
 
@@ -45,7 +46,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <remarks>
         /// https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm%2Fdatabase-server-internationalization-parameters.html%23
         /// </remarks>
-        public string InternationalizationStartupParameters { get; set; }
+        public UoeProcessArgs InternationalizationStartupParameters { get; set; }
 
         /// <summary>
         /// The encoding to use for I/O of the openedge executables.
@@ -128,7 +129,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        internal void CreateVoidDatabase(UoeDatabaseLocation targetDb, string structureFilePath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, bool validate = false, string databaseAccessStartupParameters = null) {
+        internal void CreateVoidDatabase(UoeDatabaseLocation targetDb, string structureFilePath, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, bool validate = false, UoeProcessArgs databaseAccessStartupParameters = null) {
             if (blockSize == DatabaseBlockSize.DefaultForCurrentPlatform) {
                 blockSize = Utils.IsRuntimeWindowsPlatform ? DatabaseBlockSize.S4096 : DatabaseBlockSize.S8192;
             }
@@ -149,7 +150,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Creating database structure for {targetDb.FullPath.PrettyQuote()} from {structureFilePath.PrettyQuote()} with block size {blockSize.ToString().Substring(1)}.");
 
-            var executionOk = dbUtil.TryExecute($"prostrct create {targetDb.PhysicalName} {structureFilePath.Quoter()} -blocksize {blockSize.ToString().Substring(1)} {(validate ? "-validate" : "")} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+            var executionOk = dbUtil.TryExecute(new ProcessArgs().Append("prostrct", "create", targetDb.PhysicalName, structureFilePath, "-blocksize", blockSize.ToString().Substring(1), validate ? "-validate" : null, InternationalizationStartupParameters, databaseAccessStartupParameters));
             if (!executionOk) {
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
             }
@@ -166,7 +167,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="relativePath">Use relative path in the structure file.</param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void Create(UoeDatabaseLocation targetDb, string structureFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true, string databaseAccessStartupParameters = null) {
+        public void Create(UoeDatabaseLocation targetDb, string structureFilePath = null, DatabaseBlockSize blockSize = DatabaseBlockSize.DefaultForCurrentPlatform, string codePage = null, bool newInstance = true, bool relativePath = true, UoeProcessArgs databaseAccessStartupParameters = null) {
             if (targetDb.Exists()) {
                 throw new UoeDatabaseException($"The database already exists: {targetDb.FullPath.PrettyQuote()}.");
             }
@@ -230,7 +231,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Copying database {sourceDb.FullPath.PrettyQuote()} to {targetDb.FullPath.PrettyQuote()}.");
 
-            var executionOk = dbUtil.TryExecute($"procopy {sourceDb.FullPath.Quoter()} {targetDb.PhysicalName}{(newInstance ? " -newinstance" : "")} {InternationalizationStartupParameters}");
+            var executionOk = dbUtil.TryExecute(new ProcessArgs().Append("procopy", sourceDb.FullPath, targetDb.PhysicalName, newInstance ? "-newinstance" : null, InternationalizationStartupParameters));
             if (!executionOk || !dbUtil.BatchOutputString.Contains("(1365)")) {
                 // db copied from C:\progress\client\v117x_dv\dlc\empty1. (1365)
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
@@ -251,7 +252,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="extentPathAsDirectory">By default, listing will output file path to each extent, this option allows to output directory path instead.</param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void UpdateStructureFile(UoeDatabaseLocation targetDb, bool relativePath = true, bool extentPathAsDirectory = true, string databaseAccessStartupParameters = null) {
+        public void UpdateStructureFile(UoeDatabaseLocation targetDb, bool relativePath = true, bool extentPathAsDirectory = true, UoeProcessArgs databaseAccessStartupParameters = null) {
             targetDb.ThrowIfNotExist();
 
             var dbUtil = GetExecutable(DbUtilName);
@@ -260,7 +261,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var structureFilePath = Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.st");
             Log?.Info($"{(File.Exists(structureFilePath) ? "Updating" : "Creating")} structure file (.st) for the database {targetDb.FullPath.PrettyQuote()}.");
 
-            var executionOk = dbUtil.TryExecute($"prostrct list {targetDb.PhysicalName} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+            var executionOk = dbUtil.TryExecute(new ProcessArgs().Append("prostrct", "list", targetDb.PhysicalName, InternationalizationStartupParameters, databaseAccessStartupParameters));
             if (!executionOk || !File.Exists(targetDb.StructureFileFullPath)) {
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
             }
@@ -304,7 +305,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="targetDb"></param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void RepairDatabaseControlInfo(UoeDatabaseLocation targetDb, string databaseAccessStartupParameters = null) {
+        public void RepairDatabaseControlInfo(UoeDatabaseLocation targetDb, UoeProcessArgs databaseAccessStartupParameters = null) {
             var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = targetDb.DirectoryPath;
 
@@ -316,7 +317,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"{(repairMode ? "Repairing" : "Creating ")} database control information (.db) of {targetDb.FullPath.PrettyQuote()} from {targetDb.StructureFileFullPath}.");
 
-            var executionOk = dbUtil.TryExecute($"prostrct {(repairMode ? "repair" : "builddb")} {targetDb.PhysicalName} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+            var executionOk = dbUtil.TryExecute(new ProcessArgs().Append("prostrct", repairMode ? "repair" : "builddb", targetDb.PhysicalName, InternationalizationStartupParameters, databaseAccessStartupParameters));
 
             if (!executionOk || repairMode && !dbUtil.BatchOutputString.Contains("(13485)")) {
                 // repair of *** ended. (13485)
@@ -332,7 +333,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="validate"></param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void AddStructureDefinition(UoeDatabaseLocation targetDb, string structureFilePath, bool validate = false, string databaseAccessStartupParameters = null) {
+        public void AddStructureDefinition(UoeDatabaseLocation targetDb, string structureFilePath, bool validate = false, UoeProcessArgs databaseAccessStartupParameters = null) {
             targetDb.ThrowIfNotExist();
 
             structureFilePath = structureFilePath?.ToAbsolutePath();
@@ -353,7 +354,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Appending new extents from {structureFilePath.PrettyQuote()} to the database structure of {targetDb.FullPath.PrettyQuote()}.");
 
-            var executionOk = dbUtil.TryExecute($"prostrct {qualifier} {targetDb.PhysicalName} {structureFilePath.Quoter()} {(validate ? "-validate" : "")} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+            var executionOk = dbUtil.TryExecute(new ProcessArgs().Append("prostrct", qualifier, targetDb.PhysicalName, structureFilePath, validate ? "-validate" : null, InternationalizationStartupParameters, databaseAccessStartupParameters));
             if (!executionOk || dbUtil.BatchOutputString.Contains("(12867)")) {
                 // prostrct add FAILED. (12867)
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
@@ -371,7 +372,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="storageArea">Specifies the name of the storage area to remove.</param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void RemoveStructureDefinition(UoeDatabaseLocation targetDb, string extentToken, string storageArea, string databaseAccessStartupParameters = null) {
+        public void RemoveStructureDefinition(UoeDatabaseLocation targetDb, string extentToken, string storageArea, UoeProcessArgs databaseAccessStartupParameters = null) {
             targetDb.ThrowIfNotExist();
 
             if (string.IsNullOrEmpty(extentToken)) {
@@ -387,7 +388,7 @@ namespace Oetools.Utilities.Openedge.Database {
             Log?.Info($"Removing extent {extentToken.PrettyQuote()} named {storageArea.PrettyQuote()} from the database {targetDb.FullPath.PrettyQuote()}.");
 
             for (int i = 0; i < 2; i++) {
-                var executionOk = dbUtil.TryExecute($"prostrct remove {targetDb.PhysicalName} {extentToken} {storageArea.Quoter()} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+                var executionOk = dbUtil.TryExecute(new ProcessArgs().Append("prostrct", "remove", targetDb.PhysicalName, extentToken, storageArea, InternationalizationStartupParameters, databaseAccessStartupParameters));
                 if (!executionOk || !dbUtil.BatchOutputString.Contains("(6968)")) {
                     // successfully removed. (6968)
                     if (i == 0 && dbUtil.BatchOutputString.Contains("(6953)")) {
@@ -414,7 +415,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="options">https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm/database-startup-parameters.html</param>
         /// <exception cref="UoeDatabaseException"></exception>
         /// <returns>start parameters string</returns>
-        public string Start(UoeDatabaseLocation targetDb, string hostname = null, string serviceName = null, int? nbUsers = null, string options = null) {
+        public string Start(UoeDatabaseLocation targetDb, string hostname = null, string serviceName = null, int? nbUsers = null, UoeProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
             // check if busy
@@ -426,21 +427,22 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException("Database already used in multi user mode.");
             }
 
+            var args = new UoeProcessArgs();
             if (!string.IsNullOrEmpty(serviceName)) {
-                options = $"-S {serviceName} {options}";
+                args.Append("-S", serviceName);
             }
 
             if (!string.IsNullOrEmpty(hostname)) {
-                options = $"-N TCP -H {hostname} {options}";
+                args.Append("-N", "TCP", "-H", hostname);
             }
 
             if (nbUsers != null) {
                 var mn = 1;
                 var ma = nbUsers;
-                options = $"-n {mn * ma + 1} -Mi {ma} -Ma {ma} -Mn {mn} -Mpb {mn} {options}";
+                args.Append("-n", mn * ma + 1, "-Mi", ma, "-Ma", ma, "-Mn", mn, "-Mpb", mn);
             }
 
-            options = $"{targetDb.PhysicalName} {options} {InternationalizationStartupParameters}";
+            args.Append(targetDb.PhysicalName, options, InternationalizationStartupParameters);
 
             Log?.Info($"Starting database server for {targetDb.FullPath.PrettyQuote()}.");
 
@@ -450,20 +452,20 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException($"The proserve executable does not exist: {proservePath.PrettyQuote()}.");
             }
 
-            options = options.ToCleanCliArgs();
-            Log?.Debug($"Executing command:\n{proservePath.ToCliArg()} {options}");
+            var cliArgs = args.ToCliArgs();
+            Log?.Debug($"Executing command:\n{ProcessArgs.ToCliArg(proservePath)} {cliArgs}");
 
             var proc = Process.Start(new ProcessStartInfo {
                 FileName = proservePath,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
-                Arguments = options,
+                Arguments = cliArgs,
                 WorkingDirectory = targetDb.DirectoryPath
             });
 
             if (proc == null) {
-                throw new UoeDatabaseException($"Failed to start {ProservePath.PrettyQuote()} with options: {options.PrettyQuote()}.");
+                throw new UoeDatabaseException($"Failed to start {ProservePath.PrettyQuote()} with options: {args.ToString().PrettyQuote()}.");
             }
 
             do {
@@ -471,10 +473,10 @@ namespace Oetools.Utilities.Openedge.Database {
             } while (busyMode != DatabaseBusyMode.MultiUser && !proc.HasExited);
 
             if (busyMode != DatabaseBusyMode.MultiUser) {
-                throw new UoeDatabaseException($"Failed to serve the database, check the database log file {Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg").PrettyQuote()}, options used: {options.PrettyQuote()}.");
+                throw new UoeDatabaseException($"Failed to serve the database, check the database log file {Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg").PrettyQuote()}, options used: {args.ToString().PrettyQuote()}.");
             }
 
-            return options;
+            return args.ToString();
         }
 
         /// <summary>
@@ -484,14 +486,14 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        public DatabaseBusyMode GetBusyMode(UoeDatabaseLocation targetDb, string databaseAccessStartupParameters = null) {
+        public DatabaseBusyMode GetBusyMode(UoeDatabaseLocation targetDb, UoeProcessArgs databaseAccessStartupParameters = null) {
             targetDb.ThrowIfNotExist();
 
             var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = targetDb.DirectoryPath;
             proUtil.Log = null;
             try {
-                proUtil.Execute($"{targetDb.PhysicalName} -C busy {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+                proUtil.Execute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "busy", InternationalizationStartupParameters, databaseAccessStartupParameters));
             } catch (Exception) {
                 throw new UoeDatabaseException(proUtil.BatchOutputString);
             } finally {
@@ -515,7 +517,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="targetDb"></param>
         /// <param name="options"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void Shutdown(UoeDatabaseLocation targetDb, string options = null) {
+        public void Shutdown(UoeDatabaseLocation targetDb, UoeProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
             var proshut = GetExecutable(ProshutName);
@@ -523,7 +525,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Shutting down database server for {targetDb.FullPath.PrettyQuote()}.");
 
-            proshut.TryExecute($"{targetDb.PhysicalName} -by {options} {InternationalizationStartupParameters}");
+            proshut.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-by", options, InternationalizationStartupParameters));
 
             if (GetBusyMode(targetDb) != DatabaseBusyMode.NotBusy) {
                 throw new UoeDatabaseException(proshut.BatchOutputString);
@@ -737,14 +739,14 @@ namespace Oetools.Utilities.Openedge.Database {
             var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-            string online =  null;
+            bool online = false;
             if (GetBusyMode(targetDb) == DatabaseBusyMode.MultiUser) {
-                online = " -online";
+                online = true;
                 Log?.Debug("The database is served for multi-users, using the `-online` option.");
             }
 
             try {
-                dbUtil.Execute($"prolog {targetDb.PhysicalName}{online} {InternationalizationStartupParameters}");
+                dbUtil.Execute(new ProcessArgs().Append("prolog", targetDb.PhysicalName, online ? "-online" : null, InternationalizationStartupParameters));
             } catch(Exception) {
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
             }
@@ -760,7 +762,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <param name="options">{[ -G n]| -bi size| -biblocksize size }</param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void TruncateBi(UoeDatabaseLocation targetDb, string databaseAccessStartupParameters = null, string options = null) {
+        public void TruncateBi(UoeDatabaseLocation targetDb, UoeProcessArgs databaseAccessStartupParameters = null, UoeProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
             Log?.Info($"Truncate BI for the database {targetDb.FullPath.PrettyQuote()}.");
@@ -768,7 +770,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C truncate bi {options} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+            var executionOk = proUtil.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "truncate", "bi", options, InternationalizationStartupParameters, databaseAccessStartupParameters));
             if (!executionOk) {
                 throw new UoeDatabaseException(proUtil.BatchOutputString);
             }
@@ -778,11 +780,15 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Rebuild the indexed of a database. By default, rebuilds all the active indexes.
         /// </summary>
         /// <param name="targetDb"></param>
-        /// <param name="options"></param>
+        /// <param name="options">defaults to `activeindexes`.</param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void RebuildIndexes(UoeDatabaseLocation targetDb, string options = "activeindexes", string databaseAccessStartupParameters = null) {
+        public void RebuildIndexes(UoeDatabaseLocation targetDb, UoeProcessArgs options = null, UoeProcessArgs databaseAccessStartupParameters = null) {
+            if (options == null) {
+                options = new UoeProcessArgs().Append("activeindexes") as UoeProcessArgs;
+            }
+
             targetDb.ThrowIfNotExist();
 
             Log?.Info($"Rebuilding the indexes of {targetDb.FullPath.PrettyQuote()} with the option {options}.");
@@ -790,7 +796,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C idxbuild {options} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+            var executionOk = proUtil.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "idxbuild", options, InternationalizationStartupParameters, databaseAccessStartupParameters));
             if (!executionOk || !proUtil.BatchOutputString.Contains("(11465)")|| !proUtil.BatchOutputString.Contains(" 0 err")) {
                 // 1 indexes were rebuilt. (11465)
                 throw new UoeDatabaseException(proUtil.BatchOutputString);
@@ -807,9 +813,12 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="options"></param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void DumpBinaryData(UoeDatabaseLocation targetDb, string tableName, string dumpDirectoryPath, string databaseAccessStartupParameters = null, string options = null) {
+        public void DumpBinaryData(UoeDatabaseLocation targetDb, string tableName, string dumpDirectoryPath, UoeProcessArgs databaseAccessStartupParameters = null, UoeProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
+            if (string.IsNullOrEmpty(tableName)) {
+                throw new UoeDatabaseException("The table name can't be null.");
+            }
             if (string.IsNullOrEmpty(dumpDirectoryPath)) {
                 throw new UoeDatabaseException("The data dump directory path can't be null.");
             }
@@ -823,7 +832,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C dump {tableName} {dumpDirectoryPath.Quoter()} {options} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+            var executionOk = proUtil.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "dump", tableName, dumpDirectoryPath, options, InternationalizationStartupParameters, databaseAccessStartupParameters));
             if (!executionOk || !proUtil.BatchOutputString.Contains("(6254)")) {
                 // Binary Dump complete. (6254)
                 throw new UoeDatabaseException(proUtil.BatchOutputString);
@@ -831,7 +840,7 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Load binary data to the given database.
+        /// Load a single binary data file to the given database.
         /// The index of the loaded tables should be rebuilt afterward.
         /// </summary>
         /// <param name="targetDb"></param>
@@ -841,7 +850,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="options"></param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void LoadBinaryData(UoeDatabaseLocation targetDb, string binDataFilePath, bool rebuildIndexes = true, string databaseAccessStartupParameters = null, string options = null) {
+        public void LoadBinaryData(UoeDatabaseLocation targetDb, string binDataFilePath, bool rebuildIndexes = true, UoeProcessArgs databaseAccessStartupParameters = null, UoeProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
             binDataFilePath = binDataFilePath?.ToAbsolutePath();
@@ -854,7 +863,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C load {binDataFilePath.Quoter()} {options} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+            var executionOk = proUtil.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "load", binDataFilePath, options, InternationalizationStartupParameters, databaseAccessStartupParameters));
             if (!executionOk || !proUtil.BatchOutputString.Contains("(6256)")) {
                 if (options?.Contains("build indexes") ?? false) {
                     Log?.Warn("The build indexes option was used and the load has failed. Be aware that all the indexes are inactive.");
@@ -878,7 +887,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="options"></param>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void Backup(UoeDatabaseLocation targetDb, string targetBackupFile, bool verbose = true, bool scan = true, bool compressed = true, string options = null) {
+        public void Backup(UoeDatabaseLocation targetDb, string targetBackupFile, bool verbose = true, bool scan = true, bool compressed = true, UoeProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
             var busyMode = GetBusyMode(targetDb);
@@ -886,18 +895,18 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new ArgumentException($"The database is used in single user mode: {targetDb.FullPath.PrettyQuote()}.");
             }
 
-            options = options?.Replace("online", "") ?? "";
+            options?.Remove("-online");
             if (busyMode == DatabaseBusyMode.MultiUser) {
                 // can't use -scan in online mode
-                options = options.Replace("-scan", "");
+                options?.Remove("-scan");
             } else if (scan) {
-                options += " -scan";
+                options = options ?? new UoeProcessArgs().Append("-scan") as UoeProcessArgs;
             }
             if (compressed) {
-                options += " -com";
+                options = options ?? new UoeProcessArgs().Append("-com") as UoeProcessArgs;
             }
             if (verbose) {
-                options += " -verbose";
+                options = options ?? new UoeProcessArgs().Append("-verbose") as UoeProcessArgs;
             }
 
             targetBackupFile = targetBackupFile.ToAbsolutePath();
@@ -912,7 +921,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 var dbUtil = GetExecutable(DbUtilName);
                 dbUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-                var executionOk = dbUtil.TryExecute($"probkup {targetDb.PhysicalName} {targetBackupFile.Quoter()} {options} {InternationalizationStartupParameters}");
+                var executionOk = dbUtil.TryExecute(new ProcessArgs().Append("probkup", targetDb.PhysicalName, targetBackupFile, options, InternationalizationStartupParameters));
                 if (!executionOk || !dbUtil.BatchOutputString.Contains("(3740)")) {
                     // Backup complete. (3740)
                     throw new UoeDatabaseException(dbUtil.BatchOutputString);
@@ -923,7 +932,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 var proShut = GetExecutable(ProshutName);
                 proShut.WorkingDirectory = targetDb.DirectoryPath;
 
-                var executionOk = proShut.TryExecute($"{targetDb.PhysicalName} -C backup online {targetBackupFile.Quoter()} {options} {InternationalizationStartupParameters}");
+                var executionOk = proShut.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "backup", "online", targetBackupFile, options, InternationalizationStartupParameters));
                 if (!executionOk || !proShut.BatchOutputString.Contains("(3740)")) {
                     // Backup complete. (3740)
                     throw new UoeDatabaseException(proShut.BatchOutputString);
@@ -939,7 +948,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="options"></param>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void Restore(UoeDatabaseLocation targetDb, string backupFile, string options = null) {
+        public void Restore(UoeDatabaseLocation targetDb, string backupFile, UoeProcessArgs options = null) {
             backupFile = backupFile.ToAbsolutePath();
             if (!File.Exists(backupFile)) {
                 throw new UoeDatabaseException($"The backup file does not exist: {backupFile.PrettyQuote()}.");
@@ -950,7 +959,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-            var executionOk = dbUtil.TryExecute($"prorest {targetDb.PhysicalName} {backupFile.Quoter()} {options} {InternationalizationStartupParameters}");
+            var executionOk = dbUtil.TryExecute(new ProcessArgs().Append("prorest", targetDb.PhysicalName, backupFile, options, InternationalizationStartupParameters));
             if (!executionOk) {
                 throw new UoeDatabaseException(dbUtil.BatchOutputString);
             }
@@ -969,7 +978,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// - https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm%2Fcreating-a-bulk-loader-description-file.html%23
         /// </remarks>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void BulkLoad(UoeDatabaseLocation targetDb, string descriptionFile, string dataDirectoryPath, string databaseAccessStartupParameters = null, string options = null) {
+        public void BulkLoad(UoeDatabaseLocation targetDb, string descriptionFile, string dataDirectoryPath, UoeProcessArgs databaseAccessStartupParameters = null, UoeProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
             descriptionFile = descriptionFile?.ToAbsolutePath();
@@ -982,7 +991,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var proUtil = GetExecutable(ProUtilName);
             proUtil.WorkingDirectory = targetDb.DirectoryPath;
 
-            var executionOk = proUtil.TryExecute($"{targetDb.PhysicalName} -C bulkload {descriptionFile.Quoter()} {options} datadir {dataDirectoryPath.Quoter()} {InternationalizationStartupParameters} {databaseAccessStartupParameters}");
+            var executionOk = proUtil.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "bulkload", descriptionFile, options, "datadir", dataDirectoryPath, InternationalizationStartupParameters, databaseAccessStartupParameters));
             if (!executionOk) {
                 throw new UoeDatabaseException(proUtil.BatchOutputString);
             }

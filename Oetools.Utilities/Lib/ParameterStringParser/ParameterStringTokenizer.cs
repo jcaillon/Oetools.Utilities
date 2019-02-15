@@ -188,6 +188,13 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
         }
 
         protected virtual ParameterStringToken CreateToken(bool quotedValue, bool isOption) {
+            // expect " to be escaped with ""
+            // can read:
+            // "value ""quoted""" -> value "quoted"
+            // "-option" -> -option
+            // -option="my value with space" -> -option=my value with space
+            // opt,"my value"," my ""pass" -> opt,my value, my "pass
+
             var sb = new StringBuilder();
 
             var ch = PeekAtChr(0);
@@ -199,6 +206,7 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
             ReadChr();
 
             if (quotedValue && !isOption) {
+                // maybe this is an option in quote, e.g. "-opt"
                 isOption = IsOptionCharacter(ch);
             }
 
@@ -236,21 +244,5 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
             return isOption ? (ParameterStringToken) new ParameterStringTokenOption(sb.ToString()) : new ParameterStringTokenValue(sb.ToString());
         }
 
-        protected virtual ParameterStringToken CreateOptionToken() {
-            ReadChr();
-            while (true) {
-                var ch = PeekAtChr(0);
-                if (ch == Eof)
-                    break;
-
-                // normal word
-                if (!char.IsWhiteSpace(ch)) {
-                    ReadChr();
-                    continue;
-                }
-                break;
-            }
-            return new ParameterStringTokenOption(GetTokenValue());
-        }
     }
 }

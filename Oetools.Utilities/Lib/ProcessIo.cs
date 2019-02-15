@@ -142,7 +142,12 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Returns the command line used for the execution.
         /// </summary>
-        public string ExecutedCommandLine => $"{ExecutablePath?.ToCliArg()} {_startInfo?.Arguments}";
+        public string ExecutedCommandLine => $"{ProcessArgs.ToCliArg(ExecutablePath)} {UsedArguments}";
+
+        /// <summary>
+        /// The complete arguments used to start the process.
+        /// </summary>
+        public string UsedArguments => _startInfo?.Arguments;
 
         private int? _exitCode;
 
@@ -191,7 +196,7 @@ namespace Oetools.Utilities.Lib {
         /// <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
         /// <param name="silent"></param>
         /// <returns></returns>
-        public virtual bool TryExecute(string arguments = null, bool silent = true) {
+        public virtual bool TryExecute(ProcessArgs arguments = null, bool silent = true) {
             try {
                 return Execute(arguments, silent) && ErrorOutputArray.Count == 0;
             } catch (Exception e) {
@@ -207,7 +212,7 @@ namespace Oetools.Utilities.Lib {
         /// <param name="silent"></param>
         /// <param name="timeoutMs"></param>
         /// <returns></returns>
-        public virtual bool Execute(string arguments = null, bool silent = true, int timeoutMs = 0) {
+        public virtual bool Execute(ProcessArgs arguments = null, bool silent = true, int timeoutMs = 0) {
             ExecuteAsyncProcess(arguments, silent);
 
             if (!WaitUntilProcessExits(timeoutMs)) {
@@ -224,7 +229,7 @@ namespace Oetools.Utilities.Lib {
         /// </summary>
         /// <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
         /// <param name="silent"></param>
-        protected virtual void ExecuteAsyncProcess(string arguments = null, bool silent = true) {
+        protected virtual void ExecuteAsyncProcess(ProcessArgs arguments = null, bool silent = true) {
             PrepareStart(arguments, silent);
 
             Log?.Debug($"Executing program:\n{ExecutedCommandLine}");
@@ -282,7 +287,7 @@ namespace Oetools.Utilities.Lib {
             return true;
         }
 
-        protected virtual void PrepareStart(string arguments, bool silent) {
+        protected virtual void PrepareStart(ProcessArgs arguments, bool silent) {
             _exitedEventPublished = false;
             StandardOutputArray.Clear();
             _standardOutput = null;
@@ -298,8 +303,8 @@ namespace Oetools.Utilities.Lib {
                 UseShellExecute = false
             };
 
-            if (!string.IsNullOrEmpty(arguments)) {
-                _startInfo.Arguments = arguments.ToCleanCliArgs();
+            if (arguments != null) {
+                _startInfo.Arguments = arguments.ToCliArgs();
             }
 
             if (!string.IsNullOrEmpty(WorkingDirectory)) {

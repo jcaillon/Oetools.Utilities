@@ -852,7 +852,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
 
             // when it goes wrong
             env.UseProgressCharacterMode = true;
-            env.ProExeCommandLineParameters = "oups i did it again";
+            env.ProExeCommandLineParameters = ProcessArgs.FromString("oups i did it again");
             using (var exec = GetOeExecutionCompile(env)) {
                 exec.FilesToCompile = new PathList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_events1.p")),

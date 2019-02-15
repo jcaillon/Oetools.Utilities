@@ -26,10 +26,10 @@ using Oetools.Utilities.Openedge;
 namespace Oetools.Utilities.Test.Openedge {
     
     [TestClass]
-    public class OeExportReaderTest {
+    public class UoeExportReaderTest {
         private static string _testFolder;
 
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(OeExportReaderTest)));
+        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeExportReaderTest)));
 
         [ClassInitialize]
         public static void Init(TestContext context) {

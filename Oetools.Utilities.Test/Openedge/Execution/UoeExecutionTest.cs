@@ -25,6 +25,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Execution;
@@ -270,7 +271,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is UoeExecutionOpenedgeException e1 && e1.ErrorNumber > 0), "HandledExceptions 2");
             }
 
-            env.ProExeCommandLineParameters = "random derp";
+            env.ProExeCommandLineParameters = new ProcessArgs("random", "derp");
             using (var exec = new UoeExecutionCustomTest(env)) {
                 // error in command line
                 exec.Start();
@@ -367,7 +368,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 return;
             }
             env.UseProgressCharacterMode = true;
-            env.ProExeCommandLineParameters = "-s 2000";
+            env.ProExeCommandLineParameters = new ProcessArgs("-s", "2000");
             using (var exec = new UoeExecutionCustomTest(env)) {
                 exec.ProgramContent = "PUT UNFORMATTED SESSION:STARTUP-PARAMETERS.";
                 exec.Start();

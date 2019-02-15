@@ -104,7 +104,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         public override List<string> ProPathList { get; set; }
 
         /// <inheritdoc cref="AUoeExecutionEnv.ProExeCommandLineParameters"/>
-        public override string ProExeCommandLineParameters { get; set; }
+        public override UoeProcessArgs ProExeCommandLineParameters { get; set; }
 
         /// <inheritdoc cref="AUoeExecutionEnv.PreExecutionProgramPath"/>
         public override string PreExecutionProgramPath { get; set; }

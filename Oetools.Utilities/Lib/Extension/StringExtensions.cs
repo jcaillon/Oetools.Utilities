@@ -60,18 +60,6 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        /// Remove double quotes from a string
-        /// </summary>
-        /// <param name="source"></param>
-        /// <returns></returns>
-        public static string StripQuotes(this string source) {
-            if (string.IsNullOrEmpty(source)) {
-                return source;
-            }
-            return source.Length > 1 && source[0] == source[source.Length - 1] && source[0] == '"' ? source.Length - 2 > 0 ? source.Substring(1, source.Length - 2) : "" : source;
-        }
-
-        /// <summary>
         ///     Converts a string to an object of the given type
         /// </summary>
         public static object ConvertFromStr(this string value, Type destType) {
@@ -85,7 +73,7 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Equivalent to Equals but case insensitive, also handles null case
+        /// Equivalent to Equals but case insensitive, also handles null case
         /// </summary>
         /// <param name="s"></param>
         /// <param name="comp"></param>
@@ -98,7 +86,7 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     case insensitive contains
+        /// Case insensitive contains
         /// </summary>
         /// <param name="source"></param>
         /// <param name="toCheck"></param>
@@ -203,9 +191,15 @@ namespace Oetools.Utilities.Lib.Extension {
         /// - surround by double quote if the text contains spaces
         /// - escape double quote with another double quote
         /// </summary>
+        /// <remarks>
+        /// Can be used to write a string to a file that will be read by progress using IMPORT.
+        /// </remarks>
         /// <param name="arg"></param>
         /// <returns></returns>
-        public static string Quoter(this string arg) {
+        public static string ToQuotedArg(this string arg) {
+            if (arg == null) {
+                return null;
+            }
             if (string.IsNullOrEmpty(arg)) {
                 return @"""""";
             }
@@ -226,135 +220,19 @@ namespace Oetools.Utilities.Lib.Extension {
             return hasWhiteSpaces ? $"\"{sb.Append('"')}" : sb.ToString();
         }
 
-        /// <summary>
-        /// A quoter function:
-        /// - surround by double quote if the text contains spaces
-        /// - escape double quote with another double quote
-        /// </summary>
-        /// <param name="args"></param>
-        /// <returns></returns>
-        public static string Quoter(this IEnumerable<string> args) => string.Join(" ", args.Select(Quoter));
+        /// <inheritdoc cref="ToQuotedArg"/>
+        public static string ToQuotedArgs(this IEnumerable<string> args) => string.Join(" ", args.Where(a => a != null).Select(ToQuotedArg));
 
         /// <summary>
-        ///  Undo the processing which took place to create string[] args in Main, so that the next process will receive the same string[] args.
+        /// Remove double quotes from a string.
         /// </summary>
-        /// <param name="args"></param>
-        /// <param name="isWindows"></param>
+        /// <param name="source"></param>
         /// <returns></returns>
-        public static string EscapedCliArgs(this IEnumerable<string> args, bool? isWindows = null) => string.Join(" ", args.Select(arg => ToCliArg(arg, isWindows)));
-
-        /// <summary>
-        /// Prepare a string representing an argument of a cmd line interface so that it is interpreted as a single argument.
-        /// Uses double quote when the string contains whitespaces.
-        /// </summary>
-        /// <param name="text"></param>
-        /// <param name="isWindows"></param>
-        /// <remarks>
-        /// In linux, you escape double quotes with \"
-        /// In windows, you escape doubles quotes with \" ("" is also correct but we don't do that here)
-        /// In linux, you need to escape \ with \\ but not in windows
-        /// </remarks>
-        /// <returns></returns>
-        public static string ToCliArg(this string text, bool? isWindows = null) {
-            if (string.IsNullOrEmpty(text)) {
-                return @"""""";
+        public static string StripQuotes(this string source) {
+            if (string.IsNullOrEmpty(source)) {
+                return source;
             }
-
-            var isQuoted = IsSurroundedWithDoubleQuotes(text);
-            var hasWhiteSpaces = false;
-
-            var sb = new StringBuilder();
-
-            if (isWindows ?? Utils.IsRuntimeWindowsPlatform) {
-                // https://blogs.msdn.microsoft.com/twistylittlepassagesallalike/2011/04/23/everyone-quotes-command-line-arguments-the-wrong-way/
-                var textLength = text.Length - (isQuoted ? 1 : 0);
-                for (int i = isQuoted ? 1 : 0; i < textLength; ++i) {
-                    var backslashes = 0;
-
-                    // Consume all backslashes
-                    while (i < textLength && text[i] == '\\') {
-                        backslashes++;
-                        i++;
-                    }
-
-                    if (i == textLength) {
-                        if (hasWhiteSpaces) {
-                            // Escape any backslashes at the end of the arg when the argument is also quoted.
-                            // This ensures the outside quote is interpreted as an argument delimiter
-                            sb.Append('\\', 2 * backslashes);
-                        } else {
-                            // At then end of the arg, which isn't quoted,
-                            // just add the backslashes, no need to escape
-                            sb.Append('\\', backslashes);
-                        }
-                    } else if (text[i] == '"') {
-                        // Escape any preceding backslashes and the quote
-                        sb.Append('\\', 2 * backslashes + 1);
-                        sb.Append('"');
-                    } else {
-                        if (char.IsWhiteSpace(text[i])) {
-                            hasWhiteSpaces = true;
-                        }
-                        // Output any consumed backslashes and the character
-                        sb.Append('\\', backslashes);
-                        sb.Append(text[i]);
-                    }
-                }
-
-            } else {
-                for (int i = isQuoted ? 1 : 0; i < text.Length - (isQuoted ? 1 : 0); ++i) {
-                    if (text[i] == '"') {
-                        sb.Append('\\');
-                    } else if (text[i] == '\\') {
-                        sb.Append('\\');
-                    } else if (char.IsWhiteSpace(text[i])) {
-                        hasWhiteSpaces = true;
-                    }
-                    sb.Append(text[i]);
-                }
-            }
-            return hasWhiteSpaces ? $"\"{sb.Append('"')}" : sb.ToString();
-        }
-
-        /// <summary>
-        /// Parses pro arguments supplied by the user, explorer every .pf and returns a clean string to be used as arguments (spaces and " are escaped with Quoter).
-        /// </summary>
-        /// <param name="originalCliArgs"></param>
-        /// <returns></returns>
-        public static string ToCleanQuoterArgs(this string originalCliArgs) {
-            if (string.IsNullOrEmpty(originalCliArgs)) {
-                return originalCliArgs;
-            }
-            var sb = new StringBuilder();
-            var tokenizer = new UoeParameterTokenizer(originalCliArgs);
-            do {
-                var token = tokenizer.PeekAtToken(0);
-                if (token is ParameterStringTokenOption || token is ParameterStringTokenValue) {
-                    sb.Append(token.Value.Quoter()).Append(' ');
-                }
-            } while (tokenizer.MoveToNextToken());
-            return sb.TrimEnd().ToString();
-        }
-
-        /// <summary>
-        /// Parses arguments supplied by the user and returns a clean string to be used as an argument of a CLI executable.
-        /// </summary>
-        /// <param name="originalCliArgs"></param>
-        /// <param name="isWindows"></param>
-        /// <returns></returns>
-        public static string ToCleanCliArgs(this string originalCliArgs, bool? isWindows = null) {
-            if (string.IsNullOrEmpty(originalCliArgs)) {
-                return originalCliArgs;
-            }
-            var sb = new StringBuilder();
-            var tokenizer = new ParameterStringTokenizer(originalCliArgs);
-            do {
-                var token = tokenizer.PeekAtToken(0);
-                if (token is ParameterStringTokenOption || token is ParameterStringTokenValue) {
-                    sb.Append(token.Value.ToCliArg(isWindows)).Append(' ');
-                }
-            } while (tokenizer.MoveToNextToken());
-            return sb.TrimEnd().ToString();
+            return source.Length > 1 && source[0] == source[source.Length - 1] && source[0] == '"' ? source.Length - 2 > 0 ? source.Substring(1, source.Length - 2) : "" : source;
         }
 
         /// <summary>
@@ -370,16 +248,6 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        ///     Replaces " by "", add extra " at the start and end of the string,
-        /// should be used to write a sring to a file that will be read by progress using IMPORT
-        /// </summary>
-        /// <param name="text"></param>
-        /// <returns></returns>
-        public static string ProExportFormat(this string text) {
-            return $"\"{text?.Replace("\"", "\"\"").Replace("\n", "").Replace("\r", "") ?? ""}\"";
-        }
-
-        /// <summary>
         ///  Format a text to use as a single line CHARACTER string encapsulated in double quotes ",
         /// to use in CHARACTER string definition in openedge code
         /// i.e. $"assign lc = {"toescape".ProQuoter()}"
@@ -391,7 +259,23 @@ namespace Oetools.Utilities.Lib.Extension {
             if (text == null) {
                 return "?";
             }
-            return $"\"{text.Replace("~", "~~").Replace("\"", "\"\"").Replace("\\", "~\\").Replace("{", "~{").Replace("\n", "~n").Replace("\r", "~r").Replace("\t", "~t")}\"";
+            return $"\"{text.Replace("\"", "\"\"").Replace("~", "~~").Replace("\\", "~\\").Replace("{", "~{").Replace("\t", "~t").Replace("\r", "~r").Replace("\n", "~n")}\"";
+        }
+
+        /// <summary>
+        /// The opposite function of <see cref="ProStringify"/>.
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static string ProUnStringify(this string text) {
+            if (string.IsNullOrEmpty(text)) {
+                return text;
+            }
+            text = text.StripQuotes();
+            if (text.Equals("?")) {
+                return null;
+            }
+            return text.Replace("~n", "\n").Replace("~r", "\r").Replace("~t", "\t").Replace("~{", "{").Replace("~\\", "\\").Replace("~~", "~").Replace("\"\"", "\"");
         }
 
         /// <summary>
@@ -406,19 +290,18 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        /// The opposite function of proquoter
+        /// The opposite function of function fi_escape_special_char in oe_execution.p.
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
-        public static string ProUnescapeString(this string text) {
+        public static string ProUnescapeSpecialChar(this string text) {
             if (string.IsNullOrEmpty(text)) {
                 return text;
             }
-            text = text.StripQuotes();
             if (text.Equals("?")) {
                 return null;
             }
-            return text.Replace("~~", "~").Replace("\"\"", "\"").Replace("~\\", "\\").Replace("~{", "{").Replace("~n", "\n").Replace("~r", "\r").Replace("~t", "\t");
+            return text.Replace("~n", "\n").Replace("~t", "\t");
         }
 
         private static Regex _ftpRegex;
@@ -428,7 +311,7 @@ namespace Oetools.Utilities.Lib.Extension {
         private static Regex HttpUriRegex => _httpRegex ?? (_httpRegex = new Regex(@"^https?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?", RegexOptions.Compiled));
 
         /// <summary>
-        /// Parses the given HTTP URI into strings
+        /// Parses the given HTTP URI into strings.
         /// </summary>
         /// <param name="httpUri"></param>
         /// <param name="userName"></param>
@@ -469,7 +352,7 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        /// Parses the given FTP URI into strings
+        /// Parses the given FTP URI into strings.
         /// </summary>
         /// <param name="ftpUri"></param>
         /// <param name="ftpBaseUri"></param>
@@ -527,7 +410,7 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <summary>
-        /// Tests wheter or not a character is a letter from the ascii table
+        /// Tests whether or not a character is a letter from the ascii table.
         /// </summary>
         /// <param name="c"></param>
         /// <returns></returns>

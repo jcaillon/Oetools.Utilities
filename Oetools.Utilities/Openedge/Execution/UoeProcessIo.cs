@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeProcessIo.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -23,7 +23,7 @@ using System.Text;
 using Oetools.Utilities.Lib;
 
 namespace Oetools.Utilities.Openedge.Execution {
-    
+
     /// <summary>
     /// Represents a progres process
     /// </summary>
@@ -35,12 +35,12 @@ namespace Oetools.Utilities.Openedge.Execution {
     ///     is made to hide this window from the taskbar in that case
     /// </remarks>
     public class UoeProcessIo : ProcessIoAsync {
-        
+
         /// <summary>
         /// DLC path to use
         /// </summary>
         public string DlcPath { get;  }
-        
+
         /// <summary>
         /// Whether or not to use character mode (_progres) instead of GUI (prowin)
         /// </summary>
@@ -50,17 +50,12 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Whether or not the executable can use the -nosplash parameter
         /// </summary>
         public bool CanUseNoSplash { get; set; }
-        
-        /// <summary>
-        /// The complete start parameters used
-        /// </summary>
-        public string StartParametersUsed { get; private set; }
-        
+
         /// <summary>
         /// Choose the encoding for the standard/error output
         /// </summary>
         public override Encoding RedirectedOutputEncoding { get; set; } = Encoding.Default;
-       
+
         /// <summary>
         ///     Constructor
         /// </summary>
@@ -78,25 +73,23 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <inheritdoc />
-        protected override void PrepareStart(string arguments, bool silent) {
-            
+        protected override void PrepareStart(ProcessArgs arguments, bool silent) {
+
             if (silent) {
-                arguments = $"{arguments ?? ""} -b";
+                arguments.Append("-b");
             }
-            
+
             if (!UseCharacterMode) {
-                if (CanUseNoSplash)  {
-                    arguments = $"{arguments ?? ""} -nosplash";
+                if (CanUseNoSplash) {
+                    arguments.Append("-nosplash");
                 } else {
                     DisableSplashScreen();
                 }
             }
 
-            StartParametersUsed = arguments;
-
-            // we can only redirect output in -b batch mode 
+            // we can only redirect output in -b batch mode
             RedirectOutput = silent;
-            
+
             base.PrepareStart(arguments, silent);
 
             // in character mode, we need to execute _progress in a console!
@@ -125,6 +118,6 @@ namespace Oetools.Utilities.Openedge.Execution {
                 // if it fails it is not really a problem
             }
         }
-        
+
     }
 }

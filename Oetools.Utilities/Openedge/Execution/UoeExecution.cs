@@ -163,7 +163,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     Parameters of the .exe call
         /// </summary>
-        protected StringBuilder _exeParameters;
+        protected ProcessArgs _exeArguments;
 
         protected UoeProcessIo _process;
 
@@ -254,7 +254,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             SetPreprocessedVar("ErrorLogPath", _errorLogPath.ProPreProcStringify());
             SetPreprocessedVar("DbErrorLogPath", _dbErrorLogPath.ProPreProcStringify());
             SetPreprocessedVar("PropathFilePath", _propathFilePath.ProPreProcStringify());
-            SetPreprocessedVar("DbConnectString", UoeDatabaseConnection.GetConnectionString(Env.DatabaseConnections).ProPreProcStringify());
+            SetPreprocessedVar("DbConnectString", UoeDatabaseConnection.ToArgs(Env.DatabaseConnections).ToQuotedArgs().ProPreProcStringify());
             SetPreprocessedVar("DatabaseAliasList", (Env.DatabaseAliases != null ? string.Join(";", Env.DatabaseAliases.Select(a => $"{a.AliasLogicalName},{a.DatabaseLogicalName}")) : "").ProPreProcStringify()); // Format : ALIAS,DATABASE;ALIAS2,DATABASE;...
             SetPreprocessedVar("DbConnectionRequired", NeedDatabaseConnection.ToString());
             SetPreprocessedVar("PreExecutionProgramPath", Env.PreExecutionProgramPath.ProPreProcStringify());
@@ -274,19 +274,19 @@ namespace Oetools.Utilities.Openedge.Execution {
             File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.GetIoEncoding());
 
             // Parameters
-            _exeParameters = new StringBuilder($"-p {_runnerPath.Quoter()}");
-            AppendProgressParameters(_exeParameters);
-            if (!string.IsNullOrWhiteSpace(Env.ProExeCommandLineParameters)) {
-                _exeParameters.Append($" {Env.ProExeCommandLineParameters}");
+            _exeArguments.Append("-p").Append(_runnerPath);
+            AppendProgressParameters(_exeArguments);
+            if (Env.ProExeCommandLineParameters != null) {
+                _exeArguments.Append(Env.ProExeCommandLineParameters);
             }
 
             if (!string.IsNullOrEmpty(Env.IniFilePath)) {
-                _exeParameters.Append($" -ininame {Env.IniFilePath.Quoter()} -basekey INI");
+                _exeArguments.Append("-ininame").Append(Env.IniFilePath).Append("-basekey").Append("INI");
             }
 
             if (!string.IsNullOrEmpty(WorkingDirectory) && Directory.Exists(WorkingDirectory)) {
                 _processStartDir = WorkingDirectory;
-                _exeParameters.Append($" -T {_tempDir.Quoter()}");
+                _exeArguments.Append("-T").Append(_tempDir);
             }
 
             // start the process
@@ -296,7 +296,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 CancelToken = CancelToken
             };
             _process.OnProcessExit += ProcessOnExited;
-            _process.ExecuteAsync(_exeParameters.ToString(), SilentExecution);
+            _process.ExecuteAsync(_exeArguments, SilentExecution);
         }
 
         /// <summary>
@@ -388,7 +388,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         ///     Add stuff to the command line
         /// </summary>
-        protected virtual void AppendProgressParameters(StringBuilder sb) { }
+        protected virtual void AppendProgressParameters(ProcessArgs args) { }
 
         /// <summary>
         ///     set pre-processed variable for the runner program
@@ -446,7 +446,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 }
 
                 if (HandledExceptions.Count == 0) {
-                    HandledExceptions.Add(new UoeExecutionProcessException(_process.ExecutablePath, _process.StartParametersUsed, _process.WorkingDirectory, _process.BatchOutput.ToString(), _process.ExitCode));
+                    HandledExceptions.Add(new UoeExecutionProcessException(_process.ExecutablePath, _process.UsedArguments, _process.WorkingDirectory, _process.BatchOutput.ToString(), _process.ExitCode));
                 }
                 ExecutionFailed = true;
             } else if (new FileInfo(_errorLogPath).Length > 0) {
@@ -478,7 +478,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     if (split.Length == 2) {
                         var t = new T {
                             ErrorNumber = int.Parse(split[0]),
-                            ErrorMessage = split[1].ProUnescapeString()
+                            ErrorMessage = split[1].ProUnescapeSpecialChar()
                         };
                         output.Add(t);
                     }

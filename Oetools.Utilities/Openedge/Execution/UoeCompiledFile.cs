@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (UoeCompiledFile.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -27,7 +27,7 @@ using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database;
 
 namespace Oetools.Utilities.Openedge.Execution {
-    
+
     /// <summary>
     ///     This class represents a file thas been compiled
     /// </summary>
@@ -65,7 +65,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Lot of work, FILEID is the easy road
         /// </remarks>
         public string CompilationFileIdLogFilePath { get; set; }
-        
+
         /// <summary>
         /// Will contain the list of table/tCRC referenced by the compiled rcode
         /// uses RCODE-INFO:TABLE-LIST to get a list of referenced TABLES in the file,
@@ -79,19 +79,19 @@ namespace Oetools.Utilities.Openedge.Execution {
         public string CompilationRcodeTableListFilePath { get; set; }
 
         public string CompilationRcodeFilePath { get; set; }
-        
+
         public bool IsAnalysisMode { get; set; }
-        
+
         public bool CompiledCorrectly { get; private set; }
-        
+
         public bool CompiledWithWarnings { get; private set; }
-        
+
         /// <summary>
         /// If the compiled file is a class file, it will represent the class namespace as a path
         /// For instance, compiling random.cool.Class1 will return random\cool (or random/cool depending on the platform)
         /// </summary>
         public string ClassNamespacePath { get; private set; }
-        
+
         /// <summary>
         ///     List of errors
         /// </summary>
@@ -109,7 +109,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// that those references do exist afterward and also get the TABLE CRC value
         /// </summary>
         public List<UoeDatabaseReference> RequiredDatabaseReferences { get; private set; }
-        
+
         /// <summary>
         ///     Returns the base file name (set in constructor)
         /// </summary>
@@ -126,20 +126,20 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         private bool _compilationResultsRead;
-        
+
         public void ReadCompilationResults(Encoding enc, string currentDirectory) {
             if (_compilationResultsRead) {
                 return;
             }
             _compilationResultsRead = true;
-            
+
             // make sure that the expected generated files are actually generated
             AddWarningIfFileDefinedButDoesNotExist(CompilationListingFilePath);
             AddWarningIfFileDefinedButDoesNotExist(CompilationXrefFilePath);
             AddWarningIfFileDefinedButDoesNotExist(CompilationXmlXrefFilePath);
             AddWarningIfFileDefinedButDoesNotExist(CompilationDebugListFilePath);
             AddWarningIfFileDefinedButDoesNotExist(CompilationPreprocessedFilePath);
-            
+
             CorrectRcodePathForClassFiles();
 
             // read compilation errors/warning for this file
@@ -166,9 +166,9 @@ namespace Oetools.Utilities.Openedge.Execution {
                 return;
             }
             AddWarningIfFileDefinedButDoesNotExist(CompilationRcodeTableListFilePath);
-            
+
             RequiredDatabaseReferences = new List<UoeDatabaseReference>();
-            
+
             // read from xref (we need the table CRC from the environment)
             if (ienv is UoeExecutionEnv env && !analysisModeSimplifiedDatabaseReferences) {
                 if (File.Exists(CompilationXrefFilePath)) {
@@ -186,7 +186,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     }
                 }
             }
-            
+
             // read from rcode-info:table-list
             if (File.Exists(CompilationRcodeTableListFilePath)) {
                 Utils.ForEachLine(CompilationRcodeTableListFilePath, null, (i, line) => {
@@ -228,7 +228,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                         problem.Line = Math.Max(1, (int) fields[3].ConvertFromStr(typeof(int)));
                         problem.Column = Math.Max(1, (int) fields[4].ConvertFromStr(typeof(int)));
                         problem.ErrorNumber = Math.Max(0, (int) fields[5].ConvertFromStr(typeof(int)));
-                        problem.Message = fields[6].ProUnescapeString().Replace(CompiledFilePath, Path).Trim();
+                        problem.Message = fields[6].ProUnescapeSpecialChar().Replace(CompiledFilePath, Path).Trim();
                         (CompilationProblems ?? (CompilationProblems = new List<UoeCompilationProblem>())).Add(problem);
                     }
                 }, enc);
@@ -236,7 +236,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         private void CorrectRcodePathForClassFiles() {
-            
+
             // this only concerns cls files
             if (Path.EndsWith(UoeConstants.ExtCls, StringComparison.OrdinalIgnoreCase)) {
                 // Handle the case of .cls files, for which several .r code are compiled
@@ -265,16 +265,16 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (string.IsNullOrEmpty(CompilationFileIdLogFilePath)) {
                 return;
             }
-            
+
             if (File.Exists(CompilationFileIdLogFilePath)) {
                 RequiredFiles = UoeUtilities.GetReferencedFilesFromFileIdLog(CompilationFileIdLogFilePath, enc, currentDirectory);
-                
-                RequiredFiles.RemoveWhere(f => 
+
+                RequiredFiles.RemoveWhere(f =>
                     f.PathEquals(CompiledFilePath) ||
                     f.EndsWith(".r", StringComparison.OrdinalIgnoreCase) ||
                     f.EndsWith(".pl", StringComparison.OrdinalIgnoreCase) ||
                     !String.IsNullOrEmpty(CompilationXrefFilePath) && f.PathEquals(CompilationXrefFilePath));
-                
+
             }
         }
 

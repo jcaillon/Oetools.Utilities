@@ -78,7 +78,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// Pro parameters to append to the execution of the progress process.
         /// </summary>
-        public string ProExeCommandLineParameters { get; set; }
+        public UoeProcessArgs ProExeCommandLineParameters { get; set; }
 
         /// <summary>
         /// Initialize a new instance.
@@ -137,7 +137,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading schema definition file {dfFilePath.PrettyQuote()} in {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"load-df|{dfFilePath}".Quoter()}");
+            StartDataAdministratorProgram(new UoeProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"load-df|{dfFilePath}"));
         }
 
         /// <summary>
@@ -161,7 +161,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping schema definition to file {dfDumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"dump-df|{dfDumpFilePath}".Quoter()}|{tableName}");
+            StartDataAdministratorProgram(new UoeProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"dump-df|{dfDumpFilePath}|{tableName}"));
         }
 
         /// <inheritdoc cref="DumpIncrementalSchemaDefinition"/>
@@ -194,12 +194,12 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var csList = databaseConnections.ToList();
             if (csList.Count != 2) {
-                throw new UoeDatabaseException($"There should be exactly 2 databases specified in the connection string: {UoeDatabaseConnection.GetConnectionString(csList).PrettyQuote()}.");
+                throw new UoeDatabaseException($"There should be exactly 2 databases specified in the connection string: {UoeDatabaseConnection.ToArgs(csList).ToQuotedArgs().PrettyQuote()}.");
             }
 
             Log?.Info($"Dumping incremental schema definition to file {incDfDumpFilePath.PrettyQuote()} from {(csList[0].DatabaseLocation.Exists() ? csList[0].DatabaseLocation.FullPath : csList[0].DatabaseLocation.PhysicalName)} (old) and {(csList[1].DatabaseLocation.Exists() ? csList[1].DatabaseLocation.FullPath : csList[1].DatabaseLocation.PhysicalName)} (new).");
 
-            StartDataAdministratorProgram($"{UoeDatabaseConnection.GetConnectionString(csList, true)} -param {$"dump-inc|{incDfDumpFilePath}|{renameFilePath ?? ""}".Quoter()}");
+            StartDataAdministratorProgram(new ProcessArgs().Append(UoeDatabaseConnection.ToArgs(csList), "-param", $"dump-inc|{incDfDumpFilePath}|{renameFilePath}"));
         }
 
         /// <summary>
@@ -252,7 +252,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping sequence data to file {dumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"dump-seq|{dumpFilePath}".Quoter()}");
+            StartDataAdministratorProgram(new UoeProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"dump-seq|{dumpFilePath}"));
         }
 
         /// <summary>
@@ -270,7 +270,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading sequence data from file {sequenceDataFilePath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"load-seq|{sequenceDataFilePath}".Quoter()}");
+            StartDataAdministratorProgram(new UoeProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"load-seq|{sequenceDataFilePath}"));
         }
 
         /// <summary>
@@ -291,7 +291,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping data to directory {dumpDirectoryPath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"dump-d|{dumpDirectoryPath}|{tableName}".Quoter()}");
+            StartDataAdministratorProgram(new UoeProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"dump-d|{dumpDirectoryPath}|{tableName}"));
         }
 
         /// <summary>
@@ -310,7 +310,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading data from directory {dataDirectoryPath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram($"{databaseConnection} -param {$"load-d|{dataDirectoryPath}|{tableName}".Quoter()}");
+            StartDataAdministratorProgram(new UoeProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"load-d|{dataDirectoryPath}|{tableName}"));
         }
 
         /// <summary>
@@ -320,7 +320,11 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="dumpFilePath"></param>
         /// <param name="options"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void DumpSqlSchema(UoeDatabaseConnection databaseConnection, string dumpFilePath, string options = "-f %.% -g %.% -G %.% -n %.% -p %.% -q %.% -Q %.% -s %.% -t %.% -T %.%") {
+        public void DumpSqlSchema(UoeDatabaseConnection databaseConnection, string dumpFilePath, UoeProcessArgs options = null) {
+            if (options == null) {
+                options = new UoeProcessArgs().Append("-f", "%.%", "-g", "%.%", "-G", "%.%", "-n", "%.%", "-p", "%.%", "-q", "%.%", "-Q", "%.%", "-s", "%.%", "-t", "%.%", "-T", "%.%") as UoeProcessArgs;
+            }
+
             dumpFilePath = dumpFilePath.ToAbsolutePath();
             var dir = Path.GetDirectoryName(dumpFilePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
@@ -330,9 +334,9 @@ namespace Oetools.Utilities.Openedge.Database {
             var sqlSchema = GetExecutable(SqlSchemaName);
             sqlSchema.WorkingDirectory = TempFolder;
 
-            Log?.Info($"Dump sql-92 definition from {databaseConnection.ToString().PrettyQuote()} to {dumpFilePath.PrettyQuote()}.");
+            Log?.Info($"Dump sql-92 definition from {databaseConnection.ToString().PrettyQuote()} to {dumpFilePath.PrettyQuote()} with options {(options?.ToString()).PrettyQuote()}.");
 
-            TryExecuteWithJdbcConnection(sqlSchema, $"-u {databaseConnection.UserId.Quoter()} -a {databaseConnection.Password.Quoter()} -o {dumpFilePath.Quoter()} {options}", databaseConnection);
+            TryExecuteWithJdbcConnection(sqlSchema, new UoeProcessArgs().Append("-u", databaseConnection.UserId ?? "", "-a", databaseConnection.Password ?? "", "-o", dumpFilePath, options), databaseConnection);
             if (sqlSchema.BatchOutputString.Length > 0) {
                 throw new UoeDatabaseException(sqlSchema.BatchOutputString);
             }
@@ -345,7 +349,11 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="dumpDirectoryPath"></param>
         /// <param name="options"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void DumpSqlData(UoeDatabaseConnection databaseConnection, string dumpDirectoryPath, string options = "-t %.%") {
+        public void DumpSqlData(UoeDatabaseConnection databaseConnection, string dumpDirectoryPath, UoeProcessArgs options = null) {
+            if (options == null) {
+                options = new UoeProcessArgs().Append("-t", "%.%") as UoeProcessArgs;
+            }
+
             if (string.IsNullOrEmpty(dumpDirectoryPath)) {
                 throw new UoeDatabaseException("The data dump directory path can't be null.");
             }
@@ -354,12 +362,12 @@ namespace Oetools.Utilities.Openedge.Database {
                 Directory.CreateDirectory(dumpDirectoryPath);
             }
 
-            Log?.Info($"Dumping sql-92 data to directory {dumpDirectoryPath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
+            Log?.Info($"Dumping sql-92 data to directory {dumpDirectoryPath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()} with options {(options?.ToString()).PrettyQuote()}.");
 
             var sqlDump = GetExecutable(SqlDumpName);
             sqlDump.WorkingDirectory = dumpDirectoryPath;
 
-            TryExecuteWithJdbcConnection(sqlDump, $"-u {databaseConnection.UserId.Quoter()} -a {databaseConnection.Password.Quoter()} {options}", databaseConnection);
+            TryExecuteWithJdbcConnection(sqlDump, new UoeProcessArgs().Append("-u", databaseConnection.UserId ?? "", "-a", databaseConnection.Password ?? "", options), databaseConnection);
             if (sqlDump.ExitCode != 0) {
                 throw new UoeDatabaseException(sqlDump.BatchOutputString);
             }
@@ -381,19 +389,23 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="dataDirectoryPath"></param>
         /// <param name="options"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void LoadSqlData(UoeDatabaseConnection databaseConnection, string dataDirectoryPath, string options = "-t %.%") {
+        public void LoadSqlData(UoeDatabaseConnection databaseConnection, string dataDirectoryPath, UoeProcessArgs options = null) {
+            if (options == null) {
+                options = new UoeProcessArgs().Append("-t", "%.%") as UoeProcessArgs;
+            }
+
             dataDirectoryPath = dataDirectoryPath?.ToAbsolutePath();
 
             if (!Directory.Exists(dataDirectoryPath)) {
                 throw new UoeDatabaseException($"The data directory does not exist: {dataDirectoryPath.PrettyQuote()}.");
             }
 
-            Log?.Info($"Loading sql-92 data from directory {dataDirectoryPath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()}.");
+            Log?.Info($"Loading sql-92 data from directory {dataDirectoryPath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()} with options {(options?.ToString()).PrettyQuote()}.");
 
             var sqlLoad = GetExecutable(SqlLoadName);
             sqlLoad.WorkingDirectory = dataDirectoryPath;
 
-            TryExecuteWithJdbcConnection(sqlLoad, $"-u {databaseConnection.UserId.Quoter()} -a {databaseConnection.Password.Quoter()} {options}", databaseConnection);
+            TryExecuteWithJdbcConnection(sqlLoad, new UoeProcessArgs().Append("-u", databaseConnection.UserId ?? "", "-a", databaseConnection.Password ?? "", options), databaseConnection);
             if (sqlLoad.ExitCode != 0) {
                 throw new UoeDatabaseException(sqlLoad.BatchOutputString);
             }
@@ -408,31 +420,32 @@ namespace Oetools.Utilities.Openedge.Database {
             }
         }
 
-        private bool TryExecuteWithJdbcConnection(ProcessIo process, string arguments, UoeDatabaseConnection databaseConnection) {
+        private bool TryExecuteWithJdbcConnection(ProcessIo process, ProcessArgs arguments, UoeDatabaseConnection databaseConnection) {
             bool executionOk;
             var busyMode = GetBusyMode(databaseConnection.DatabaseLocation);
             if (string.IsNullOrEmpty(databaseConnection.Service) && busyMode == DatabaseBusyMode.NotBusy) {
                 Log?.Debug("The database needs to be started for this operation, starting it.");
                 using (var db = new UoeDatabaseStarted(this, databaseConnection.DatabaseLocation)) {
                     db.AllowsDatabaseShutdownWithKill = false;
-                    executionOk = process.TryExecute($"{arguments} {db.GetDatabaseConnection().ToCliArgsJdbcConnectionString(false)}");
+                    executionOk = process.TryExecute(arguments.Append(db.GetDatabaseConnection().ToJdbcConnectionString(false)));
                 }
             } else if (string.IsNullOrEmpty(databaseConnection.Service)) {
                 throw new UoeDatabaseException("The database needs to be either not busy or started for multi-user mode with service port.");
             } else {
-                executionOk = process.TryExecute($"{arguments} {databaseConnection.ToCliArgsJdbcConnectionString(false)}");
+                executionOk = process.TryExecute(arguments.Append(databaseConnection.ToJdbcConnectionString(false)));
             }
             return executionOk;
         }
 
-        private void StartDataAdministratorProgram(string parameters, string workingDirectory = null) {
-            var arguments = $"-p {ProcedurePath.Quoter()} {parameters}{(!string.IsNullOrEmpty(workingDirectory) ? $" -T {TempFolder.Quoter()}" : "")}";
-            if (!string.IsNullOrWhiteSpace(ProExeCommandLineParameters)) {
-                arguments = $"{arguments} {ProExeCommandLineParameters}";
+        private void StartDataAdministratorProgram(ProcessArgs args, string workingDirectory = null) {
+            args.Append("-p").Append(ProcedurePath);
+            if (!string.IsNullOrEmpty(workingDirectory)) {
+                args.Append("-T").Append(TempFolder);
             }
+            args.Append(ProExeCommandLineParameters);
 
             Progres.WorkingDirectory = workingDirectory ?? TempFolder;
-            var executionOk = Progres.TryExecute(arguments);
+            var executionOk = Progres.TryExecute(args);
 
             if (!executionOk || !Progres.BatchOutputString.EndsWith("OK")) {
                 throw new UoeDatabaseException(Progres.BatchOutputString);

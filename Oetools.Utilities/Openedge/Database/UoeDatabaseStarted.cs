@@ -21,6 +21,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Openedge.Database {
 
@@ -50,7 +51,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="sharedMemoryMode"></param>
         /// <param name="nbUsers"></param>
         /// <param name="options"></param>
-        public UoeDatabaseStarted(UoeDatabaseOperator @operator, UoeDatabaseLocation targetDb, bool sharedMemoryMode = false, int? nbUsers = null, string options = null) {
+        public UoeDatabaseStarted(UoeDatabaseOperator @operator, UoeDatabaseLocation targetDb, bool sharedMemoryMode = false, int? nbUsers = null, UoeProcessArgs options = null) {
             _operator = @operator;
             _targetDb = targetDb;
 

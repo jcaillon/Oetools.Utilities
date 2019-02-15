@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (IUoeExecutionEnv.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -24,12 +24,12 @@ using Oetools.Utilities.Lib;
 using Oetools.Utilities.Openedge.Database;
 
 namespace Oetools.Utilities.Openedge.Execution {
-    
+
     /// <summary>
     /// An openedge execution environment. Contains the parameters needed for any openedge execution.
     /// </summary>
     public abstract class AUoeExecutionEnv {
-        
+
         /// <summary>
         /// Path to the dlc folder (openedge installation folder)
         /// </summary>
@@ -63,7 +63,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Command line parameters to append to the execution of progress
         /// </summary>
-        public abstract string ProExeCommandLineParameters { get; set; }
+        public abstract UoeProcessArgs ProExeCommandLineParameters { get; set; }
 
         /// <summary>
         /// Path of the .p program that should be executed at the start of an openedge session
@@ -88,7 +88,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Windows only, try to hide the prowin.exe executable from the task bar.
         /// </summary>
-        public abstract bool TryToHideProcessFromTaskBarOnWindows { get; set; } 
+        public abstract bool TryToHideProcessFromTaskBarOnWindows { get; set; }
 
         /// <summary>
         /// Returns true if the given version is higher or equal to the pro version found in the dlc/version file

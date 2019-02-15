@@ -110,7 +110,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
 
                         // for files containing a space, we don't have a choice, call extract for each...
                         foreach (var file in subFolder.Value.Where(f => f.RelativePath.Contains(" "))) {
-                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -create -nowarn -add {file.RelativePath.Quoter()}")) {
+                            if (!prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -create -nowarn -add {file.RelativePath.ToQuotedArg()}"))) {
                                 throw new ArchiverException($"Failed to pack {file.Origin.PrettyQuote()} into {plGroupedFiles.Key.PrettyQuote()} and relative archive path {file.RelativePath}.", new ArchiverException(prolibExe.BatchOutput.ToString()));
                             }
                         }
@@ -128,7 +128,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
 
                             File.WriteAllText(pfPath, pfContent.ToString(), _encoding);
 
-                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -pf {pfPath.Quoter()}")) {
+                            if (!prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -pf {pfPath.ToQuotedArg()}"))) {
                                 throw new ArchiverException($"Failed to pack to {plGroupedFiles.Key.PrettyQuote()}.", new Exception(prolibExe.BatchOutput.ToString()));
                             }
 
@@ -156,7 +156,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
                     }
 
                     // compress .pl
-                    prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -compress -nowarn");
+                    prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -compress -nowarn"));
 
                     foreach (var file in plGroupedFiles) {
                         file.Processed = true;
@@ -184,7 +184,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
 
             var prolibExe = new ProcessIo(_prolibPath);
 
-            if (!prolibExe.TryExecute($"{archivePath.Quoter()} -list")) { // -date mdy
+            if (!prolibExe.TryExecute(ProcessArgs.FromString($"{archivePath.ToQuotedArg()} -list"))) { // -date mdy
                 throw new Exception("Error while listing files from a .pl.", new Exception(prolibExe.BatchOutput.ToString()));
             }
 
@@ -240,7 +240,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
                     // for files containing a space, we don't have a choice, call delete for each...
                     foreach (var file in plGroupedFilesFiltered.Where(deploy => deploy.PathInArchive.Contains(" "))) {
                         _cancelToken?.ThrowIfCancellationRequested();
-                        if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -nowarn -delete {file.PathInArchive.Quoter()}")) {
+                        if (!prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -nowarn -delete {file.PathInArchive.ToQuotedArg()}"))) {
                             throw new ArchiverException($"Failed to delete {file.PathInArchive.PrettyQuote()} in {plGroupedFiles.Key.PrettyQuote()}.", new ArchiverException(prolibExe.BatchOutput.ToString()));
                         }
                         totalFilesDone++;
@@ -263,7 +263,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
                         File.WriteAllText(pfPath, pfContent.ToString(), _encoding);
 
                         // now we just need to add the content of temp folders into the .pl
-                        if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -pf {pfPath.Quoter()}")) {
+                        if (!prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -pf {pfPath.ToQuotedArg()}"))) {
                             throw new ArchiverException($"Failed to delete files in {plGroupedFiles.Key.PrettyQuote()}.", new ArchiverException(prolibExe.BatchOutput.ToString()));
                         }
                         foreach (var file in remainingFiles) {
@@ -334,19 +334,19 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
 
                         foreach (var file in subFolder.Value) {
                             prolibExe.WorkingDirectory = Path.GetDirectoryName(file.Temp);
-                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -nowarn -yank {file.Origin.Quoter()}")) {
+                            if (!prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -nowarn -yank {file.Origin.ToQuotedArg()}"))) {
                                 throw new ArchiverException($"Failed to extract {file.Origin.PrettyQuote()} from {plGroupedFiles.Key.PrettyQuote()}.", new Exception(prolibExe.BatchOutput.ToString()));
                             }
 
-                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -nowarn -delete {file.Origin.Quoter()}")) {
+                            if (!prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -nowarn -delete {file.Origin.ToQuotedArg()}"))) {
                                 throw new ArchiverException($"Failed to delete {file.Origin.PrettyQuote()} in {plGroupedFiles.Key.PrettyQuote()}.", new ArchiverException(prolibExe.BatchOutput.ToString()));
                             }
 
                             File.Move(Path.Combine(prolibExe.WorkingDirectory, Path.GetFileName(file.Origin)), file.Temp);
 
                             prolibExe.WorkingDirectory = uniqueTempFolder;
-                            prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -nowarn -delete {file.RelativePath.Quoter()}");
-                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -create -nowarn -add {file.RelativePath.Quoter()}")) {
+                            prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -nowarn -delete {file.RelativePath.ToQuotedArg()}"));
+                            if (!prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -create -nowarn -add {file.RelativePath.ToQuotedArg()}"))) {
                                 throw new ArchiverException($"Failed to pack {file.Origin.PrettyQuote()} into {plGroupedFiles.Key.PrettyQuote()} and relative archive path {file.RelativePath}.", new ArchiverException(prolibExe.BatchOutput.ToString()));
                             }
 
@@ -356,7 +356,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
                     }
 
                     // compress .pl
-                    prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -compress -nowarn");
+                    prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -compress -nowarn"));
 
                     // delete temp folder
                     Directory.Delete(uniqueTempFolder, true);
@@ -406,7 +406,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
                             if (File.Exists(file.ExtractionPath)) {
                                 File.Delete(file.ExtractionPath);
                             }
-                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -nowarn -yank {file.PathInArchive.Quoter()}")) {
+                            if (!prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -nowarn -yank {file.PathInArchive.ToQuotedArg()}"))) {
                                 throw new ArchiverException($"Failed to extract {file.PathInArchive.PrettyQuote()} from {plGroupedFiles.Key.PrettyQuote()}.", new Exception(prolibExe.BatchOutput.ToString()));
                             }
                             totalFilesDone++;
@@ -431,7 +431,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
 
                             File.WriteAllText(pfPath, pfContent.ToString(), _encoding);
 
-                            if (!prolibExe.TryExecute($"{plGroupedFiles.Key.Quoter()} -pf {pfPath.Quoter()}")) {
+                            if (!prolibExe.TryExecute(ProcessArgs.FromString($"{plGroupedFiles.Key.ToQuotedArg()} -pf {pfPath.ToQuotedArg()}"))) {
                                 throw new ArchiverException($"Failed to extract from {plGroupedFiles.Key.PrettyQuote()}.", new Exception(prolibExe.BatchOutput.ToString()));
                             }
 
