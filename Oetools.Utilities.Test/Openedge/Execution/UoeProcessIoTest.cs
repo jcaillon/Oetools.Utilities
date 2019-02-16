@@ -130,7 +130,7 @@ END.
             _hasExited2 = false;
             process.OnProcessExit += (sender, args) => _hasExited2 = true;
 
-            process.ExecuteAsync(new ProcessArgs("-p", "test.p").AppendFromString(parameters));
+            process.ExecuteAsync(new ProcessArgs().Append("-p", "test.p").AppendFromQuotedArgs(parameters));
 
             if (kill) {
                 Task.Factory.StartNew(() => {
@@ -163,7 +163,7 @@ END.
             if (exitedHandler != null) {
                 process.OnProcessExit += exitedHandler;
             }
-            process.Execute(new ProcessArgs("-p", "test.p").AppendFromString(parameters), silent);
+            process.Execute(new ProcessArgs().Append("-p", "test.p").AppendFromQuotedArgs(parameters), silent);
 
             Assert.AreEqual(expectedExitCode, process.ExitCode, $"{process.ExecutablePath} {process.UsedArguments}");
             if (expectedStandard != null) {

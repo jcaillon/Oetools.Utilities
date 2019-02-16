@@ -191,9 +191,6 @@ namespace Oetools.Utilities.Lib.Extension {
         /// - surround by double quote if the text contains spaces
         /// - escape double quote with another double quote
         /// </summary>
-        /// <remarks>
-        /// Can be used to write a string to a file that will be read by progress using IMPORT.
-        /// </remarks>
         /// <param name="arg"></param>
         /// <returns></returns>
         public static string ToQuotedArg(this string arg) {
@@ -221,7 +218,7 @@ namespace Oetools.Utilities.Lib.Extension {
         }
 
         /// <inheritdoc cref="ToQuotedArg"/>
-        public static string ToQuotedArgs(this IEnumerable<string> args) => string.Join(" ", args.Where(a => a != null).Select(ToQuotedArg));
+        public static string ToQuotedArgs(this IEnumerable<string> args) => args == null ? null : string.Join(" ", args.Where(a => a != null).Select(ToQuotedArg));
 
         /// <summary>
         /// Remove double quotes from a string.
@@ -245,6 +242,23 @@ namespace Oetools.Utilities.Lib.Extension {
                 return false;
             }
             return argument[0] == '"' && argument[argument.Length - 1] == '"';
+        }
+
+        /// <summary>
+        /// A quoter function:
+        /// - surround by double quote if the text contains spaces
+        /// - escape double quote with another double quote
+        /// </summary>
+        /// <remarks>
+        /// Can be used to write a string to a file that will be read by progress using IMPORT.
+        /// </remarks>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static string ProQuoter(this string text) {
+            if (text == null) {
+                return "?";
+            }
+            return text.ToQuotedArg();
         }
 
         /// <summary>

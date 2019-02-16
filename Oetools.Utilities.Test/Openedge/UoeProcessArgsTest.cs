@@ -22,6 +22,7 @@ using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Test.Openedge {
 
@@ -51,8 +52,14 @@ namespace Oetools.Utilities.Test.Openedge {
             var pf3 = Path.Combine(TestFolder, "3.pf");
             File.WriteAllText(pf1, "-pf " + pf2.ToQuotedArg());
             File.WriteAllText(pf2, "-db \"base1 \"\"allo\"\"\"    -H hostname     -S 1024");
-            File.WriteAllText(pf3, "-db base2     \n-H hostname\n# ignore this line!\n    -S 1025");
-            Assert.AreEqual("-db \"base1 \"\"allo\"\"\" -H hostname -S 1024 -db base2 -H hostname -S 1025", ("-pf " + pf1.ToQuotedArg() + " -pf " + pf3.ToQuotedArg()).FromQuotedToQuotedFlattenedArgs());
+            File.WriteAllText(pf3, "-db base2     \n-H \"hos\"t\"nam\"e\n# ignore this line!\n    -S 1025 -pf 4.pf");
+
+            var userConnectionString = "-pf " + pf1.ToQuotedArg() + " -pf " + pf3.ToQuotedArg();
+
+            Assert.AreEqual("-db \"base1 \"\"allo\"\"\" -H hostname -S 1024 -db base2 -H hostname -S 1025 -pf 4.pf", new UoeProcessArgs().AppendFromQuotedArgs(userConnectionString).ToString());
+
+            // <-db "base1 ""allo""" -H hostname -S 1024 -db base2 -H hostname -S 1025 -pf 4.pf>.
+            // <-db "base1 ""allo""" -H hostname -S 1024 -db base2 -H hostname -S 1025 -pf>.
         }
     }
 }

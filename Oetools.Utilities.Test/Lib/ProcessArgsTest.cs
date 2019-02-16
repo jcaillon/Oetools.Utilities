@@ -18,6 +18,7 @@
 // ========================================================================
 #endregion
 
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
 
@@ -27,7 +28,7 @@ namespace Oetools.Utilities.Test.Lib {
     public class ProcessArgsTest {
 
         [TestMethod]
-        [DataRow(null, true, @"""""")]
+        [DataRow(null, true, null)]
         [DataRow(@"", true, @"""""")]
         [DataRow("mot", true, @"mot", DisplayName = "does not quote if unnecessary")]
         [DataRow("mot", false, @"mot")]
@@ -37,10 +38,6 @@ namespace Oetools.Utilities.Test.Lib {
         [DataRow("mot\"deux\"", false, @"mot\""deux\""")]
         [DataRow("mot \"deux\"", true, @"""mot \""deux\""""")]
         [DataRow("mot \"deux\"", false, @"""mot \""deux\""""")]
-        [DataRow("\"mot \"deux\"\"", true, @"""mot \""deux\""""", DisplayName = "if the string is initially quoted we check the inside to see if the quotes are necessary")]
-        [DataRow("\"mot \"deux\"\"", false, @"""mot \""deux\""""")]
-        [DataRow("\"m\"ot\"", true, @"m\""ot", DisplayName = "here, the initial quotes are useless")]
-        [DataRow("\"m\"ot\"", false, @"m\""ot")]
         [DataRow("mot\\deux", true, @"mot\deux", DisplayName = "on windows no need to escape a \\ in the middle")]
         [DataRow("mot\\deux", false, @"mot\\deux", DisplayName = "on linux yes")]
         [DataRow("mot \\deux", true, @"""mot \deux""")]
@@ -53,16 +50,32 @@ namespace Oetools.Utilities.Test.Lib {
         }
 
         [TestMethod]
-        [DataRow(@"-opt""""val arg", true, @"-opt\""val arg", DisplayName = "")]
-        [DataRow(@"-opt""""val arg", false, @"-opt\""val arg", DisplayName = "")]
-        [DataRow(@"-opt""val arg", true, @"""-optval arg""", DisplayName = "")]
-        [DataRow(@"-opt""val arg", false, @"""-optval arg""", DisplayName = "")]
-        [DataRow(@"-opt:"" val arg""", true, @"""-opt: val arg""", DisplayName = "")]
-        [DataRow(@"-opt:"" val arg""", false, @"""-opt: val arg""", DisplayName = "")]
-        [DataRow(@"""-opt """"val""""""", true, @"""-opt \""val\""""")]
-        [DataRow(@"""-opt """"val""""""", false, @"""-opt \""val\""""")]
-        public void ToCleanCliArgs(string input, bool isWindows, string expected) {
-            Assert.AreEqual(expected, input.FromQuotedToCliArgs(isWindows));
+        [DataRow("arg1", @"arg1")]
+        [DataRow("arg1 \"arg2\" -opt:\"my \"\"quoted\"\" value\" -opt2", "arg1;arg2;-opt:my \"quoted\" value;-opt2")]
+        [DataRow("arg1 \"arg2\" \"-opt:my \"\"quoted\"\" value\" -opt2", "arg1;arg2;-opt:my \"quoted\" value;-opt2")]
+        [DataRow("arg1 a\"r\"g2 \"-opt:my \"\"quoted\"\" value\" -opt2", "arg1;arg2;-opt:my \"quoted\" value;-opt2")]
+        public void AppendFromQuotedArgs(string input, string expected) {
+            Assert.AreEqual(expected, string.Join(";",  new ProcessArgs().AppendFromQuotedArgs(input)));
+        }
+
+        [TestMethod]
+        public void Append() {
+            var args = new ProcessArgs();
+            Assert.AreEqual(0, args.Count());
+            args.Append("arg 1");
+            args.Append((string) null);
+            Assert.AreEqual(1, args.Count());
+            args.Append(new ProcessArgs().Append("arg2").Append("arg 3"));
+            args.Append((ProcessArgs) null);
+            Assert.AreEqual(3, args.Count());
+            args.Append(4, "arg5", null, "arg6");
+            Assert.AreEqual(6, args.Count());
+            args.Append(new [] {"ar\"g\"7", "arg8"});
+            args.Append((string[]) null);
+            Assert.AreEqual(8, args.Count());
+
+            Assert.AreEqual("\"arg 1\" arg2 \"arg 3\" 4 arg5 arg6 ar\"\"g\"\"7 arg8", args.ToString());
+            Assert.AreEqual("\"arg 1\" arg2 \"arg 3\" 4 arg5 arg6 ar\\\"g\\\"7 arg8", args.ToCliArgs());
         }
 
     }

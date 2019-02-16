@@ -496,7 +496,7 @@ d ""schema Area"" .
                     dataAdmin.LoadBinaryData(db, binDataFilePath);
 
                     // re-rebuild index
-                    dataAdmin.RebuildIndexes(db, new UoeProcessArgs().Append2("table", "table1"));
+                    dataAdmin.RebuildIndexes(db, new UoeProcessArgs().Append("table", "table1") as UoeProcessArgs);
 
                     // dump data .d
                     dataAdmin.DumpData(dataAdmin.GetDatabaseConnection(db), dataDirectory, "table1");

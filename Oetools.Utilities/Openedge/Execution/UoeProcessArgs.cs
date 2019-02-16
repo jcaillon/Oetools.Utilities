@@ -26,6 +26,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
     /// <summary>
     /// A collection of arguments for an openedge process.
+    /// If there are .pf files used, we try to read them to resolve the entire parameter string.
     /// </summary>
     public class UoeProcessArgs : ProcessArgs {
 
@@ -35,12 +36,13 @@ namespace Oetools.Utilities.Openedge.Execution {
         public override ProcessArgs Append(string arg) {
             if (!string.IsNullOrEmpty(arg)) {
                 if (_lastAppendWasParameterFile) {
+                    _lastAppendWasParameterFile = false;
                     if (File.Exists(arg)) {
                         // remove -pf option
-                        RemoveLast();
+                        items.RemoveAt(items.Count - 1);
                         return base.AppendFromQuotedArgs(UoeUtilities.GetConnectionStringFromPfFile(arg));
                     }
-                    return this;
+                    return base.Append(arg);
                 }
                 _lastAppendWasParameterFile = arg.Equals("-pf", StringComparison.Ordinal);
             } else {
@@ -50,6 +52,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <inheritdoc cref="ProcessArgs.Append(object[])"/>
-        public virtual UoeProcessArgs Append2(params object[] args) => base.Append(args);
+        public virtual UoeProcessArgs Append2(params object[] args) {
+            base.Append(args);
+            return this;
+        }
     }
 }

@@ -99,5 +99,15 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             cs = UoeDatabaseConnection.NewSingleUserConnection(new UoeDatabaseLocation("data")).ToString();
             Assert.IsTrue(cs.Contains("-1") && cs.Contains("-db"), $"Should have single user connection string.");
         }
+
+        [TestMethod]
+        public void ToArgs() {
+
+            var args = UoeDatabaseConnection.ToArgs(new[] {
+                UoeDatabaseConnection.NewMultiUserConnection(new UoeDatabaseLocation("data")), UoeDatabaseConnection.NewSingleUserConnection(new UoeDatabaseLocation("data"))
+            });
+
+            Assert.AreEqual(5, args.Count(), "should have -db data -db data -1");
+        }
     }
 }

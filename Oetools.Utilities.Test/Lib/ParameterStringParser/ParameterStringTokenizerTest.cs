@@ -18,17 +18,56 @@
 // ========================================================================
 #endregion
 
+using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Oetools.Utilities.Lib.ParameterStringParser;
 
 namespace Oetools.Utilities.Test.Lib.ParameterStringParser {
 
     [TestClass]
     public class ParameterStringTokenizerTest {
 
-        [TestMethod]
-        public void Parse() {
+        [DataTestMethod]
+        [DataRow("-option", "oe", "-option")]
+        [DataRow("\"-option\"", "oe", "-option")]
+        [DataRow("\"-option", "oe", "-option")]
+        [DataRow("\"-option value", "oe", "-option value")]
+        [DataRow("\"-option \"value", "oe", "-option value")]
+        [DataRow("\"-option\"\"value", "oe", "-option\"value")]
+        [DataRow("\"-option\"-\"value", "oe", "-option-value")]
+        [DataRow("value \"quoted\"", "vsve", "value;quoted")]
+        [DataRow("\"value \"\"quoted\"\"\"", "ve", "value \"quoted\"")]
+        [DataRow("-option \"value with spaces\"", "osve", "-option;value with spaces")]
+        [DataRow("-option=\"value with spaces\"", "oe", "-option=value with spaces")]
+        [DataRow("val,\"value with spaces\",\"yet another\"", "ve", "val,value with spaces,yet another")]
+        [DataRow("\"val,value with spaces,yet another\"", "ve", "val,value with spaces,yet another")]
+        public void Parse(string input, string tokenTypes, string csvExpected) {
 
+            var types = new StringBuilder();
+            var csv = new StringBuilder();
+            var tokenizer = new ParameterStringTokenizer(input);
+            while (tokenizer.MoveToNextToken()) {
+                var token = tokenizer.PeekAtToken(0);
+                switch (token) {
+                    case ParameterStringTokenOption _:
+                        types.Append("o");
+                        csv.Append(token.Value).Append(';');
+                        break;
+                    case ParameterStringTokenValue _:
+                        types.Append("v");
+                        csv.Append(token.Value).Append(';');
+                        break;
+                    case ParameterStringTokenWhiteSpace _:
+                        types.Append("s");
+                        break;
+                    default:
+                        types.Append("e");
+                        break;
+                }
+            }
 
+            Assert.AreEqual(tokenTypes, types.ToString());
+            Assert.AreEqual($"{csvExpected};", csv.ToString());
         }
     }
 }

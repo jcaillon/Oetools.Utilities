@@ -26,9 +26,19 @@ using Oetools.Utilities.Lib.Extension;
 namespace Oetools.Utilities.Lib.ParameterStringParser {
 
     /// <summary>
-    /// This class "tokenize" the input data into tokens of various types,
-    /// it implements a visitor pattern
+    /// This class "tokenize" the input data into tokens of various types, it implements a visitor pattern.
     /// </summary>
+    /// <remarks>
+    /// This class can tokenize quoted arguments (<see cref="StringExtensions.ToQuotedArgs"/>).
+    /// Its goal is to obtain executable arguments from a string passed by the user.
+    /// - escape white spaces with " (e.g. "my value")
+    /// - expect " inside " to be escaped with "" (e.g. "my ""quoted"" value")
+    /// can read:
+    /// "value ""quoted""" -> value "quoted"
+    /// "-option" -> -option
+    /// -option="my value with space" -> -option=my value with space
+    /// opt,"my value"," my ""pass" -> opt,my value, my "pass
+    /// </remarks>
     internal class ParameterStringTokenizer {
 
         protected const char Eof = (char) 0;
@@ -51,9 +61,9 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
         }
 
         /// <summary>
-        /// constructor, data is the input string to tokenize
-        /// call Tokenize() to do the work
+        /// Constructor, data is the input string to tokenize.
         /// </summary>
+        /// <inheritdoc cref="ParameterStringTokenizer"/>
         public ParameterStringTokenizer(string data) {
             Construct(data);
         }
@@ -168,7 +178,7 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
             if (char.IsWhiteSpace(ch)) {
                 return CreateWhitespaceToken();
             }
-            return CreateToken(ch == '"', IsOptionCharacter(ch));
+            return CreateToken(ch);
         }
 
         protected virtual bool IsOptionCharacter(char ch) {
@@ -187,30 +197,10 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
             return new ParameterStringTokenWhiteSpace(GetTokenValue());
         }
 
-        protected virtual ParameterStringToken CreateToken(bool quotedValue, bool isOption) {
-            // expect " to be escaped with ""
-            // can read:
-            // "value ""quoted""" -> value "quoted"
-            // "-option" -> -option
-            // -option="my value with space" -> -option=my value with space
-            // opt,"my value"," my ""pass" -> opt,my value, my "pass
-
+        protected virtual ParameterStringToken CreateToken(char ch) {
+            var openedQuote = false;
             var sb = new StringBuilder();
 
-            var ch = PeekAtChr(0);
-
-            if (!quotedValue) {
-                sb.Append(ch);
-            }
-
-            ReadChr();
-
-            if (quotedValue && !isOption) {
-                // maybe this is an option in quote, e.g. "-opt"
-                isOption = IsOptionCharacter(ch);
-            }
-
-            var openedQuote = false;
             while (true) {
                 ch = PeekAtChr(0);
                 if (ch == Eof) {
@@ -221,19 +211,19 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
                 if (ch == '"') {
                     ReadChr();
                     ch = PeekAtChr(0);
+                    if (ch == Eof) {
+                        break;
+                    }
                     if (ch == '"') {
                         sb.Append(ch);
                         ReadChr();
                         // correctly escaped quote, continue
                         continue;
                     }
-                    if (openedQuote || quotedValue) {
-                        break; // done reading
-                    }
-                    openedQuote = true;
+                    openedQuote = !openedQuote;
                 }
 
-                if (!openedQuote && !quotedValue && char.IsWhiteSpace(ch)) {
+                if (!openedQuote && char.IsWhiteSpace(ch)) {
                     break;
                 }
 
@@ -241,7 +231,8 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
                 ReadChr();
             }
 
-            return isOption ? (ParameterStringToken) new ParameterStringTokenOption(sb.ToString()) : new ParameterStringTokenValue(sb.ToString());
+            var value = sb.ToString();
+            return IsOptionCharacter(value[0]) ? (ParameterStringToken) new ParameterStringTokenOption(value) : new ParameterStringTokenValue(value);
         }
 
     }

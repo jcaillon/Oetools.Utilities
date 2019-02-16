@@ -274,6 +274,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.GetIoEncoding());
 
             // Parameters
+            _exeArguments = new ProcessArgs();
             _exeArguments.Append("-p").Append(_runnerPath);
             AppendProgressParameters(_exeArguments);
             if (Env.ProExeCommandLineParameters != null) {

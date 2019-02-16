@@ -33,7 +33,7 @@ namespace Oetools.Utilities.Lib {
     /// </summary>
     public class ProcessArgs : IEnumerable<string> {
 
-        protected IList<string> items;
+        protected IList<string> items = new List<string>();
 
         /// <summary>
         /// New process args.
@@ -67,13 +67,13 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// New process args initialized with one or more arguments.
+        /// Append one or more arguments.
         /// </summary>
         /// <param name="args"></param>
         /// <returns></returns>
         public virtual ProcessArgs Append(params object[] args) {
             if (args != null) {
-                foreach (var o in args) {
+                foreach (var o in args.Where(o => o != null)) {
                     switch (o) {
                         case ProcessArgs processArgs:
                             Append(processArgs);
@@ -91,6 +91,20 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
+        /// Append an array of arguments.
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        public virtual ProcessArgs Append(string[] args) {
+            if (args != null) {
+                foreach (var stringArg in args) {
+                    Append(stringArg);
+                }
+            }
+            return this;
+        }
+
+        /// <summary>
         /// Append arguments from an argument string.
         /// Double quotes are used to specify arguments containing spaces.
         /// To use a double quote inside a quoted argument, double it.
@@ -101,26 +115,14 @@ namespace Oetools.Utilities.Lib {
         public virtual ProcessArgs AppendFromQuotedArgs(string argString) {
             if (argString != null) {
                 var tokenizer = new ParameterStringTokenizer(argString);
-                do {
+                while (tokenizer.MoveToNextToken()) {
                     var token = tokenizer.PeekAtToken(0);
                     if (token is ParameterStringTokenOption || token is ParameterStringTokenValue) {
                         Append(token.Value);
                     }
-                } while (tokenizer.MoveToNextToken());
+                }
             }
             return this;
-        }
-
-        /// <summary>
-        /// Remove the last argument, returns true if done, false if nothing to remove.
-        /// </summary>
-        /// <returns></returns>
-        protected bool RemoveLast() {
-            if (items.Count > 0) {
-                items.RemoveAt(items.Count - 1);
-                return true;
-            }
-            return false;
         }
 
         /// <summary>
@@ -235,6 +237,7 @@ namespace Oetools.Utilities.Lib {
                     sb.Append(text[i]);
                 }
             }
+
             return hasWhiteSpaces ? $"\"{sb.Append('"')}" : sb.ToString();
         }
     }

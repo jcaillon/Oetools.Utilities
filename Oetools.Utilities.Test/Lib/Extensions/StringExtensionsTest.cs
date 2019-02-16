@@ -39,7 +39,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow(@"""", @"""")]
         [DataRow(@"""zef", @"""zef")]
         [DataRow(@"""zef""", @"zef")]
-        public void StripQuotes_Test(string input, string expected) {
+        public void StripQuotes(string input, string expected) {
             Assert.AreEqual(expected, input.StripQuotes());
         }
 
@@ -157,7 +157,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow(null, @"")]
         [DataRow(" mot     \t deux \n\r\n\rtrois     end     \t", @"mot deux trois end")]
         [DataRow(" mot     \t \"deux \t \t\t trois\"     end     \t", "mot \"deux \t \t\t trois\" end")]
-        public void CompactWhitespaces_IsOk(string input, string expected) {
+        public void CliCompactWhitespaces(string input, string expected) {
             Assert.AreEqual(expected, input.CliCompactWhitespaces());
         }
 
@@ -168,7 +168,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow("mot\ndeux", @"""mot~ndeux""")]
         [DataRow("mot\"\ndeux", @"""mot""""~ndeux""")]
         [DataRow("mot~cool\"\nde{ux\r\t", @"""mot~~cool""""~nde~{ux~r~t""")]
-        public void ProQuoter_ProUnescape_Test(string input, string expected) {
+        public void ProStringify(string input, string expected) {
             Assert.AreEqual(expected, input.ProStringify());
             Assert.AreEqual(input, expected.ProUnStringify());
         }
@@ -190,18 +190,18 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow("mot\ndeux", @"""mot~~ndeux""")]
         [DataRow("mot\"\ndeux", @"""mot""""~~ndeux""")]
         [DataRow("mot~cool\"\nde{ux\r\t", @"""mot~~~~cool""""~~nde~~{ux~~r~~t""")]
-        public void PreProcQuoter_Test(string input, string expected) {
+        public void ProPreProcStringify(string input, string expected) {
             Assert.AreEqual(expected, input.ProPreProcStringify());
         }
 
         [TestMethod]
-        [DataRow(null, @"""""")]
+        [DataRow(null, null)]
         [DataRow(@"", @"""""")]
         [DataRow("mot", @"mot")]
         [DataRow("mot deux", @"""mot deux""")]
         [DataRow("mot\"deux", @"mot""""deux")]
         [DataRow("mot cool\"", @"""mot cool""""""")]
-        public void Quoter(string input, string expected) {
+        public void ToQuotedArg(string input, string expected) {
             Assert.AreEqual(expected, input.ToQuotedArg());
         }
 

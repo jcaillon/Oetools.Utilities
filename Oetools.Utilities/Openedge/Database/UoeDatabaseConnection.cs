@@ -154,7 +154,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
             var result = new UoeProcessArgs();
             foreach (var connectionString in connectionStrings) {
-                result.Append(connectionString);
+                result.Append(connectionString.ToArgs());
             }
             return result;
         }
@@ -204,7 +204,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             bool lastTokenWasValue = false;
             var currentConnectionString = new UoeDatabaseConnection();
-            do {
+            while (tokenizer.MoveToNextToken()) {
                 var token = tokenizer.PeekAtToken(0);
                 if (token is ParameterStringTokenValue) {
                     if (lastTokenWasValue) {
@@ -289,7 +289,7 @@ namespace Oetools.Utilities.Openedge.Database {
                             break;
                     }
                 }
-            } while (tokenizer.MoveToNextToken());
+            }
 
             currentConnectionString.Validate(connectionString);
             yield return currentConnectionString;

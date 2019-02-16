@@ -238,25 +238,25 @@ namespace Oetools.Utilities.Openedge.Execution {
 
                 // feed files list
                 filesListcontent
-                    .Append(file.CompiledPath.ToQuotedArg())
+                    .Append(file.CompiledPath.ProQuoter())
                     .Append(" ")
-                    .Append(compiledFile.CompilationOutputDirectory.ToQuotedArg())
+                    .Append(compiledFile.CompilationOutputDirectory.ProQuoter())
                     .Append(" ")
-                    .Append(compiledFile.CompilationErrorsFilePath.ToQuotedArg())
+                    .Append(compiledFile.CompilationErrorsFilePath.ProQuoter())
                     .Append(" ")
-                    .Append(compiledFile.CompilationListingFilePath.ToQuotedArg())
+                    .Append(compiledFile.CompilationListingFilePath.ProQuoter())
                     .Append(" ")
-                    .Append(compiledFile.CompilationXrefFilePath.ToQuotedArg())
+                    .Append(compiledFile.CompilationXrefFilePath.ProQuoter())
                     .Append(" ")
-                    .Append(compiledFile.CompilationXmlXrefFilePath.ToQuotedArg())
+                    .Append(compiledFile.CompilationXmlXrefFilePath.ProQuoter())
                     .Append(" ")
-                    .Append(compiledFile.CompilationDebugListFilePath.ToQuotedArg())
+                    .Append(compiledFile.CompilationDebugListFilePath.ProQuoter())
                     .Append(" ")
-                    .Append(compiledFile.CompilationPreprocessedFilePath.ToQuotedArg())
+                    .Append(compiledFile.CompilationPreprocessedFilePath.ProQuoter())
                     .Append(" ")
-                    .Append(compiledFile.CompilationFileIdLogFilePath.ToQuotedArg())
+                    .Append(compiledFile.CompilationFileIdLogFilePath.ProQuoter())
                     .Append(" ")
-                    .Append(compiledFile.CompilationRcodeTableListFilePath.ToQuotedArg())
+                    .Append(compiledFile.CompilationRcodeTableListFilePath.ProQuoter())
                     .AppendLine();
 
                 count++;
