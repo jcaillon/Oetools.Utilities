@@ -155,7 +155,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         public override Encoding GetIoEncoding() {
             if (_ioEncoding == null) {
                 if (string.IsNullOrEmpty(CodePageName)) {
-                    _codePageName = Utils.IsRuntimeWindowsPlatform ? UoeUtilities.GetGuiCodePageFromDlc(DlcDirectoryPath) : UoeUtilities.GetIoCodePageFromDlc(DlcDirectoryPath);
+                    _codePageName = UoeUtilities.GetProcessIoCodePageFromArgs(UoeUtilities.GetOpenedgeDefaultStartupArgs(DlcDirectoryPath));
                 }
                 UoeUtilities.GetEncodingFromOpenedgeCodePage(CodePageName, out _ioEncoding);
             }

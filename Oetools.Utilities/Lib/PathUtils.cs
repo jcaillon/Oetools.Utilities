@@ -390,7 +390,6 @@ namespace Oetools.Utilities.Lib {
                         var idx = line.IndexOf('#');
                         toApplyOnEachLine(i, idx > -1 ? line.Substring(0, idx) : idx == 0 ? string.Empty : line);
                     }
-
                     i++;
                 }
             }

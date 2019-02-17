@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2019 - Julien Caillon (julien.caillon@gmail.com)
-// This file (ParameterStringTokenizerTest.cs) is part of Oetools.Utilities.Test.
+// This file (UoePfTokenizerTest.cs) is part of Oetools.Utilities.Test.
 //
 // Oetools.Utilities.Test is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,31 +21,29 @@
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.ParameterStringParser;
+using Oetools.Utilities.Openedge;
 
-namespace Oetools.Utilities.Test.Lib.ParameterStringParser {
+namespace Oetools.Utilities.Test.Openedge {
 
     [TestClass]
-    public class ParameterStringTokenizerTest {
+    public class UoePfTokenizerTest {
 
         [DataTestMethod]
-        [DataRow("-option", "oe", "-option")]
-        [DataRow("\"-option\"", "oe", "-option")]
-        [DataRow("\"-option", "oe", "-option")]
-        [DataRow("\"-option value", "oe", "-option value")]
-        [DataRow("\"-option \"value", "oe", "-option value")]
-        [DataRow("\"-option\"\"value", "oe", "-option\"value")]
-        [DataRow("\"-option\"-\"value", "oe", "-option-value")]
-        [DataRow("value \"quoted\"", "vsve", "value;quoted")]
-        [DataRow("\"value \"\"quoted\"\"\"", "ve", "value \"quoted\"")]
-        [DataRow("-option \"value with spaces\"", "osve", "-option;value with spaces")]
-        [DataRow("-option=\"value with spaces\"", "oe", "-option=value with spaces")]
-        [DataRow("val,\"value with spaces\",\"yet another\"", "ve", "val,value with spaces,yet another")]
-        [DataRow("\"val,value with spaces,yet another\"", "ve", "val,value with spaces,yet another")]
-        public void Parse(string input, string tokenTypes, string csvExpected) {
+        [DataRow("-opt#comment\n#comment line\rvalue", true, "ocscsve", "-opt;value")]
+        [DataRow("~t~r~n~055", true, "ve", "\t\r\n-")]
+        [DataRow("-opt \"value with space\"", true, "osve", "-opt;value with space")]
+        [DataRow("~~", true, "ve", "~")]
+        [DataRow("~~", false, "ve", "~~")]
+        [DataRow("\\\\", true, "ve", "\\\\")]
+        [DataRow("\\\\", false, "ve", "\\")]
+        [DataRow("-opt 'value with space'", true, "osve", "-opt;value with space")]
+        [DataRow("-opt ~'value with space~'", true, "osvsvsve", "-opt;'value;with;space'")]
+        [DataRow("-opt \\'value with space\\'", false, "osvsvsve", "-opt;'value;with;space'")]
+        public void Parse(string input, bool isWindows, string tokenTypes, string csvExpected) {
 
             var types = new StringBuilder();
             var csv = new StringBuilder();
-            var tokenizer = ParameterStringTokenizer.New(input);
+            var tokenizer = UoePfTokenizer.New(input, isWindows);
             while (tokenizer.MoveToNextToken()) {
                 var token = tokenizer.PeekAtToken(0);
                 switch (token) {
@@ -59,6 +57,9 @@ namespace Oetools.Utilities.Test.Lib.ParameterStringParser {
                         break;
                     case ParameterStringTokenWhiteSpace _:
                         types.Append("s");
+                        break;
+                    case ParameterStringTokenComment _:
+                        types.Append("c");
                         break;
                     default:
                         types.Append("e");

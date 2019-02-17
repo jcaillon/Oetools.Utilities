@@ -35,6 +35,19 @@ namespace Oetools.Utilities.Openedge.Database {
     /// </summary>
     public class UoeDatabaseAdministrator : UoeDatabaseOperator, IDisposable {
 
+        /// <summary>
+        /// The temp folder to use when we need to write the openedge procedure for data administration
+        /// </summary>
+        public string TempFolder {
+            get => _tempFolder ?? (_tempFolder = Utils.CreateTempDirectory());
+            set => _tempFolder = value;
+        }
+
+        /// <summary>
+        /// Pro parameters to append to the execution of the progress process.
+        /// </summary>
+        public UoeProcessArgs ProExeCommandLineParameters { get; set; }
+
         private UoeProcessIo _progres;
 
         private string _procedurePath;
@@ -57,9 +70,8 @@ namespace Oetools.Utilities.Openedge.Database {
         private UoeProcessIo Progres {
             get {
                 if (_progres == null) {
-                    _progres = new UoeProcessIo(DlcPath, true) {
+                    _progres = new UoeProcessIo(DlcPath, true, null, Encoding) {
                         CancelToken = CancelToken,
-                        RedirectedOutputEncoding = Encoding,
                         Log = Log
                     };
                 }
@@ -68,26 +80,11 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// The temp folder to use when we need to write the openedge procedure for data administration
-        /// </summary>
-        public string TempFolder {
-            get => _tempFolder ?? (_tempFolder = Utils.CreateTempDirectory());
-            set => _tempFolder = value;
-        }
-
-        /// <summary>
-        /// Pro parameters to append to the execution of the progress process.
-        /// </summary>
-        public UoeProcessArgs ProExeCommandLineParameters { get; set; }
-
-        /// <summary>
         /// Initialize a new instance.
         /// </summary>
         /// <param name="dlcPath"></param>
         /// <param name="encoding"></param>
-        public UoeDatabaseAdministrator(string dlcPath, Encoding encoding = null) : base(dlcPath, encoding) {
-
-        }
+        public UoeDatabaseAdministrator(string dlcPath, Encoding encoding = null) : base(dlcPath, encoding) { }
 
         public void Dispose() {
             _progres?.Dispose();
@@ -427,12 +424,12 @@ namespace Oetools.Utilities.Openedge.Database {
                 Log?.Debug("The database needs to be started for this operation, starting it.");
                 using (var db = new UoeDatabaseStarted(this, databaseConnection.DatabaseLocation)) {
                     db.AllowsDatabaseShutdownWithKill = false;
-                    executionOk = process.TryExecute(arguments.Append(db.GetDatabaseConnection().ToJdbcConnectionString(false)));
+                    executionOk = process.TryExecute(arguments.Append(db.GetDatabaseConnection().ToJdbcConnectionArgument(false)));
                 }
             } else if (string.IsNullOrEmpty(databaseConnection.Service)) {
                 throw new UoeDatabaseException("The database needs to be either not busy or started for multi-user mode with service port.");
             } else {
-                executionOk = process.TryExecute(arguments.Append(databaseConnection.ToJdbcConnectionString(false)));
+                executionOk = process.TryExecute(arguments.Append(databaseConnection.ToJdbcConnectionArgument(false)));
             }
             return executionOk;
         }

@@ -1,5 +1,11 @@
 namespace Oetools.Utilities.Lib.ParameterStringParser {
-    internal class ParameterStringTokenWhiteSpace : ParameterStringToken {
+
+    /// <summary>
+    /// A whitespace token.
+    /// </summary>
+    public class ParameterStringTokenWhiteSpace : ParameterStringToken {
+
+        /// <inheritdoc />
         public ParameterStringTokenWhiteSpace(string value) : base(value) {}
     }
 }

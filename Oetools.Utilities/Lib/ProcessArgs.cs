@@ -30,6 +30,10 @@ namespace Oetools.Utilities.Lib {
 
     /// <summary>
     /// A collection of arguments for a process.
+    /// The main point of this class is to provide a clean way to feed arguments to a <see cref="ProcessIo"/>.
+    /// Using this class as an input instead of a string, we are able to control how the arguments are sent to the called program and
+    /// escape them correctly depending on the executing platform.
+    /// Also, there is no need to worry about how to write the argument string prior to using it in a <see cref="ProcessIo"/>.
     /// </summary>
     public class ProcessArgs : IEnumerable<string> {
 
@@ -114,7 +118,7 @@ namespace Oetools.Utilities.Lib {
         /// <returns></returns>
         public virtual ProcessArgs AppendFromQuotedArgs(string argString) {
             if (argString != null) {
-                var tokenizer = new ParameterStringTokenizer(argString);
+                var tokenizer = ParameterStringTokenizer.New(argString);
                 while (tokenizer.MoveToNextToken()) {
                     var token = tokenizer.PeekAtToken(0);
                     if (token is ParameterStringTokenOption || token is ParameterStringTokenValue) {
@@ -126,11 +130,27 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
+        /// Returns the value of the argument located just after <paramref name="option"/>.
+        /// Of null if not found.
+        /// </summary>
+        /// <param name="option"></param>
+        /// <param name="comparison"></param>
+        /// <returns></returns>
+        public virtual string GetValueForOption(string option, StringComparison comparison = StringComparison.CurrentCultureIgnoreCase) {
+            for (int i = 0; i < items.Count - 1; i++) {
+                if (items[i].Equals(option, comparison)) {
+                    return items[i + 1];
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Remove the argument.
         /// </summary>
         /// <param name="arg"></param>
         /// <param name="comparison"></param>
-        public void Remove(string arg, StringComparison comparison = StringComparison.CurrentCultureIgnoreCase) {
+        public virtual void Remove(string arg, StringComparison comparison = StringComparison.CurrentCultureIgnoreCase) {
             var toRem = new List<int>();
             for (int i = items.Count - 1; i >= 0; i--) {
                 if (items[i].Equals(arg, comparison)) {

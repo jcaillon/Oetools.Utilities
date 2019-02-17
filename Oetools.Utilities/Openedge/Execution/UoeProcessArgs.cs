@@ -20,7 +20,9 @@
 
 using System;
 using System.IO;
+using System.Text;
 using Oetools.Utilities.Lib;
+using Oetools.Utilities.Lib.ParameterStringParser;
 
 namespace Oetools.Utilities.Openedge.Execution {
 
@@ -40,7 +42,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                     if (File.Exists(arg)) {
                         // remove -pf option
                         items.RemoveAt(items.Count - 1);
-                        return base.AppendFromQuotedArgs(UoeUtilities.GetConnectionStringFromPfFile(arg));
+                        return AppendFromPfFilePath(arg);
                     }
                     return base.Append(arg);
                 }
@@ -51,9 +53,23 @@ namespace Oetools.Utilities.Openedge.Execution {
             return base.Append(arg);
         }
 
-        /// <inheritdoc cref="ProcessArgs.Append(object[])"/>
-        public virtual UoeProcessArgs Append2(params object[] args) {
-            base.Append(args);
+        /// <summary>
+        /// Reads arguments from a progress parameter file.
+        /// </summary>
+        /// <param name="pfPath"></param>
+        /// <param name="encoding"></param>
+        /// <returns></returns>
+        public UoeProcessArgs AppendFromPfFilePath(string pfPath, Encoding encoding = null) {
+            if (!File.Exists(pfPath)) {
+                return null;
+            }
+            var tokenizer = UoePfTokenizer.New(File.ReadAllText(pfPath, encoding ?? TextEncodingDetect.GetFileEncoding(pfPath)));
+            while (tokenizer.MoveToNextToken()) {
+                var token = tokenizer.PeekAtToken(0);
+                if (token is ParameterStringTokenOption || token is ParameterStringTokenValue) {
+                    Append(token.Value);
+                }
+            }
             return this;
         }
     }

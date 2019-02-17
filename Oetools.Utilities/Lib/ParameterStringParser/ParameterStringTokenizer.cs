@@ -39,16 +39,25 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
     /// -option="my value with space" -> -option=my value with space
     /// opt,"my value"," my ""pass" -> opt,my value, my "pass
     /// </remarks>
-    internal class ParameterStringTokenizer {
+    public class ParameterStringTokenizer {
+
+        /// <summary>
+        /// New instance, immediately tokenize the <paramref name="data"/> string.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public static ParameterStringTokenizer New(string data) {
+            var obj = new ParameterStringTokenizer();
+            obj.Start(data);
+            return obj;
+        }
 
         protected const char Eof = (char) 0;
 
         protected string _data;
         protected int _dataLength;
         protected int _pos;
-
         protected int _startPos;
-
         protected int _tokenPos = -1;
 
         protected List<ParameterStringToken> _tokenList;
@@ -56,26 +65,20 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
         /// <summary>
         /// Returns the tokens list
         /// </summary>
-        public List<ParameterStringToken> TokensList {
-            get { return _tokenList; }
-        }
+        public List<ParameterStringToken> TokensList => _tokenList;
 
         /// <summary>
-        /// Constructor, data is the input string to tokenize.
+        /// Constructor.
         /// </summary>
-        /// <inheritdoc cref="ParameterStringTokenizer"/>
-        public ParameterStringTokenizer(string data) {
-            Construct(data);
-        }
+        protected ParameterStringTokenizer() { }
 
-        protected void Construct(string data) {
-            if (data == null) {
-                throw new ArgumentNullException(nameof(data));
-            }
-
-            _data = data;
+        /// <summary>
+        /// Tokenize the data.
+        /// </summary>
+        /// <param name="data"></param>
+        protected void Start(string data) {
+            _data = data ?? throw new ArgumentNullException(nameof(data));
             _dataLength = _data.Length;
-
             Tokenize();
         }
 
@@ -88,7 +91,7 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
 
         /// <summary>
         /// To use this lexer as an enumerator,
-        /// Move to the next token, return true if it can
+        /// Move to the next token, return true if it can.
         /// </summary>
         public virtual bool MoveToNextToken() {
             return ++_tokenPos < _tokenList.Count;
@@ -115,8 +118,9 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
         /// Call this method to actually tokenize the string
         /// </summary>
         protected void Tokenize() {
-            if (_data == null)
+            if (_data == null) {
                 return;
+            }
 
             if (_tokenList == null) {
                 _tokenList = new List<ParameterStringToken>();
@@ -124,6 +128,7 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
 
             ParameterStringToken parameterStringToken;
             do {
+                _startPos = _pos;
                 parameterStringToken = GetNextToken();
                 _tokenList.Add(parameterStringToken);
             } while (!(parameterStringToken is ParameterStringTokenEof));
@@ -166,9 +171,7 @@ namespace Oetools.Utilities.Lib.ParameterStringParser {
         /// returns the next token of the string
         /// </summary>
         /// <returns></returns>
-        protected ParameterStringToken GetNextToken() {
-            _startPos = _pos;
-
+        protected virtual ParameterStringToken GetNextToken() {
             var ch = PeekAtChr(0);
 
             // END OF FILE reached

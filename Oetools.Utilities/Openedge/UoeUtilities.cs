@@ -27,6 +27,7 @@ using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Lib.ParameterStringParser;
 using Oetools.Utilities.Openedge.Exceptions;
+using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Openedge {
@@ -160,78 +161,11 @@ namespace Oetools.Utilities.Openedge {
         /// Returns the environment variable DLC value
         /// </summary>
         /// <returns></returns>
+        /// <exception cref="UoeDlcNotFoundException"></exception>
         public static string GetDlcPathFromEnv() {
             return Environment.GetEnvironmentVariable(UoeConstants.OeDlcAlternativeEnvVar) ?? Environment.GetEnvironmentVariable(UoeConstants.OeDlcEnvVar) ?? throw new UoeDlcNotFoundException($"Can't find the openedge installation directory ({UoeConstants.OeDlcEnvVar}).");
         }
 
-        /// <summary>
-        /// Returns the detailed message found in the prohelp folder of dlc corresponding to the given error number
-        /// </summary>
-        /// <param name="dlcPath"></param>
-        /// <param name="errorNumber"></param>
-        /// <returns></returns>
-        public static ProMsg GetOpenedgeProMessage(string dlcPath, int errorNumber) {
-            var messageDir = Path.Combine(dlcPath, "prohelp", "msgdata");
-            if (!Directory.Exists(messageDir)) {
-                return null;
-            }
-
-            var messageFile = Path.Combine(messageDir, $"msg{(errorNumber - 1) / 50 + 1}");
-            if (!File.Exists(messageFile)) {
-                return null;
-            }
-
-            ProMsg outputMessage = null;
-
-            var err = errorNumber.ToString();
-            using (var reader = new UoeExportReader(messageFile, Encoding.Default)) {
-                while (reader.MoveToNextRecordField()) {
-                    if (reader.RecordFieldNumber == 0 && reader.RecordValue == err) {
-                        outputMessage = new ProMsg {
-                            Number = errorNumber,
-                            Text = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
-                            Description = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
-                            CategoryFirstLetter = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty,
-                            KnowledgeBase = reader.MoveToNextRecordField() ? reader.RecordValueNoQuotes : string.Empty
-                        };
-                        break;
-                    }
-                }
-            }
-
-            return outputMessage;
-        }
-
-        /// <summary>
-        /// Represents an openedge prosmg
-        /// </summary>
-        public class ProMsg {
-            public int Number { get; set; }
-            public string Text { get; set; }
-            public string Description { get; set; }
-            public string CategoryFirstLetter { get; set; }
-            public string KnowledgeBase { get; set; }
-
-            public string Category {
-                get {
-                    var categories = new List<string> {
-                        "Compiler",
-                        "Database",
-                        "Index",
-                        "Miscellaneous",
-                        "Operating System",
-                        "Program/Execution",
-                        "Syntax"
-                    };
-                    return categories.FirstOrDefault(c => c.StartsWith(CategoryFirstLetter, StringComparison.OrdinalIgnoreCase));
-                }
-            }
-
-            public override string ToString() {
-                var cat = Category;
-                return $"{(cat != null ? $"({cat}) " : "")}{Description}{(KnowledgeBase.Length > 2 ? $" ({KnowledgeBase.StripQuotes()})" : "")}";
-            }
-        }
 
         /// <summary>
         /// Returns the openedge version currently installed
@@ -249,7 +183,7 @@ namespace Oetools.Utilities.Openedge {
         }
 
         /// <summary>
-        /// Returns wether or not the progress version accepts the -nosplash parameter
+        /// Returns whether or not the progress version accepts the -nosplash parameter
         /// </summary>
         /// <param name="proVersion"></param>
         /// <returns></returns>
@@ -263,17 +197,20 @@ namespace Oetools.Utilities.Openedge {
         /// <returns></returns>
         public static bool GetEncodingFromOpenedgeCodePage(string codePage, out Encoding encoding) {
             try {
-                if (char.IsDigit(codePage[0]) && codePage.Length == 4) {
-                    codePage = $"Windows-{codePage}";
-                } else if (codePage.StartsWith("iso", StringComparison.OrdinalIgnoreCase)) {
-                    codePage = $"ISO-{codePage.Substring(3).TrimStart('-')}";
+                if (!string.IsNullOrEmpty(codePage)) {
+                    if (char.IsDigit(codePage[0]) && codePage.Length == 4) {
+                        codePage = $"Windows-{codePage}";
+                    } else if (codePage.StartsWith("iso", StringComparison.OrdinalIgnoreCase)) {
+                        codePage = $"ISO-{codePage.Substring(3).TrimStart('-')}";
+                    }
+                    encoding = Encoding.GetEncoding(codePage);
+                    return true;
                 }
-                encoding = Encoding.GetEncoding(codePage);
-                return true;
             } catch (Exception) {
-                encoding = Encoding.Default;
-                return false;
+                // ignored
             }
+            encoding = Encoding.Default;
+            return false;
         }
 
         /// <summary>
@@ -292,47 +229,6 @@ namespace Oetools.Utilities.Openedge {
                 output = $"iso{output.Substring(4)}";
             }
             return output;
-        }
-
-        /// <summary>
-        /// Returns the codepage used by a progress session for the graphical client.
-        /// </summary>
-        /// <param name="dlcPath"></param>
-        /// <returns></returns>
-        public static string GetGuiCodePageFromDlc(string dlcPath) {
-            var startupFilePath = Path.Combine(dlcPath, "startup.pf");
-            if (File.Exists(startupFilePath)) {
-                var matches = new Regex(@"-cpinternal ([\w-]+)(\s|$)").Matches(File.ReadAllText(startupFilePath));
-                if (matches.Count > 0) {
-                    return matches[0].Groups[1].Value;
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Returns the codepage used by a progress session for all file/console I/O.
-        /// </summary>
-        /// <param name="dlcPath"></param>
-        /// <returns></returns>
-        public static string GetIoCodePageFromDlc(string dlcPath) {
-            var startupFilePath = Path.Combine(dlcPath, "startup.pf");
-            Match match = null;
-            if (File.Exists(startupFilePath)) {
-                var matches = new Regex(@"(-cpterm|-stream|-cpstream) ([\w-]+)(\s|$)").Matches(File.ReadAllText(startupFilePath));
-
-                if (matches.Count == 1) {
-                    match = matches[0];
-                } else if (matches.Count == 2) {
-                    match = matches[0];
-                    foreach (Match match1 in matches) {
-                        if (match1.Groups[1].Success && match1.Groups[1].Value.Equals("-cpterm", StringComparison.OrdinalIgnoreCase)) {
-                            match = match1;
-                        }
-                    }
-                }
-            }
-            return match != null && match.Groups[2].Success ? match.Groups[2].Value : null;
         }
 
         /// <summary>
@@ -410,24 +306,6 @@ namespace Oetools.Utilities.Openedge {
         }
 
         /// <summary>
-        /// Reads a database connection string from a progress parameter file (takes comment into account)
-        /// </summary>
-        /// <param name="pfPath"></param>
-        /// <returns></returns>
-        public static string GetConnectionStringFromPfFile(string pfPath) {
-            if (!File.Exists(pfPath))
-                return string.Empty;
-            var connectionString = new StringBuilder();
-            Utils.ForEachLine(pfPath, new byte[0], (nb, line) => {
-                if (!string.IsNullOrEmpty(line)) {
-                    connectionString.Append(" ");
-                    connectionString.Append(line);
-                }
-            });
-            return connectionString.CliCompactWhitespaces().ToString();
-        }
-
-        /// <summary>
         /// List all the prolib files in a directory
         /// </summary>
         /// <param name="baseDirectory"></param>
@@ -455,6 +333,45 @@ namespace Oetools.Utilities.Openedge {
             output.Add(dlcPath.ToCleanPath());
             output.Add(Path.Combine(dlcPath, "bin"));
             return output;
+        }
+
+        /// <summary>
+        /// Get the args from the startup.pf file located in the dlc directory.
+        /// </summary>
+        /// <param name="dlcPath"></param>
+        /// <param name="encoding"></param>
+        /// <returns></returns>
+        public static UoeProcessArgs GetOpenedgeDefaultStartupArgs(string dlcPath, Encoding encoding = null) {
+            // TODO: In Windows, you can specify the name of the OpenEdge startup file using the PROSTARTUP environment variable in the progress.ini file and the Registry.
+            // See OpenEdge Deployment: Managing ABL Applications for more information on the progress.ini file.
+            return new UoeProcessArgs().AppendFromPfFilePath(Path.Combine(dlcPath, "startup.pf"), encoding);
+        }
+
+        /// <summary>
+        /// Returns the codepage used by a progress session for all file/console I/O.
+        /// </summary>
+        /// <remarks>
+        /// Summary of the different codepage usage:
+        /// https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dvint/determining-the-code-page.html
+        /// </remarks>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        public static string GetProcessIoCodePageFromArgs(UoeProcessArgs args) {
+            return args.GetValueForOption("-cpstream") ?? args.GetValueForOption("-stream");
+        }
+
+        /// <summary>
+        /// Returns the codepage used by a progress session for all file/console I/O.
+        /// </summary>
+        /// <remarks>
+        /// Summary of the different codepage usage:
+        /// https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dvint/determining-the-code-page.html
+        /// </remarks>
+        /// <param name="dlcPath"></param>
+        /// <returns></returns>
+        public static Encoding GetProcessIoCodePageFromDlc(string dlcPath) {
+            GetEncodingFromOpenedgeCodePage(GetProcessIoCodePageFromArgs(GetOpenedgeDefaultStartupArgs(dlcPath)), out Encoding foundEncoding);
+            return foundEncoding;
         }
     }
 }

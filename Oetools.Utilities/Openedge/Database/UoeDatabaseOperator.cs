@@ -51,7 +51,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// The encoding to use for I/O of the openedge executables.
         /// </summary>
-        public Encoding Encoding { get; } = Encoding.Default;
+        public Encoding Encoding { get; }
 
         /// <summary>
         /// A logger.
@@ -87,9 +87,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="encoding"></param>
         /// <exception cref="ArgumentException"></exception>
         public UoeDatabaseOperator(string dlcPath, Encoding encoding = null) {
-            if (encoding != null) {
-                Encoding = encoding;
-            }
+            Encoding = encoding ?? UoeUtilities.GetProcessIoCodePageFromDlc(dlcPath);
             DlcPath = dlcPath;
             if (string.IsNullOrEmpty(dlcPath) || !Directory.Exists(dlcPath)) {
                 throw new ArgumentException($"Invalid dlc path {dlcPath.PrettyQuote()}.");
@@ -719,7 +717,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var logFilePath = Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg");
             Log?.Debug($"Reading database log file to figure out the connection string: {logFilePath.PrettyQuote()}.");
-            ReadLogFile(logFilePath, out string hostName, out string serviceName);
+            ReadLogFile(logFilePath, out string hostName, out string serviceName, Encoding);
             if (string.IsNullOrEmpty(serviceName) || serviceName.Equals("0", StringComparison.Ordinal)) {
                 serviceName = null;
                 hostName = null;
@@ -1003,14 +1001,15 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="logFilePath"></param>
         /// <param name="hostName"></param>
         /// <param name="serviceName"></param>
-        internal static void ReadLogFile(string logFilePath, out string hostName, out string serviceName) {
+        /// <param name="encoding"></param>
+        internal static void ReadLogFile(string logFilePath, out string hostName, out string serviceName, Encoding encoding = null) {
             // read the log file in reverse order, trying to get the hostname and service name used to start the database.
             hostName = null;
             serviceName = null;
             if (!File.Exists(logFilePath)) {
                 return;
             }
-            foreach (var line in new ReverseLineReader(logFilePath, Encoding.ASCII)) {
+            foreach (var line in new ReverseLineReader(logFilePath, encoding ?? Encoding.ASCII)) {
                 if (string.IsNullOrEmpty(line)) {
                     continue;
                 }
@@ -1095,14 +1094,12 @@ namespace Oetools.Utilities.Openedge.Database {
                 if (!File.Exists(outputPath)) {
                     throw new ArgumentException($"The openedge tool {exeName} does not exist in the expected path: {outputPath.PrettyQuote()}.");
                 }
-
                 _processIos.Add(exeName, new ProcessIo(outputPath) {
                     RedirectedOutputEncoding = Encoding,
                     CancelToken = CancelToken,
                     Log = Log
                 });
             }
-
             _lastUsedProcess = _processIos[exeName];
             return _lastUsedProcess;
         }

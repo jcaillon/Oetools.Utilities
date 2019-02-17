@@ -25,14 +25,14 @@ using Oetools.Utilities.Lib;
 namespace Oetools.Utilities.Openedge.Execution {
 
     /// <summary>
-    /// Represents a progres process
+    /// Represents a progress process
     /// </summary>
     /// <remarks>
-    ///     - progress returns an exit different of 0 only if it actually failed to start,
-    ///     if your procedure return error or quit, it is still an exit code of 0
-    ///     - in batch mode (-b) and GUI mode, even if we set CreateNoWindow and WindowStyle to Hidden,
-    ///     the window still appears in the taskbar. All the code between #if WINDOWSONLYBUILD in this class
-    ///     is made to hide this window from the taskbar in that case
+    /// - progress returns an exit different of 0 only if it actually failed to start,
+    /// if your procedure return error or quit, it is still an exit code of 0
+    /// - in batch mode (-b) and GUI mode, even if we set CreateNoWindow and WindowStyle to Hidden,
+    /// the window still appears in the taskbar. All the code between #if WINDOWSONLYBUILD in this class
+    /// is made to hide this window from the taskbar in that case
     /// </remarks>
     public class UoeProcessIo : ProcessIoAsync {
 
@@ -49,21 +49,17 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Whether or not the executable can use the -nosplash parameter
         /// </summary>
-        public bool CanUseNoSplash { get; set; }
+        public bool CanUseNoSplash { get; }
 
         /// <summary>
-        /// Choose the encoding for the standard/error output
+        /// Constructor
         /// </summary>
-        public override Encoding RedirectedOutputEncoding { get; set; } = Encoding.Default;
-
-        /// <summary>
-        ///     Constructor
-        /// </summary>
-        public UoeProcessIo(string dlcPath, bool useCharacterModeOfProgress, bool? canUseNoSplash = null) : base (null) {
+        public UoeProcessIo(string dlcPath, bool useCharacterModeOfProgress, bool? canUseNoSplash = null, Encoding redirectedOutputEncoding = null) : base (null) {
             DlcPath = dlcPath;
             UseCharacterMode = useCharacterModeOfProgress;
             CanUseNoSplash = canUseNoSplash ?? UoeUtilities.CanProVersionUseNoSplashParameter(UoeUtilities.GetProVersionFromDlc(DlcPath));
             ExecutablePath = UoeUtilities.GetProExecutableFromDlc(DlcPath, UseCharacterMode);
+            RedirectedOutputEncoding = redirectedOutputEncoding ?? UoeUtilities.GetProcessIoCodePageFromDlc(dlcPath);
         }
 
         /// <inheritdoc />

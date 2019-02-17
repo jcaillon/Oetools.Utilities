@@ -54,7 +54,7 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Choose the encoding for the standard/error output
         /// </summary>
-        public virtual Encoding RedirectedOutputEncoding { get; set; }
+        public Encoding RedirectedOutputEncoding { get; set; }
 
         /// <summary>
         /// Cancellation token.

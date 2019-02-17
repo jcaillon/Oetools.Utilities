@@ -100,7 +100,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// string representation of the connection string. To use in a CONNECT statement.
         /// </summary>
         /// <returns></returns>
-        public string ToJdbcConnectionString(bool includeUserId) {
+        public string ToJdbcConnectionArgument(bool includeUserId) {
             var login = includeUserId ? $"{(!string.IsNullOrEmpty(UserId) ? $",{UserId}": "")}{(!string.IsNullOrEmpty(Password) ? $",{Password}": "")}" : null;
             return $"progress:T:{HostName ?? "localhost"}:{Service}:{DatabaseLocation?.PhysicalName}{login}";
         }
@@ -200,7 +200,7 @@ namespace Oetools.Utilities.Openedge.Database {
             if (string.IsNullOrEmpty(connectionString))
                 yield break;
 
-            var tokenizer = new ParameterStringTokenizer(connectionString);
+            var tokenizer = ParameterStringTokenizer.New(connectionString);
 
             bool lastTokenWasValue = false;
             var currentConnectionString = new UoeDatabaseConnection();

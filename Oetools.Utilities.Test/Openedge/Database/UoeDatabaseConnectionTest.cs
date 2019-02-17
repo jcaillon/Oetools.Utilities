@@ -74,8 +74,6 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         [DataRow(@"-S -option")]
         [DataRow(@"-ld logi -H hostname -S 1024")] // no -db
         [DataRow(@"-db data -ld logi -H hostname -S 1024 -1")] // -1 with -S
-        [DataRow(@"-db data -1 -pf")] // -pf alone
-        [DataRow(@"-db data -1 -pf missing.pf")] // -pf not existing
         [DataRow(@"-db data -U")] // user no value
         [DataRow(@"-db data -P")] // user no value
         [DataTestMethod]

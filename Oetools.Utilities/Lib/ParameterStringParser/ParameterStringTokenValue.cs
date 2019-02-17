@@ -1,5 +1,11 @@
 namespace Oetools.Utilities.Lib.ParameterStringParser {
-    internal class ParameterStringTokenValue : ParameterStringToken {
+
+    /// <summary>
+    /// A value token.
+    /// </summary>
+    public class ParameterStringTokenValue : ParameterStringToken {
+
+        /// <inheritdoc />
         public ParameterStringTokenValue(string value) : base(value) {}
     }
 }

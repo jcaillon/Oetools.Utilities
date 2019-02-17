@@ -1,7 +1,7 @@
-#region header
+﻿#region header
 // ========================================================================
-// Copyright (c) 2019 - Julien Caillon (julien.caillon@gmail.com)
-// This file (Token.cs) is part of Oetools.Utilities.
+// Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
+// This file (UoeExecutionKilledException.cs) is part of Oetools.Utilities.
 //
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,24 +18,16 @@
 // ========================================================================
 #endregion
 
-namespace Oetools.Utilities.Lib.ParameterStringParser {
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Oetools.Utilities.Openedge.Execution.Exceptions {
 
     /// <summary>
-    /// Token object
+    /// Expression thrown on error when evaluating a preprocessed expression.
     /// </summary>
-    public abstract class ParameterStringToken {
-
-        /// <summary>
-        /// Token value.
-        /// </summary>
-        public string Value { get; private set; }
-
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="value"></param>
-        protected ParameterStringToken(string value) {
-            Value = value;
-        }
+    public class UoePreprocessedExpressionEvaluationException : UoeExecutionException {
+        internal UoePreprocessedExpressionEvaluationException(string message) : base(message) { }
     }
 }

@@ -25,6 +25,7 @@ using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge;
+using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
 namespace Oetools.Utilities.Test.Openedge {
@@ -61,21 +62,6 @@ namespace Oetools.Utilities.Test.Openedge {
             output = UoeUtilities.GetProgressSessionDefaultPropath(dlcPath, false);
             Assert.IsTrue(output.Exists(p => p.Contains("gui")));
 
-        }
-
-        [TestMethod]
-        [DataRow(49)] // This Technical Support Knowled...
-        [DataRow(1)] // The -nb parameter is followed by a number that sp...
-        [DataRow(1964)] // COBOL binary or COMP var...
-        [DataRow(612)] // PROGRESS tried to read or write the
-        public void GetOpenedgeErrorDetailedMessage_Test(int errorNumber) {
-            if (!TestHelper.GetDlcPath(out string dlcPath)) {
-                return;
-            }
-
-            var res = UoeUtilities.GetOpenedgeProMessage(dlcPath, errorNumber);
-            Debug.WriteLine(res);
-            Assert.IsNotNull(res, "null");
         }
 
         [TestMethod]
@@ -125,17 +111,10 @@ namespace Oetools.Utilities.Test.Openedge {
         }
 
         [TestMethod]
-        public void GetGuiCodePageFromDlc_Test() {
+        public void GetProcessIoCodePageFromArgs() {
             var versionFilePath = Path.Combine(TestFolder, "startup.pf");
             File.WriteAllText(versionFilePath, "#\n\n-cpinternal UTF-8\n-cpstream ISO8859-15\n-cpcoll Basic\n-cpcase French");
-            Assert.AreEqual("UTF-8", UoeUtilities.GetGuiCodePageFromDlc(TestFolder));
-        }
-
-        [TestMethod]
-        public void GetIoCodePageFromDlc_Test() {
-            var versionFilePath = Path.Combine(TestFolder, "startup.pf");
-            File.WriteAllText(versionFilePath, "#\n\n-cpinternal UTF-8\n-cpstream ISO8859-15\n-cpcoll Basic\n-cpcase French");
-            Assert.AreEqual("ISO8859-15", UoeUtilities.GetIoCodePageFromDlc(TestFolder));
+            Assert.AreEqual("ISO8859-15", UoeUtilities.GetProcessIoCodePageFromArgs(new UoeProcessArgs().AppendFromPfFilePath(versionFilePath)));
         }
 
         [TestMethod]
@@ -165,25 +144,6 @@ namespace Oetools.Utilities.Test.Openedge {
             Assert.AreEqual(2, plList.Count);
             Assert.IsTrue(plList.Exists(s => Path.GetFileName(s ?? "").Equals("2.pl")));
             Assert.IsTrue(plList.Exists(s => Path.GetFileName(s ?? "").Equals("4.pl")));
-        }
-
-        [TestMethod]
-        [DataRow(@"   -db test
-# comment line
-   -ld   logicalname #other comment
--H     localhost   -S portnumber", @"-db test -ld logicalname -H localhost -S portnumber")]
-        [DataRow(@"", @"")]
-        [DataRow(@"    ", @"")]
-        public void GetConnectionStringFromPfFile_IsOk(string pfFileContent, string expected) {
-            var pfPath = Path.Combine(TestFolder, "test.pf");
-            File.WriteAllText(pfPath, pfFileContent);
-
-            var connectionString = UoeUtilities.GetConnectionStringFromPfFile(pfPath);
-            if (File.Exists(pfPath)) {
-                File.Delete(pfPath);
-            }
-
-            Assert.AreEqual(expected, connectionString);
         }
 
         [TestMethod]

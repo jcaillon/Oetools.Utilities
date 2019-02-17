@@ -29,10 +29,6 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
     [TestClass]
     public class ExtensionTest {
 
-        private static string _testFolder;
-
-        private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(ExtensionTest)));
-
         [TestMethod]
         [DataRow(null, null)]
         [DataRow(@"", @"")]
@@ -150,48 +146,6 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
             Assert.AreEqual(epassWord, passWord);
             Assert.AreEqual(ehost, host);
             Assert.AreEqual(eport, port);
-        }
-
-        [TestMethod]
-        [DataRow(@"    ", @"")]
-        [DataRow(null, @"")]
-        [DataRow(" mot     \t deux \n\r\n\rtrois     end     \t", @"mot deux trois end")]
-        [DataRow(" mot     \t \"deux \t \t\t trois\"     end     \t", "mot \"deux \t \t\t trois\" end")]
-        public void CliCompactWhitespaces(string input, string expected) {
-            Assert.AreEqual(expected, input.CliCompactWhitespaces());
-        }
-
-        [TestMethod]
-        [DataRow(null, @"?")]
-        [DataRow(@"", @"""""")]
-        [DataRow("mot", @"""mot""")]
-        [DataRow("mot\ndeux", @"""mot~ndeux""")]
-        [DataRow("mot\"\ndeux", @"""mot""""~ndeux""")]
-        [DataRow("mot~cool\"\nde{ux\r\t", @"""mot~~cool""""~nde~{ux~r~t""")]
-        public void ProStringify(string input, string expected) {
-            Assert.AreEqual(expected, input.ProStringify());
-            Assert.AreEqual(input, expected.ProUnStringify());
-        }
-
-        [TestMethod]
-        [DataRow(@"", @"")]
-        [DataRow(@"?", null)]
-        [DataRow("mot", @"mot")]
-        [DataRow(@"mot~ndeux", "mot\ndeux")]
-        [DataRow(@"mot~tdeux", "mot\tdeux")]
-        public void ProUnescapeSpecialChar(string input, string expected) {
-            Assert.AreEqual(expected, input.ProUnescapeSpecialChar());
-        }
-
-        [TestMethod]
-        [DataRow(null, @"""""")]
-        [DataRow(@"", @"""""")]
-        [DataRow("mot", @"""mot""")]
-        [DataRow("mot\ndeux", @"""mot~~ndeux""")]
-        [DataRow("mot\"\ndeux", @"""mot""""~~ndeux""")]
-        [DataRow("mot~cool\"\nde{ux\r\t", @"""mot~~~~cool""""~~nde~~{ux~~r~~t""")]
-        public void ProPreProcStringify(string input, string expected) {
-            Assert.AreEqual(expected, input.ProPreProcStringify());
         }
 
         [TestMethod]

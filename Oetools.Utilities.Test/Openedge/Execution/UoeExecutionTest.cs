@@ -327,7 +327,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.Start();
                 exec.WaitForExecutionEnd();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
-                Assert.AreEqual("dictdb alias1 alias2 alias3", exec.Output.CliCompactWhitespaces());
+                Assert.AreEqual("dictdb alias1 alias2 alias3", new StringBuilder(exec.Output).CliCompactWhitespaces().ToString());
             }
             env.Dispose();
         }
