@@ -313,7 +313,7 @@ namespace Oetools.Utilities.Lib {
 
             if (silent) {
                 _startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                //_startInfo.CreateNoWindow = true;
+                _startInfo.CreateNoWindow = true;
             }
 
             if (RedirectOutput) {
