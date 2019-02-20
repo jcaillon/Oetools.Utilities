@@ -19,6 +19,7 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -48,26 +49,37 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         public UoeProcessArgs ProExeCommandLineParameters { get; set; }
 
-        private UoeProcessIo _progres;
-
-        private string _procedurePath;
+        private string _adminProcedurePath;
+        private string _connectProcedurePath;
         private string _tempFolder;
 
         private string SqlSchemaName => Utils.IsRuntimeWindowsPlatform ? "_sqlschema.exe" : "_sqlschema";
         private string SqlLoadName => Utils.IsRuntimeWindowsPlatform ? "_sqlload.exe" : "_sqlload";
         private string SqlDumpName => Utils.IsRuntimeWindowsPlatform ? "_sqldump.exe" : "_sqldump";
 
-        private string ProcedurePath {
+        private string AdminProcedurePath {
             get {
-                if (_procedurePath == null) {
-                    _procedurePath = Path.Combine(TempFolder, $"db_admin_{Path.GetRandomFileName()}.p");
-                    File.WriteAllText(ProcedurePath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_database_administrator.p"), Encoding);
+                if (_adminProcedurePath == null) {
+                    _adminProcedurePath = Path.Combine(TempFolder, $"db_admin_{Path.GetRandomFileName()}.p");
+                    File.WriteAllText(AdminProcedurePath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_database_administrator.p"), Encoding);
                 }
-                return _procedurePath;
+                return _adminProcedurePath;
             }
         }
 
-        private UoeProcessIo Progres {
+        private string ConnectProcedurePath {
+            get {
+                if (_connectProcedurePath == null) {
+                    _connectProcedurePath = Path.Combine(TempFolder, $"db_check_{Path.GetRandomFileName()}.p");
+                    File.WriteAllText(_connectProcedurePath, "PUT UNFORMATTED \"OK\".\nQUIT.", Encoding);
+                }
+                return _connectProcedurePath;
+            }
+        }
+
+        private UoeProcessIo _progres;
+
+        protected UoeProcessIo ProgresIo {
             get {
                 if (_progres == null) {
                     _progres = new UoeProcessIo(DlcPath, true, null, Encoding) {
@@ -75,6 +87,7 @@ namespace Oetools.Utilities.Openedge.Database {
                         Log = Log
                     };
                 }
+
                 return _progres;
             }
         }
@@ -89,8 +102,11 @@ namespace Oetools.Utilities.Openedge.Database {
         public void Dispose() {
             _progres?.Dispose();
             _progres = null;
-            if (!string.IsNullOrEmpty(_procedurePath)) {
-                File.Delete(_procedurePath);
+            if (!string.IsNullOrEmpty(_adminProcedurePath)) {
+                File.Delete(_adminProcedurePath);
+            }
+            if (!string.IsNullOrEmpty(_connectProcedurePath)) {
+                File.Delete(_connectProcedurePath);
             }
         }
 
@@ -120,6 +136,70 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
+        /// Starts a development database for a set number of users and specifying that only one broker server should be used.
+        /// Returns the process id of the server started.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="sharedMemoryMode"></param>
+        /// <param name="nbUsers"></param>
+        /// <param name="pid"></param>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public UoeDatabaseConnection Start(UoeDatabaseLocation targetDb, out int pid, bool sharedMemoryMode = true, int? nbUsers = null, UoeProcessArgs options = null) {
+            var startTime = DateTime.Now;
+
+            // TODO: see if we also need to fix the number of user in shared memory mode to limit the number of users...
+            var connection = base.Start(targetDb, sharedMemoryMode ? null : "localhost", sharedMemoryMode ? null : GetNextAvailablePort().ToString(), nbUsers, options);
+
+            try {
+                CheckDatabaseConnection(connection);
+            } catch (UoeDatabaseException e) {
+                throw new UoeDatabaseException($"Could not successfully connect to the database after starting it, check the database log file {Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg").PrettyQuote()}. The connection was: {e.Message}", e);
+            }
+
+            var newProcess = Process.GetProcesses()
+                .Where(p => {
+                    try {
+                        return p.ProcessName.Contains("_mprosrv") && p.StartTime.CompareTo(startTime) > 0;
+                    } catch (Exception) {
+                        return false;
+                    }
+                })
+                .OrderBy(p => p.StartTime)
+                .FirstOrDefault();
+            if (newProcess != null) {
+                pid = newProcess.Id;
+            } else {
+                throw new UoeDatabaseException($"Could not find the process ID of _mprosrv after starting the database, check the database log file {Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg").PrettyQuote()}.");
+            }
+
+            return connection;
+        }
+
+        /// <summary>
+        /// Check if a database is alive by actually trying to connect to it with a progress client.
+        /// </summary>
+        /// <param name="databaseConnection"></param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void CheckDatabaseConnection(UoeDatabaseConnection databaseConnection) {
+            int? maxTry = databaseConnection.MaxConnectionTry;
+            try {
+                databaseConnection.MaxConnectionTry = 1;
+                var args = new ProcessArgs().Append("-p").Append(ConnectProcedurePath);
+                args.Append("-T").Append(TempFolder);
+                args.Append(databaseConnection);
+                ProgresIo.WorkingDirectory = TempFolder;
+                var executionOk = ProgresIo.TryExecute(args);
+                if (!executionOk || !ProgresIo.BatchOutputString.EndsWith("OK")) {
+                    throw new UoeDatabaseException(ProgresIo.BatchOutputString);
+                }
+            } finally {
+                databaseConnection.MaxConnectionTry = maxTry;
+            }
+        }
+
+        /// <summary>
         /// Load a .df in a database.
         /// </summary>
         /// <param name="databaseConnection">The connection string to the database.</param>
@@ -134,7 +214,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading schema definition file {dfFilePath.PrettyQuote()} in {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"load-df|{dfFilePath}"));
+            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection, "-param", $"load-df|{dfFilePath}"));
         }
 
         /// <summary>
@@ -158,7 +238,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping schema definition to file {dfDumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"dump-df|{dfDumpFilePath}|{tableName}"));
+            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection, "-param", $"dump-df|{dfDumpFilePath}|{tableName}"));
         }
 
         /// <inheritdoc cref="DumpIncrementalSchemaDefinition"/>
@@ -191,12 +271,12 @@ namespace Oetools.Utilities.Openedge.Database {
 
             var csList = databaseConnections.ToList();
             if (csList.Count != 2) {
-                throw new UoeDatabaseException($"There should be exactly 2 databases specified in the connection string: {UoeDatabaseConnection.ToArgs(csList).ToQuotedArgs().PrettyQuote()}.");
+                throw new UoeDatabaseException($"There should be exactly 2 databases specified in the connection string: {new ProcessArgs().Append(csList).ToQuotedArgs().PrettyQuote()}.");
             }
 
             Log?.Info($"Dumping incremental schema definition to file {incDfDumpFilePath.PrettyQuote()} from {(csList[0].DatabaseLocation.Exists() ? csList[0].DatabaseLocation.FullPath : csList[0].DatabaseLocation.PhysicalName)} (old) and {(csList[1].DatabaseLocation.Exists() ? csList[1].DatabaseLocation.FullPath : csList[1].DatabaseLocation.PhysicalName)} (new).");
 
-            StartDataAdministratorProgram(new ProcessArgs().Append(UoeDatabaseConnection.ToArgs(csList), "-param", $"dump-inc|{incDfDumpFilePath}|{renameFilePath}"));
+            StartDataAdministratorProgram(new UoeProcessArgs().Append(csList).Append("-param", $"dump-inc|{incDfDumpFilePath}|{renameFilePath}"));
         }
 
         /// <summary>
@@ -249,7 +329,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping sequence data to file {dumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"dump-seq|{dumpFilePath}"));
+            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection, "-param", $"dump-seq|{dumpFilePath}"));
         }
 
         /// <summary>
@@ -267,7 +347,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading sequence data from file {sequenceDataFilePath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"load-seq|{sequenceDataFilePath}"));
+            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection, "-param", $"load-seq|{sequenceDataFilePath}"));
         }
 
         /// <summary>
@@ -288,7 +368,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Dumping data to directory {dumpDirectoryPath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"dump-d|{dumpDirectoryPath}|{tableName}"));
+            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection, "-param", $"dump-d|{dumpDirectoryPath}|{tableName}"));
         }
 
         /// <summary>
@@ -307,7 +387,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
             Log?.Info($"Loading data from directory {dataDirectoryPath.PrettyQuote()} to {databaseConnection.ToString().PrettyQuote()}.");
 
-            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection.ToArgs(), "-param", $"load-d|{dataDirectoryPath}|{tableName}"));
+            StartDataAdministratorProgram(new ProcessArgs().Append(databaseConnection, "-param", $"load-d|{dataDirectoryPath}|{tableName}"));
         }
 
         /// <summary>
@@ -422,7 +502,7 @@ namespace Oetools.Utilities.Openedge.Database {
             var busyMode = GetBusyMode(databaseConnection.DatabaseLocation);
             if (string.IsNullOrEmpty(databaseConnection.Service) && busyMode == DatabaseBusyMode.NotBusy) {
                 Log?.Debug("The database needs to be started for this operation, starting it.");
-                using (var db = new UoeDatabaseStarted(this, databaseConnection.DatabaseLocation)) {
+                using (var db = new UoeStartedDatabase(this, databaseConnection.DatabaseLocation, false)) {
                     db.AllowsDatabaseShutdownWithKill = false;
                     executionOk = process.TryExecute(arguments.Append(db.GetDatabaseConnection().ToJdbcConnectionArgument(false)));
                 }
@@ -435,21 +515,21 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         private void StartDataAdministratorProgram(ProcessArgs args, string workingDirectory = null) {
-            args.Append("-p").Append(ProcedurePath);
+            args.Append("-p").Append(AdminProcedurePath);
             if (!string.IsNullOrEmpty(workingDirectory)) {
                 args.Append("-T").Append(TempFolder);
             }
             args.Append(ProExeCommandLineParameters);
 
-            Progres.WorkingDirectory = workingDirectory ?? TempFolder;
-            var executionOk = Progres.TryExecute(args);
+            ProgresIo.WorkingDirectory = workingDirectory ?? TempFolder;
+            var executionOk = ProgresIo.TryExecute(args);
 
-            if (!executionOk || !Progres.BatchOutputString.EndsWith("OK")) {
-                throw new UoeDatabaseException(Progres.BatchOutputString);
+            if (!executionOk || !ProgresIo.BatchOutputString.EndsWith("OK")) {
+                throw new UoeDatabaseException(ProgresIo.BatchOutputString);
             }
 
-            if (Progres.BatchOutputString.Length > 4) {
-                Log?.Warn($"Warning messages published during the process:\n{Progres.BatchOutputString.Substring(0, Progres.BatchOutputString.Length - 4)}");
+            if (ProgresIo.BatchOutputString.Length > 4) {
+                Log?.Warn($"Warning messages published during the process:\n{ProgresIo.BatchOutputString.Substring(0, ProgresIo.BatchOutputString.Length - 4)}");
             }
         }
     }

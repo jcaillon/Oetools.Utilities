@@ -18,10 +18,13 @@
 // ========================================================================
 #endregion
 
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
+using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Test.Openedge {
@@ -76,6 +79,17 @@ namespace Oetools.Utilities.Test.Openedge {
             }
 
             Assert.AreEqual(expected, args.ToString());
+        }
+
+
+        [TestMethod]
+        public void AppendDatabaseConnection() {
+
+            var args = new UoeProcessArgs().Append(new List<UoeDatabaseConnection> {
+                UoeDatabaseConnection.NewMultiUserConnection(new UoeDatabaseLocation("data")), UoeDatabaseConnection.NewSingleUserConnection(new UoeDatabaseLocation("data"))
+            });
+
+            Assert.AreEqual(5, args.Count(), "should have -db data -db data -1");
         }
     }
 }

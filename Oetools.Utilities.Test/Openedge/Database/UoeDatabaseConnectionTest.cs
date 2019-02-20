@@ -24,6 +24,7 @@ using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database;
+using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Test.Openedge.Database {
 
@@ -64,7 +65,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
         [DataTestMethod]
         public void GetConnectionString(string input, string output) {
             output = output.Replace(@"""data""", Path.Combine(Directory.GetCurrentDirectory(), "data.db").ToQuotedArg());
-            Assert.AreEqual(output, UoeDatabaseConnection.ToArgs(UoeDatabaseConnection.GetConnectionStrings(input)).ToQuotedArgs());
+            Assert.AreEqual(output, new UoeProcessArgs().Append(UoeDatabaseConnection.GetConnectionStrings(input)).ToQuotedArgs());
         }
 
         [DataRow(@"-option value value")] // 2 values
@@ -96,16 +97,6 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
             cs = UoeDatabaseConnection.NewSingleUserConnection(new UoeDatabaseLocation("data")).ToString();
             Assert.IsTrue(cs.Contains("-1") && cs.Contains("-db"), $"Should have single user connection string.");
-        }
-
-        [TestMethod]
-        public void ToArgs() {
-
-            var args = UoeDatabaseConnection.ToArgs(new[] {
-                UoeDatabaseConnection.NewMultiUserConnection(new UoeDatabaseLocation("data")), UoeDatabaseConnection.NewSingleUserConnection(new UoeDatabaseLocation("data"))
-            });
-
-            Assert.AreEqual(5, args.Count(), "should have -db data -db data -1");
         }
     }
 }

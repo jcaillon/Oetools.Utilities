@@ -31,7 +31,7 @@ namespace Oetools.Utilities.Openedge.Database {
     /// <summary>
     /// A connection string to connect a database.
     /// </summary>
-    public class UoeDatabaseConnection {
+    public class UoeDatabaseConnection : IProcessArgs {
 
         /// <summary>
         /// The database (-db name).
@@ -141,22 +141,6 @@ namespace Oetools.Utilities.Openedge.Database {
             }
             args.Append(ExtraOptions);
             return args;
-        }
-
-        /// <summary>
-        /// Returns arguments composed of several connection strings.
-        /// </summary>
-        /// <param name="connectionStrings"></param>
-        /// <returns></returns>
-        public static UoeProcessArgs ToArgs(IEnumerable<UoeDatabaseConnection> connectionStrings) {
-            if (connectionStrings == null) {
-                return null;
-            }
-            var result = new UoeProcessArgs();
-            foreach (var connectionString in connectionStrings) {
-                result.Append(connectionString.ToArgs());
-            }
-            return result;
         }
 
         /// <summary>

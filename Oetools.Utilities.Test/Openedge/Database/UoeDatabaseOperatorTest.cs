@@ -287,13 +287,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             var nextPort = UoeDatabaseOperator.GetNextAvailablePort();
 
             try {
-                var option = ope.Start(tgtDb, "localhost", nextPort.ToString(), 20, new UoeProcessArgs().Append("-minport", "50000", "-maxport", "50100", "-L", "20000") as UoeProcessArgs);
-
-                Assert.IsTrue(nextPort > 0);
-                Assert.IsTrue(option.Contains($"-S {nextPort}"));
-                Assert.IsTrue(option.Contains("-H localhost"));
-                Assert.IsTrue(option.Contains("-Ma 20"));
-                Assert.IsTrue(option.Contains("-maxport 50100"));
+                ope.Start(tgtDb, "localhost", nextPort.ToString(), 20, new UoeProcessArgs().Append("-minport", "50000", "-maxport", "50100", "-L", "20000") as UoeProcessArgs);
 
                 Assert.AreEqual(DatabaseBusyMode.MultiUser, ope.GetBusyMode(tgtDb));
 

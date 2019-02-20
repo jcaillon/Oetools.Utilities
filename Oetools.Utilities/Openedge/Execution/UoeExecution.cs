@@ -254,7 +254,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             SetPreprocessedVar("ErrorLogPath", _errorLogPath.ProPreProcStringify());
             SetPreprocessedVar("DbErrorLogPath", _dbErrorLogPath.ProPreProcStringify());
             SetPreprocessedVar("PropathFilePath", _propathFilePath.ProPreProcStringify());
-            SetPreprocessedVar("DbConnectString", UoeDatabaseConnection.ToArgs(Env.DatabaseConnections).ToQuotedArgs().ProPreProcStringify());
+            SetPreprocessedVar("DbConnectString", new UoeProcessArgs().Append(Env.DatabaseConnections).ToQuotedArgs().ProPreProcStringify());
             SetPreprocessedVar("DatabaseAliasList", (Env.DatabaseAliases != null ? string.Join(";", Env.DatabaseAliases.Select(a => $"{a.AliasLogicalName},{a.DatabaseLogicalName}")) : "").ProPreProcStringify()); // Format : ALIAS,DATABASE;ALIAS2,DATABASE;...
             SetPreprocessedVar("DbConnectionRequired", NeedDatabaseConnection.ToString());
             SetPreprocessedVar("PreExecutionProgramPath", Env.PreExecutionProgramPath.ProPreProcStringify());

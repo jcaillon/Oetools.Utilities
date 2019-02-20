@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -123,17 +124,20 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <exception cref="Exception"></exception>
         /// <returns></returns>
         public static string ReplacePlaceHolders(this string source, Func<string, string> replacementFunction, string openPo = "{{", string closePo = "}}", int maxDepth = 0, StringComparison comparison = StringComparison.Ordinal) {
+            if (string.IsNullOrEmpty(source)) {
+                return source;
+            }
             var startPosStack = new Stack<int>();
-            var osb = replacementFunction == null ? source : $"{source}";
+            var osb = source;
             int idx = 0;
             do {
                 var idxStart = osb.IndexOf(openPo, idx, comparison);
                 var idxEnd = osb.IndexOf(closePo, idx, comparison);
                 if (idxStart >= 0 && (idxEnd < 0 || idxStart < idxEnd)) {
-                    idx = idxStart;
+                    idx = idxStart + openPo.Length - 1;
                     startPosStack.Push(idxStart);
-                } else {
-                    idx = idxEnd;
+                } else if (idxEnd >= 0) {
+                    idx = idxEnd + closePo.Length - 1;
                     if (idxEnd >= 0) {
                         if (startPosStack.Count == 0) {
                             throw new Exception($"Invalid symbol {closePo} found at column {idx} (no corresponding {openPo}).");
@@ -244,50 +248,86 @@ namespace Oetools.Utilities.Lib.Extension {
             return argument[0] == '"' && argument[argument.Length - 1] == '"';
         }
 
-        private static Regex _ftpRegex;
-        private static Regex FtpUriRegex => _ftpRegex ?? (_ftpRegex = new Regex(@"^(ftps?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?)(\/.*)$", RegexOptions.Compiled));
-
-        private static Regex _httpRegex;
-        private static Regex HttpUriRegex => _httpRegex ?? (_httpRegex = new Regex(@"^https?:\/\/([^:\/@]*)?(:[^:\/@]*)?(@[^:\/@]*)?(:[^:\/@]*)?", RegexOptions.Compiled));
+        private static Regex _uriRegex;
+        private static Regex UriRegex => _uriRegex ?? (_uriRegex = new Regex(@"^(?<baseUri>((?<protocol>[^:\/@]*):\/\/)?((?<user>[^:\/@]*)(:(?<pwd>[^:\/@]*))?@(?<host>[^:\/@]*)(:(?<port>[^:\/@]*))?|(?<host2>[^:\/@]*)(:(?<port2>[^:\/@]*))?))(?<path>\/.*)?$", RegexOptions.Compiled));
 
         /// <summary>
-        /// Parses the given HTTP URI into strings.
+        /// Parses the given URI into strings.
         /// </summary>
-        /// <param name="httpUri"></param>
+        /// <param name="uri"></param>
+        /// <param name="baseUri"></param>
         /// <param name="userName"></param>
         /// <param name="passWord"></param>
         /// <param name="host"></param>
         /// <param name="port"></param>
+        /// <param name="relativePath"></param>
+        /// <param name="protocol"></param>
         /// <returns></returns>
-        public static bool ParseHttpAddress(this string httpUri, out string userName, out string passWord, out string host, out int port) {
-            var match = HttpUriRegex?.Match(httpUri.Replace("\\", "/"));
+        public static bool ParseUri(this string uri, out string baseUri, out string protocol, out string userName, out string passWord, out string host, out int port, out string relativePath) {
+            var match = UriRegex?.Match(uri.Replace("\\", "/"));
             if (match != null && match.Success) {
+                baseUri = match.Groups["baseUri"].Value;
+                relativePath = match.Groups["path"].Success ? match.Groups["path"].Value : null;
+                protocol = match.Groups["protocol"].Success ? match.Groups["protocol"].Value : null;
                 port = 0;
-                if (match.Groups[3].Success) {
-                    userName = match.Groups[1].Value;
-                    if (match.Groups[2].Success && !string.IsNullOrEmpty(match.Groups[2].Value)) {
-                        passWord = match.Groups[2].Value.Substring(1);
-                    } else {
-                        passWord = null;
-                    }
-                    host = match.Groups[3].Value.Substring(1);
-                    if (string.IsNullOrEmpty(match.Groups[4].Value) || !int.TryParse(match.Groups[4].Value.Substring(1), out port)) {
-                        port = 0;
+                if (match.Groups["user"].Success) {
+                    userName = match.Groups["user"].Value;
+                    passWord = match.Groups["pwd"].Success ? match.Groups["pwd"].Value : null;
+                    host = match.Groups["host"].Value;
+                    if (!string.IsNullOrWhiteSpace(match.Groups["port"].Value)) {
+                        int.TryParse(match.Groups["port"].Value, out port);
                     }
                 } else {
                     userName = null;
                     passWord = null;
-                    host = match.Groups[1].Value;
-                    if (string.IsNullOrEmpty(match.Groups[2].Value) || !int.TryParse(match.Groups[2].Value.Substring(1), out port)) {
-                        port = 0;
+                    host = match.Groups["host2"].Value;
+                    if (!string.IsNullOrWhiteSpace(match.Groups["port2"].Value)) {
+                        int.TryParse(match.Groups["port2"].Value, out port);
                     }
                 }
                 return true;
             }
+            protocol = null;
+            baseUri = null;
+            relativePath = null;
             userName = null;
             passWord = null;
             host = null;
             port = 0;
+            return false;
+        }
+
+        /// <summary>
+        /// Parses the given WEB HTTP URI.
+        /// </summary>
+        /// <param name="httpUri"></param>
+        /// <returns></returns>
+        public static WebProxy ParseWebProxy(this string httpUri) {
+            if (ParseUri(httpUri, out _, out string protocol, out string user, out string pwd, out string host, out int port, out _)) {
+                return new WebProxy($"{host}:{(port > 0 ? port : protocol?.EndsWith("s", StringComparison.OrdinalIgnoreCase) ?? false ? 443 : 80)}") {
+                    UseDefaultCredentials = false,
+                    Credentials = string.IsNullOrEmpty(user) ? null : new NetworkCredential(user, pwd)
+                };
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Parse a web proxy
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="host"></param>
+        /// <param name="port"></param>
+        /// <param name="user"></param>
+        /// <param name="pwd"></param>
+        /// <returns></returns>
+        public static bool ParseWebProxy(this string uri, out string host, out int port, out string user, out string pwd) {
+            if (ParseUri(uri, out _, out string protocol, out user, out pwd, out host, out port, out _)) {
+                if (port == 0) {
+                    port = protocol?.EndsWith("s", StringComparison.OrdinalIgnoreCase) ?? false ? 443 : 80;
+                }
+                return true;
+            }
             return false;
         }
 
@@ -303,39 +343,7 @@ namespace Oetools.Utilities.Lib.Extension {
         /// <param name="relativePath"></param>
         /// <returns></returns>
         public static bool ParseFtpAddress(this string ftpUri, out string ftpBaseUri, out string userName, out string passWord, out string host, out int port, out string relativePath) {
-            var match = FtpUriRegex?.Match(ftpUri.Replace("\\", "/"));
-            if (match != null && match.Success) {
-                ftpBaseUri = match.Groups[1].Value;
-                relativePath = match.Groups[6].Value;
-                port = 0;
-                if (match.Groups[4].Success) {
-                    userName = match.Groups[2].Value;
-                    if (match.Groups[3].Success && !string.IsNullOrEmpty(match.Groups[3].Value)) {
-                        passWord = match.Groups[3].Value.Substring(1);
-                    } else {
-                        passWord = null;
-                    }
-                    host = match.Groups[4].Value.Substring(1);
-                    if (!string.IsNullOrWhiteSpace(match.Groups[5].Value)) {
-                        int.TryParse(match.Groups[5].Value.Substring(1), out port);
-                    }
-                } else {
-                    userName = null;
-                    passWord = null;
-                    host = match.Groups[2].Value;
-                    if (!string.IsNullOrWhiteSpace(match.Groups[3].Value)) {
-                        int.TryParse(match.Groups[3].Value.Substring(1), out port);
-                    }
-                }
-                return true;
-            }
-            ftpBaseUri = null;
-            relativePath = null;
-            userName = null;
-            passWord = null;
-            host = null;
-            port = 0;
-            return false;
+            return ParseUri(ftpUri, out ftpBaseUri, out string protocol, out userName, out passWord, out host, out port, out relativePath) && !string.IsNullOrEmpty(protocol) && (protocol.Equals("ftp", StringComparison.OrdinalIgnoreCase) || protocol.Equals("ftps", StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>

@@ -61,17 +61,18 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
 
         [TestMethod]
         [DataRow(@"^^^zf^^^ez$$$$$$f", "^^^", "$$$", "zfezf")]
+        [DataRow(@"${hello} ${there}", "${", "}", "hello there")]
         [DataRow(@"<TAG>hello</TAG> <TAG>there</TAG>", "<TAG>", "</TAG>", "hello there")]
         public void ReplacePlaceHolders_Test_placeHolderOpenClose(string pattern, string open, string close, string expected) {
             Assert.AreEqual(expected, pattern.ReplacePlaceHolders(s => s, open, close), pattern);
         }
 
         [TestMethod]
-        [DataRow(@"0<1><2><3>")]
-        [DataRow(@"0<1>0<2>0<3>")]
-        [DataRow(@"0<1<2<3>>>")]
-        [DataRow(@"<>")]
-        [DataRow(@"<bla>")]
+        [DataRow(@"0{{1{{2{{3}}}}}}")]
+        [DataRow(@"0{{1}}{{2}}{{3}}")]
+        [DataRow(@"0{{1}}0{{2}}0{{3}}")]
+        [DataRow(@"{{}}")]
+        [DataRow(@"{{bla}}")]
         public void ReplacePlaceHolders_Test_null_doesNotReplaceAnything(string pattern) {
             Assert.AreEqual(pattern, pattern.ReplacePlaceHolders(s => null), pattern);
         }
@@ -121,7 +122,7 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
         [DataRow(@"ftp://localhost:666/my/path", "ftp://localhost:666", null, null, "localhost", 666, "/my/path", true)]
         [DataRow(@"ftp://localhost:666/", "ftp://localhost:666", null, null, "localhost", 666, "/", true)]
         [DataRow(@"ftp://localhost/", "ftp://localhost", null, null, "localhost", 0, "/", true)]
-        [DataRow(@"ftpa://localhost/", null, null, null, null, 0, null, false)]
+        [DataRow(@"ftpa://localhost/", "ftpa://localhost", null, null, "localhost", 0, "/", false)]
         public void ParseFtpAddress_IsOk(string input, string eftpBaseUri, string euserName, string epassWord, string ehost, int eport, string erelativePath, bool ok) {
             Assert.AreEqual(ok, input.ParseFtpAddress(out var ftpBaseUri, out var name, out var passWord, out var host, out var port, out var relativePath));
             Assert.AreEqual(eftpBaseUri, ftpBaseUri);
@@ -134,18 +135,27 @@ namespace Oetools.Utilities.Test.Lib.Extensions {
 
         [TestMethod]
         [DataRow(@"https:\\user:pwd@localhost:666\my\path", "user", "pwd", "localhost", 666, true)]
+        [DataRow(@"user:pwd@localhost:666\my\path", "user", "pwd", "localhost", 666, true)]
         [DataRow(@"http://user:pwd@localhost:666", "user", "pwd", "localhost", 666, true)]
         [DataRow(@"http://user@localhost:666\", "user", null, "localhost", 666, true)]
         [DataRow(@"http://localhost:666", null, null, "localhost", 666, true)]
         [DataRow(@"http://localhost:666/", null, null, "localhost", 666, true)]
-        [DataRow(@"http://localhost/", null, null, "localhost", 0, true)]
-        [DataRow(@"httpa://localhost/", null, null, null, 0, false)]
+        [DataRow(@"http://localhost/", null, null, "localhost", 80, true)]
+        [DataRow(@"https://localhost/", null, null, "localhost", 443, true)]
+        [DataRow(@"localhost", null, null, "localhost", 80, true)]
         public void ParseHttpAddress(string input, string euserName, string epassWord, string ehost, int eport, bool ok) {
-            Assert.AreEqual(ok, input.ParseHttpAddress(out var name, out var passWord, out var host, out var port));
-            Assert.AreEqual(euserName, name);
-            Assert.AreEqual(epassWord, passWord);
+            Assert.AreEqual(ok, input.ParseWebProxy(out string host, out int port, out string user, out string pwd));
+            Assert.AreEqual(euserName, user);
+            Assert.AreEqual(epassWord, pwd);
             Assert.AreEqual(ehost, host);
             Assert.AreEqual(eport, port);
+
+            var proxy = input.ParseWebProxy();
+            Assert.AreEqual(ok, proxy != null);
+            Assert.AreEqual(euserName, proxy?.Credentials?.GetCredential(new Uri("http://local"), "").UserName);
+            Assert.AreEqual(euserName == null ? epassWord : epassWord ?? "", proxy?.Credentials?.GetCredential(new Uri("http://local"), "").Password);
+            Assert.AreEqual(ehost, proxy?.Address.Host);
+            Assert.AreEqual(eport, proxy?.Address.Port);
         }
 
         [TestMethod]

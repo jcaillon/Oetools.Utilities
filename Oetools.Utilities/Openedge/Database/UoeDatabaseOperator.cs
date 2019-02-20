@@ -413,7 +413,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="options">https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm/database-startup-parameters.html</param>
         /// <exception cref="UoeDatabaseException"></exception>
         /// <returns>start parameters string</returns>
-        public string Start(UoeDatabaseLocation targetDb, string hostname = null, string serviceName = null, int? nbUsers = null, UoeProcessArgs options = null) {
+        public UoeDatabaseConnection Start(UoeDatabaseLocation targetDb, string hostname = null, string serviceName = null, int? nbUsers = null, UoeProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
             // check if busy
@@ -471,10 +471,10 @@ namespace Oetools.Utilities.Openedge.Database {
             } while (busyMode != DatabaseBusyMode.MultiUser && !proc.HasExited);
 
             if (busyMode != DatabaseBusyMode.MultiUser) {
-                throw new UoeDatabaseException($"Failed to serve the database, check the database log file {Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg").PrettyQuote()}, options used: {args.ToString().PrettyQuote()}.");
+                throw new UoeDatabaseException($"Failed to serve the database, check the database log file {Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg").PrettyQuote()}, options used were: {args.ToString().PrettyQuote()}.");
             }
 
-            return args.ToString();
+            return UoeDatabaseConnection.NewMultiUserConnection(targetDb, null, hostname, serviceName);
         }
 
         /// <summary>

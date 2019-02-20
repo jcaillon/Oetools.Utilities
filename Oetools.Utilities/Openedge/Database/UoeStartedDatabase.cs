@@ -19,8 +19,6 @@
 #endregion
 
 using System;
-using System.Diagnostics;
-using System.Linq;
 using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Openedge.Database {
@@ -28,14 +26,14 @@ namespace Oetools.Utilities.Openedge.Database {
     /// <summary>
     /// Allows to start a database, do something and shut it down during disposal.
     /// </summary>
-    public class UoeDatabaseStarted : IDisposable {
+    public class UoeStartedDatabase : IDisposable {
 
         /// <summary>
         /// Are we allowed to use a process kill instead of a classic proshut?
         /// </summary>
         public bool AllowsDatabaseShutdownWithKill { get; set; } = true;
 
-        private UoeDatabaseOperator _operator;
+        private UoeDatabaseAdministrator _operator;
 
         private UoeDatabaseLocation _targetDb;
 
@@ -51,28 +49,11 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="sharedMemoryMode"></param>
         /// <param name="nbUsers"></param>
         /// <param name="options"></param>
-        public UoeDatabaseStarted(UoeDatabaseOperator @operator, UoeDatabaseLocation targetDb, bool sharedMemoryMode = false, int? nbUsers = null, UoeProcessArgs options = null) {
+        public UoeStartedDatabase(UoeDatabaseAdministrator @operator, UoeDatabaseLocation targetDb, bool sharedMemoryMode = false, int? nbUsers = null, UoeProcessArgs options = null) {
             _operator = @operator;
             _targetDb = targetDb;
-
-            _connection = UoeDatabaseConnection.NewMultiUserConnection(targetDb, null, sharedMemoryMode ? null : "localhost", sharedMemoryMode ? null : UoeDatabaseOperator.GetNextAvailablePort().ToString());
-
-            var startTime = DateTime.Now;
-            _operator.Start(_targetDb, _connection.HostName, _connection.Service, nbUsers, options);
-
-            var newProcess = Process.GetProcesses()
-                .Where(p => {
-                    try {
-                        return p.ProcessName.Contains("_mprosrv") && p.StartTime.CompareTo(startTime) > 0;
-                    } catch (Exception) {
-                        return false;
-                    }
-                })
-                .OrderBy(p => p.StartTime)
-                .FirstOrDefault();
-            if (newProcess != null) {
-                _processId = newProcess.Id;
-            }
+            _connection = _operator.Start(_targetDb, out int pid, sharedMemoryMode, nbUsers, options);
+            _processId = pid;
         }
 
         /// <summary>
@@ -89,6 +70,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 return;
             }
             _operator.Shutdown(_targetDb);
+            _operator = null;
         }
     }
 }

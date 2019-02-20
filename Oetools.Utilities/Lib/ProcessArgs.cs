@@ -77,19 +77,40 @@ namespace Oetools.Utilities.Lib {
         /// <returns></returns>
         public virtual ProcessArgs Append(params object[] args) {
             if (args != null) {
-                foreach (var o in args.Where(o => o != null)) {
-                    switch (o) {
-                        case ProcessArgs processArgs:
-                            Append(processArgs);
-                            break;
-                        case string stringArg:
-                            Append(stringArg);
-                            break;
-                        default:
-                            Append(o.ToString());
-                            break;
-                    }
+                foreach (var o in args) {
+                    Append(o);
                 }
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Append one or more arguments.
+        /// </summary>
+        /// <param name="arg"></param>
+        /// <returns></returns>
+        public virtual ProcessArgs Append(object arg) {
+            if (arg != null) {
+                switch (arg) {
+                    case ProcessArgs processArgs:
+                        Append(processArgs);
+                        break;
+                    case string stringArg:
+                        Append(stringArg);
+                        break;
+                    case IProcessArgs processArgsImpl:
+                        Append(processArgsImpl.ToArgs());
+                        break;
+                    case IEnumerable listItem:
+                        foreach (var item in listItem) {
+                            Append(item);
+                        }
+                        break;
+                    default:
+                        Append(arg.ToString());
+                        break;
+                }
+
             }
             return this;
         }
@@ -110,6 +131,7 @@ namespace Oetools.Utilities.Lib {
 
         /// <summary>
         /// Append arguments from an argument string.
+        /// This should be used when a user passes several arguments via a full string.
         /// Double quotes are used to specify arguments containing spaces.
         /// To use a double quote inside a quoted argument, double it.
         /// e.g. -opt "my ""quoted"" value" is a correctly formatted string.
