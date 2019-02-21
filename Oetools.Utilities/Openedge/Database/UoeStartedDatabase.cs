@@ -19,6 +19,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using Oetools.Utilities.Openedge.Execution;
 
 namespace Oetools.Utilities.Openedge.Database {
@@ -39,21 +40,20 @@ namespace Oetools.Utilities.Openedge.Database {
 
         private UoeDatabaseConnection _connection;
 
-        private int _processId;
+        private List<int> _processIds;
 
         /// <summary>
         /// Starts the given database.
         /// </summary>
         /// <param name="operator"></param>
         /// <param name="targetDb"></param>
-        /// <param name="sharedMemoryMode"></param>
         /// <param name="nbUsers"></param>
+        /// <param name="sharedMemoryMode"></param>
         /// <param name="options"></param>
-        public UoeStartedDatabase(UoeDatabaseAdministrator @operator, UoeDatabaseLocation targetDb, bool sharedMemoryMode = false, int? nbUsers = null, UoeProcessArgs options = null) {
+        public UoeStartedDatabase(UoeDatabaseAdministrator @operator, UoeDatabaseLocation targetDb, int nbUsers, bool sharedMemoryMode = false, UoeProcessArgs options = null) {
             _operator = @operator;
             _targetDb = targetDb;
-            _connection = _operator.Start(_targetDb, out int pid, sharedMemoryMode, nbUsers, options);
-            _processId = pid;
+            _connection = _operator.Start(_targetDb, nbUsers, out _processIds, sharedMemoryMode, options);
         }
 
         /// <summary>
@@ -66,8 +66,14 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Called on instance disposal.
         /// </summary>
         public void Dispose() {
-            if (AllowsDatabaseShutdownWithKill && _processId > 0 && _operator.KillBrokerServer(_processId, _targetDb)) {
-                return;
+            if (AllowsDatabaseShutdownWithKill && _processIds != null && _processIds.Count > 0) {
+                bool allKilled = true;
+                foreach (var processId in _processIds) {
+                    allKilled = allKilled && _operator.KillBrokerServer(processId, _targetDb);
+                }
+                if (allKilled) {
+                    return;
+                }
             }
             _operator.Shutdown(_targetDb);
             _operator = null;

@@ -17,6 +17,8 @@
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -63,16 +65,60 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             var lgPAth = Path.Combine(TestFolder, "ReadLogFileTest.lg");
             File.WriteAllText(lgPAth, @"
                 Tue Jan  1 15:28:10 2019
-[2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): localhost
-[2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 0
+[2019/01/01@14:46:51.345+0100] P-10860      T-17952 I BROKER  0: (333)   Multi-user session begin.
+[2019/01/01@14:46:51.345+0100] P-10860      T-15580 I BROKER  0: (4393)  This server is licenced for local logins only.
+[2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): hostname
+[2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 1
 ");
-            UoeDatabaseOperator.ReadLogFile(lgPAth, out string hostName, out string serviceName);
+            UoeDatabaseOperator.ReadLogFile(lgPAth, out string hostName, out string serviceName, out List<int> pid);
 
             Assert.IsNotNull(hostName);
             Assert.IsNotNull(serviceName);
 
-            Assert.AreEqual(@"localhost", hostName);
-            Assert.AreEqual(@"0", serviceName);
+            Assert.AreEqual(@"127.0.0.1", hostName);
+            Assert.AreEqual(@"1", serviceName);
+            Assert.AreEqual(10860, pid[0]);
+
+            File.WriteAllText(lgPAth, @"
+                Tue Jan  1 15:28:10 2019
+[2019/01/01@14:46:51.345+0100] P-10860      T-17952 I BROKER  0: (333)   Multi-user session begin.
+[2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): hostname
+[2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 999
+");
+            UoeDatabaseOperator.ReadLogFile(lgPAth, out hostName, out serviceName, out pid);
+
+            Assert.IsNotNull(hostName);
+            Assert.IsNotNull(serviceName);
+
+            Assert.AreEqual(@"hostname", hostName);
+            Assert.AreEqual(@"999", serviceName);
+            Assert.AreEqual(10860, pid[0]);
+
+            File.WriteAllText(lgPAth, @"
+                Tue Jan  1 15:28:10 2019
+[2019/01/01@14:46:51.345+0100] P-10860      T-17952 I BROKER  0: (333)   Multi-user session begin.
+[2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): hostname
+[2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 0
+");
+            UoeDatabaseOperator.ReadLogFile(lgPAth, out hostName, out serviceName, out pid);
+
+            Assert.AreEqual(null, hostName);
+            Assert.AreEqual(null, serviceName);
+            Assert.AreEqual(10860, pid[0]);
+
+            File.WriteAllText(lgPAth, @"
+                Tue Jan  1 15:28:10 2019
+[2019/01/01@14:46:51.345+0100] P-10860      T-17952 I BROKER  0: (333)   Multi-user session begin.
+[2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): hostname
+[2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 0
+[2019/01/01@14:46:51.349+0100] P-10999      T-7584  I SRV     1: (5646)  Started on port 3000 using TCP IPV4 address 127.0.0.1, pid 17372.
+");
+            UoeDatabaseOperator.ReadLogFile(lgPAth, out hostName, out serviceName, out pid);
+
+            Assert.AreEqual(null, hostName);
+            Assert.AreEqual(null, serviceName);
+            Assert.AreEqual(10999, pid[0]);
+            Assert.AreEqual(10860, pid[1]);
         }
 
 

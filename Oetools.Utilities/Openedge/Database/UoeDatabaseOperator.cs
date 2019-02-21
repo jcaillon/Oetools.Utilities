@@ -473,8 +473,7 @@ namespace Oetools.Utilities.Openedge.Database {
             if (busyMode != DatabaseBusyMode.MultiUser) {
                 throw new UoeDatabaseException($"Failed to serve the database, check the database log file {Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg").PrettyQuote()}, options used were: {args.ToString().PrettyQuote()}.");
             }
-
-            return UoeDatabaseConnection.NewMultiUserConnection(targetDb, null, hostname, serviceName);
+            return GetDatabaseConnection(targetDb);
         }
 
         /// <summary>
@@ -711,17 +710,17 @@ namespace Oetools.Utilities.Openedge.Database {
         public UoeDatabaseConnection GetDatabaseConnection(UoeDatabaseLocation targetDb, string logicalName = null) {
             targetDb.ThrowIfNotExist();
 
-            if (GetBusyMode(targetDb) == DatabaseBusyMode.NotBusy) {
-                return UoeDatabaseConnection.NewSingleUserConnection(targetDb, logicalName);
+            var busyMode = GetBusyMode(targetDb);
+            switch (busyMode) {
+                case DatabaseBusyMode.NotBusy:
+                    return UoeDatabaseConnection.NewSingleUserConnection(targetDb, logicalName);
+                case DatabaseBusyMode.SingleUser:
+                    throw new UoeDatabaseException($"The database is used in single user mode: {targetDb.FullPath.PrettyQuote()}.");
             }
 
             var logFilePath = Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg");
             Log?.Debug($"Reading database log file to figure out the connection string: {logFilePath.PrettyQuote()}.");
-            ReadLogFile(logFilePath, out string hostName, out string serviceName, Encoding);
-            if (string.IsNullOrEmpty(serviceName) || serviceName.Equals("0", StringComparison.Ordinal)) {
-                serviceName = null;
-                hostName = null;
-            }
+            ReadLogFile(logFilePath, out string hostName, out string serviceName, out _, Encoding);
             return UoeDatabaseConnection.NewMultiUserConnection(targetDb, logicalName, hostName, serviceName);
         }
 
@@ -1001,9 +1000,29 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="logFilePath"></param>
         /// <param name="hostName"></param>
         /// <param name="serviceName"></param>
+        /// <param name="pids"></param>
         /// <param name="encoding"></param>
-        internal static void ReadLogFile(string logFilePath, out string hostName, out string serviceName, Encoding encoding = null) {
+        internal static void ReadLogFile(string logFilePath, out string hostName, out string serviceName, out List<int> pids, Encoding encoding = null) {
             // read the log file in reverse order, trying to get the hostname and service name used to start the database.
+            // [2019/02/21@19:00:46.185+0100] P-3700       T-17480 I BROKER  0: (333)   Multi-user session begin.
+            // [2019/02/21@19:00:46.192+0100] P-3700       T-17480 I BROKER  0: (4393)  This server is licenced for local logins only.
+            //                                                       BROKER  0: (4261)  Host Name (-H): localhost.
+            //                                                       BROKER  0: (4262)  Service Name (-S): 0.
+            //                                                       SRV     1: (5646)  Started on port 3000 using TCP IPV4 address 127.0.0.1, pid 17372.
+            int GetPidFromLogLine(string line) {
+                var idxStart = line.IndexOf('P');
+                if (idxStart > 0) {
+                    var idxEnd = line.IndexOfAny(new[] {
+                        ' ', '\t'
+                    }, idxStart);
+                    if (idxEnd > 0 && int.TryParse(line.Substring(idxStart + 2, idxEnd - idxStart - 2), out int pid)) {
+                        return pid;
+                    }
+                }
+                return 0;
+            }
+
+            pids = new List<int>();
             hostName = null;
             serviceName = null;
             if (!File.Exists(logFilePath)) {
@@ -1016,34 +1035,48 @@ namespace Oetools.Utilities.Openedge.Database {
                 var idx = line.IndexOf('(');
                 var proNumber = idx > 0 && line.Length > idx + 6 ? line.Substring(idx + 1, 4) : null;
                 switch (proNumber) {
+                    case "333)":
+                        // BROKER  0: (333)   Multi-user session begin.
+                        // get the pid here.
+                        var pidBroker = GetPidFromLogLine(line);
+                        if (pidBroker > 0) {
+                            pids.Add(pidBroker);
+                        }
+                        // if the service is not specified, then the database was started in shared memory, so nullify the hostname
+                        if (string.IsNullOrEmpty(serviceName)) {
+                            serviceName = null;
+                            hostName = null;
+                        }
+                        return;
+                    case "5646":
+                        // SRV     1: (5646)  Started on port 3000 using TCP IPV4 address 127.0.0.1, pid 17372.
+                        var pidServer = GetPidFromLogLine(line);
+                        if (pidServer > 0) {
+                            pids.Add(pidServer);
+                        }
+                        continue;
+                    case "4393":
+                        // BROKER  0: (4393)  This server is licenced for local logins only.
+                        // If not -H was specified when starting the db, the -H will equal to the current hostname.
+                        // But you can't connect with this hostname in local serve only so we correct it here.
+                        hostName = "localhost";
+                        continue;
                     case "4261":
                         // BROKER  0: (4261)  Host Name (-H): localhost.
                         idx = line.IndexOf(':', idx + 6);
                         hostName = idx > 0 && line.Length > idx ? line.Substring(idx + 1).Trim().TrimEnd('.') : null;
-                        // If not -H was specified when starting the db, the -H will equal to the current hostname.
-                        // But you can't connect with this hostname so we correct it here.
-                        if (!string.IsNullOrEmpty(hostName) && hostName.Equals(GetHostName(), StringComparison.OrdinalIgnoreCase)) {
-                            hostName = "localhost";
-                        }
-                        return;
+                        continue;
                     case "4262":
                         // BROKER  0: (4262)  Service Name (-S): 0.
                         idx = line.IndexOf(':', idx + 6);
                         serviceName = idx > 0 && line.Length > idx ? line.Substring(idx + 1).Trim().TrimEnd('.') : null;
+                        if (string.IsNullOrEmpty(serviceName) || serviceName.Equals("0", StringComparison.Ordinal)) {
+                            serviceName = null;
+                        }
                         continue;
                     default:
                         continue;
                 }
-            }
-        }
-
-        private static string GetHostName() {
-            try {
-                var hostname = Dns.GetHostName();
-                Dns.GetHostEntry(hostname);
-                return hostname;
-            } catch (Exception) {
-                return "localhost";
             }
         }
 
