@@ -62,6 +62,11 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
         [TestMethod]
         public void ReadLogFileTest() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+            var ope = new UoeDatabaseOperator(dlcPath);
+
             var lgPAth = Path.Combine(TestFolder, "ReadLogFileTest.lg");
             File.WriteAllText(lgPAth, @"
                 Tue Jan  1 15:28:10 2019
@@ -70,14 +75,13 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 [2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): hostname
 [2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 1
 ");
-            UoeDatabaseOperator.ReadLogFile(lgPAth, out string hostName, out string serviceName, out List<int> pid);
+            ope.ReadStartingParametersFromLogFile(lgPAth, out string hostName, out string serviceName);
 
             Assert.IsNotNull(hostName);
             Assert.IsNotNull(serviceName);
 
-            Assert.AreEqual(@"127.0.0.1", hostName);
+            Assert.AreEqual(@"localhost", hostName);
             Assert.AreEqual(@"1", serviceName);
-            Assert.AreEqual(10860, pid[0]);
 
             File.WriteAllText(lgPAth, @"
                 Tue Jan  1 15:28:10 2019
@@ -85,14 +89,13 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 [2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): hostname
 [2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 999
 ");
-            UoeDatabaseOperator.ReadLogFile(lgPAth, out hostName, out serviceName, out pid);
+            ope.ReadStartingParametersFromLogFile(lgPAth, out hostName, out serviceName);
 
             Assert.IsNotNull(hostName);
             Assert.IsNotNull(serviceName);
 
             Assert.AreEqual(@"hostname", hostName);
             Assert.AreEqual(@"999", serviceName);
-            Assert.AreEqual(10860, pid[0]);
 
             File.WriteAllText(lgPAth, @"
                 Tue Jan  1 15:28:10 2019
@@ -100,11 +103,10 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 [2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): hostname
 [2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 0
 ");
-            UoeDatabaseOperator.ReadLogFile(lgPAth, out hostName, out serviceName, out pid);
+            ope.ReadStartingParametersFromLogFile(lgPAth, out hostName, out serviceName);
 
             Assert.AreEqual(null, hostName);
             Assert.AreEqual(null, serviceName);
-            Assert.AreEqual(10860, pid[0]);
 
             File.WriteAllText(lgPAth, @"
                 Tue Jan  1 15:28:10 2019
@@ -112,13 +114,13 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 [2019/01/01@14:46:51.345+0100] P-10860      T-7584  I BROKER  0: (4261)  Host Name (-H): hostname
 [2019/01/01@14:46:51.349+0100] P-10860      T-7584  I BROKER  0: (4262)  Service Name (-S): 0
 [2019/01/01@14:46:51.349+0100] P-10999      T-7584  I SRV     1: (5646)  Started on port 3000 using TCP IPV4 address 127.0.0.1, pid 17372.
+[2019/01/01@14:46:51.349+0100] P-11111      T-6060  I SQLSRV2 1: (-----) SQL Server 11.7.04 started, configuration: ""db.virtualconfig""
 ");
-            UoeDatabaseOperator.ReadLogFile(lgPAth, out hostName, out serviceName, out pid);
+            var pids = ope.GetPidsFromLogFile(lgPAth).ToList();
 
-            Assert.AreEqual(null, hostName);
-            Assert.AreEqual(null, serviceName);
-            Assert.AreEqual(10999, pid[0]);
-            Assert.AreEqual(10860, pid[1]);
+            Assert.AreEqual(11111, pids[0]);
+            Assert.AreEqual(10999, pids[1]);
+            Assert.AreEqual(10860, pids[2]);
         }
 
 
@@ -304,7 +306,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                 File.WriteAllText(stPath, $"d \"New Area\" \"{TestFolder}\"");
                 ope.AddStructureDefinition(tgtDb, stPath);
             } finally {
-                ope.Shutdown(tgtDb);
+                ope.Stop(tgtDb);
             }
 
             Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "extents_7.d1")));
@@ -333,12 +335,12 @@ namespace Oetools.Utilities.Test.Openedge.Database {
             var nextPort = UoeDatabaseOperator.GetNextAvailablePort();
 
             try {
-                ope.Start(tgtDb, "localhost", nextPort.ToString(), 20, new UoeProcessArgs().Append("-minport", "50000", "-maxport", "50100", "-L", "20000") as UoeProcessArgs);
+                ope.Start(tgtDb, "localhost", nextPort.ToString(), new UoeProcessArgs().Append("-minport", "50000", "-maxport", "50100", "-L", "20000") as UoeProcessArgs);
 
                 Assert.AreEqual(DatabaseBusyMode.MultiUser, ope.GetBusyMode(tgtDb));
 
             } finally {
-                ope.Shutdown(tgtDb);
+                ope.Stop(tgtDb);
             }
 
             Assert.AreEqual(DatabaseBusyMode.NotBusy, ope.GetBusyMode(tgtDb));
@@ -453,7 +455,7 @@ d ""schema Area"" .
                 Assert.IsFalse(ope.GetDatabaseConnection(db).SingleUser);
                 Assert.IsTrue(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).Service));
             } finally {
-                ope.Shutdown(db);
+                ope.Stop(db);
             }
 
             try {
@@ -463,7 +465,7 @@ d ""schema Area"" .
                 Assert.IsFalse(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).Service));
                 Assert.IsFalse(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).HostName));
             } finally {
-                ope.Shutdown(db);
+                ope.Stop(db);
             }
         }
 
@@ -496,7 +498,7 @@ d ""schema Area"" .
                 Assert.IsFalse(cs.SingleUser);
                 Assert.IsTrue(string.IsNullOrEmpty(cs.Service));
             } finally {
-                ope.Shutdown(db);
+                ope.Stop(db);
             }
         }
 

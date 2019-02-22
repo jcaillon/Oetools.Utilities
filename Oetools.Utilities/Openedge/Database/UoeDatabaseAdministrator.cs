@@ -140,19 +140,24 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Returns the process id of the server started.
         /// </summary>
         /// <param name="targetDb"></param>
-        /// <param name="nbUsers"></param>
+        /// <param name="nbUsers">Set the expected number of users that will use this db simultaneously, it will set the options to have only one broker starting with that broker being able to handle that many users.</param>
         /// <param name="sharedMemoryMode"></param>
         /// <param name="pids">In the shared memory case, there will be only 1 (2 otherwise = the broker and the server)</param>
         /// <param name="options"></param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        public UoeDatabaseConnection Start(UoeDatabaseLocation targetDb, int nbUsers, out List<int> pids, bool sharedMemoryMode = true, UoeProcessArgs options = null) {
+        public UoeDatabaseConnection Start(UoeDatabaseLocation targetDb, int nbUsers, out HashSet<int> pids, bool sharedMemoryMode = true, UoeProcessArgs options = null) {
             // in the shared memory case: there is only one process started:
             // [2019/02/21@20:23:44.771+0100] P-14752      T-13820 I BROKER  0: (333)   Multi-user session begin.
             // when serving in TCP mode, we also have other process (one for each server spawned by the broker)
             // [2019/02/21@20:22:47.610+0100] P-17372      T-9240  I SRV     1: (5646)  Started on port 3000 using TCP IPV4 address 127.0.0.1, pid 17372.
 
-            var connection = Start(targetDb, sharedMemoryMode ? null : "localhost", sharedMemoryMode ? null : GetNextAvailablePort().ToString(), nbUsers, options);
+            var mn = 1;
+            var ma = nbUsers;
+            var args = new UoeProcessArgs();
+            args.Append("-n", mn * ma + 1, "-Mi", ma, "-Ma", ma, "-Mn", mn, "-Mpb", mn).Append(options);
+
+            var connection = Start(targetDb, sharedMemoryMode ? null : "localhost", sharedMemoryMode ? null : GetNextAvailablePort().ToString(), args);
 
             if (!sharedMemoryMode) {
                 // not in shared memory mode, we start a new connection which allows the broker to spawn the first and only server
@@ -160,11 +165,11 @@ namespace Oetools.Utilities.Openedge.Database {
                 try {
                     CheckDatabaseConnection(connection);
                 } catch (UoeDatabaseException e) {
-                    throw new UoeDatabaseException($"Could not successfully connect to the database after starting it, check the database log file {Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg").PrettyQuote()}. The connection was: {e.Message}", e);
+                    throw new UoeDatabaseException($"Could not successfully connect to the database after starting it, check the database log file {targetDb.LogFileFullPath.PrettyQuote()}. The connection was: {e.Message}", e);
                 }
             }
 
-            ReadLogFile(Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg"), out _, out _, out pids, Encoding);
+            pids = GetPidsFromLogFile(targetDb.LogFileFullPath);
 
             return connection;
         }
@@ -494,8 +499,11 @@ namespace Oetools.Utilities.Openedge.Database {
             var busyMode = GetBusyMode(databaseConnection.DatabaseLocation);
             if (string.IsNullOrEmpty(databaseConnection.Service) && busyMode == DatabaseBusyMode.NotBusy) {
                 Log?.Debug("The database needs to be started for this operation, starting it.");
-                using (var db = new UoeStartedDatabase(this, databaseConnection.DatabaseLocation, 5)) {
-                    executionOk = process.TryExecute(arguments.Append(db.GetDatabaseConnection().ToJdbcConnectionArgument(false)));
+                try {
+                    var connection = Start(databaseConnection.DatabaseLocation, "localhost", GetNextAvailablePort().ToString());
+                    executionOk = process.TryExecute(arguments.Append(connection.ToJdbcConnectionArgument(false)));
+                } finally {
+                    Stop(databaseConnection.DatabaseLocation);
                 }
             } else if (string.IsNullOrEmpty(databaseConnection.Service)) {
                 throw new UoeDatabaseException("The database needs to be either not busy or started for multi-user mode with service port.");

@@ -39,6 +39,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public const string SqlSchemaDefinitionExtension = ".dfsql";
         public const string SqlDataExtension = ".dsql";
         public const string ProgressDumpFileExtention = ".d";
+        public const string LogFileExtention = ".lg";
         private const int DbPhysicalNameMaxLength = 11;
         private const int DbLogicalNameMaxLength = 32;
 
@@ -61,6 +62,11 @@ namespace Oetools.Utilities.Openedge.Database {
         /// The full path to the .st file of the database.
         /// </summary>
         public string StructureFileFullPath => Path.Combine(DirectoryPath, $"{PhysicalName}{StructureFileExtension}");
+
+        /// <summary>
+        /// The full path to the .lg log file of the database.
+        /// </summary>
+        public string LogFileFullPath => Path.Combine(DirectoryPath, $"{PhysicalName}{LogFileExtention}");
 
         /// <summary>
         /// New instance of <see cref="UoeDatabaseLocation"/> from another file path. For instance, the .df or the .st file.

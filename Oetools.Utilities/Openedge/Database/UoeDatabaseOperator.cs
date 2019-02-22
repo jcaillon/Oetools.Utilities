@@ -22,7 +22,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -409,11 +408,10 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="targetDb"></param>
         /// <param name="hostname"></param>
         /// <param name="serviceName"></param>
-        /// <param name="nbUsers">Set the expected number of users that will use this db simultaneously, it will set the options to have only one broker starting with that broker being able to handle that many users.</param>
         /// <param name="options">https://documentation.progress.com/output/ua/OpenEdge_latest/index.html#page/dmadm/database-startup-parameters.html</param>
         /// <exception cref="UoeDatabaseException"></exception>
         /// <returns>start parameters string</returns>
-        public UoeDatabaseConnection Start(UoeDatabaseLocation targetDb, string hostname = null, string serviceName = null, int? nbUsers = null, UoeProcessArgs options = null) {
+        public UoeDatabaseConnection Start(UoeDatabaseLocation targetDb, string hostname = null, string serviceName = null, UoeProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
             // check if busy
@@ -426,6 +424,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             var args = new UoeProcessArgs();
+            args.Append(targetDb.PhysicalName);
             if (!string.IsNullOrEmpty(serviceName)) {
                 args.Append("-S", serviceName);
             }
@@ -434,13 +433,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 args.Append("-N", "TCP", "-H", hostname);
             }
 
-            if (nbUsers != null) {
-                var mn = 1;
-                var ma = nbUsers;
-                args.Append("-n", mn * ma + 1, "-Mi", ma, "-Ma", ma, "-Mn", mn, "-Mpb", mn);
-            }
-
-            args.Append(targetDb.PhysicalName, options, InternationalizationStartupParameters);
+            args.Append(options, InternationalizationStartupParameters);
 
             Log?.Info($"Starting database server for {targetDb.FullPath.PrettyQuote()}.");
 
@@ -471,7 +464,7 @@ namespace Oetools.Utilities.Openedge.Database {
             } while (busyMode != DatabaseBusyMode.MultiUser && !proc.HasExited);
 
             if (busyMode != DatabaseBusyMode.MultiUser) {
-                throw new UoeDatabaseException($"Failed to serve the database, check the database log file {Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg").PrettyQuote()}, options used were: {args.ToString().PrettyQuote()}.");
+                throw new UoeDatabaseException($"Failed to serve the database, check the database log file {targetDb.LogFileFullPath.PrettyQuote()}, options used were: {args.ToString().PrettyQuote()}.");
             }
             return GetDatabaseConnection(targetDb);
         }
@@ -509,12 +502,12 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Shutdown a database started in multi user mode
+        /// Stop a database started in multi user mode
         /// </summary>
         /// <param name="targetDb"></param>
         /// <param name="options"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void Shutdown(UoeDatabaseLocation targetDb, ProcessArgs options = null) {
+        public void Stop(UoeDatabaseLocation targetDb, ProcessArgs options = null) {
             targetDb.ThrowIfNotExist();
 
             var proshut = GetExecutable(ProshutName);
@@ -530,6 +523,24 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
+        /// Kill the broker and server processes running for a database.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public bool Kill(UoeDatabaseLocation targetDb) {
+            targetDb.ThrowIfNotExist();
+
+            var pids = GetPidsFromLogFile(targetDb.LogFileFullPath);
+
+            bool allKilled = true;
+            foreach (var processId in pids) {
+                allKilled = allKilled && KillBrokerServer(processId, targetDb);
+            }
+
+            return allKilled;
+        }
+
+        /// <summary>
         /// Kill the broker of a database started in multi user mode
         /// </summary>
         /// <param name="processId"></param>
@@ -539,13 +550,13 @@ namespace Oetools.Utilities.Openedge.Database {
             if (processId > 0) {
                 var mprosrv = Process.GetProcesses().FirstOrDefault(p => {
                     try {
-                        return p.ProcessName.Contains("_mprosrv") && p.Id == processId;
+                        return (p.ProcessName.Contains("_mprosrv") || p.ProcessName.Contains("_sqlsrv2")) && p.Id == processId;
                     } catch (Exception) {
                         return false;
                     }
                 });
                 if (mprosrv != null) {
-                    Log?.Info($"Stopping database broker started on process id {processId}{(targetDb != null ? $" for {targetDb.FullPath.PrettyQuote()}" : "")}.");
+                    Log?.Info($"Stopping database broker/server started on process id {processId}{(targetDb != null ? $" for {targetDb.FullPath.PrettyQuote()}" : "")}.");
                     mprosrv.Kill();
                     return true;
                 }
@@ -718,9 +729,9 @@ namespace Oetools.Utilities.Openedge.Database {
                     throw new UoeDatabaseException($"The database is used in single user mode: {targetDb.FullPath.PrettyQuote()}.");
             }
 
-            var logFilePath = Path.Combine(targetDb.DirectoryPath, $"{targetDb.PhysicalName}.lg");
+            var logFilePath = targetDb.LogFileFullPath;
             Log?.Debug($"Reading database log file to figure out the connection string: {logFilePath.PrettyQuote()}.");
-            ReadLogFile(logFilePath, out string hostName, out string serviceName, out _, Encoding);
+            ReadStartingParametersFromLogFile(logFilePath, out string hostName, out string serviceName);
             return UoeDatabaseConnection.NewMultiUserConnection(targetDb, logicalName, hostName, serviceName);
         }
 
@@ -1000,35 +1011,14 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <param name="logFilePath"></param>
         /// <param name="hostName"></param>
         /// <param name="serviceName"></param>
-        /// <param name="pids"></param>
-        /// <param name="encoding"></param>
-        internal static void ReadLogFile(string logFilePath, out string hostName, out string serviceName, out List<int> pids, Encoding encoding = null) {
+        internal void ReadStartingParametersFromLogFile(string logFilePath, out string hostName, out string serviceName) {
             // read the log file in reverse order, trying to get the hostname and service name used to start the database.
-            // [2019/02/21@19:00:46.185+0100] P-3700       T-17480 I BROKER  0: (333)   Multi-user session begin.
-            // [2019/02/21@19:00:46.192+0100] P-3700       T-17480 I BROKER  0: (4393)  This server is licenced for local logins only.
-            //                                                       BROKER  0: (4261)  Host Name (-H): localhost.
-            //                                                       BROKER  0: (4262)  Service Name (-S): 0.
-            //                                                       SRV     1: (5646)  Started on port 3000 using TCP IPV4 address 127.0.0.1, pid 17372.
-            int GetPidFromLogLine(string line) {
-                var idxStart = line.IndexOf('P');
-                if (idxStart > 0) {
-                    var idxEnd = line.IndexOfAny(new[] {
-                        ' ', '\t'
-                    }, idxStart);
-                    if (idxEnd > 0 && int.TryParse(line.Substring(idxStart + 2, idxEnd - idxStart - 2), out int pid)) {
-                        return pid;
-                    }
-                }
-                return 0;
-            }
-
-            pids = new List<int>();
             hostName = null;
             serviceName = null;
             if (!File.Exists(logFilePath)) {
                 return;
             }
-            foreach (var line in new ReverseLineReader(logFilePath, encoding ?? Encoding.ASCII)) {
+            foreach (var line in new ReverseLineReader(logFilePath, Encoding)) {
                 if (string.IsNullOrEmpty(line)) {
                     continue;
                 }
@@ -1037,24 +1027,12 @@ namespace Oetools.Utilities.Openedge.Database {
                 switch (proNumber) {
                     case "333)":
                         // BROKER  0: (333)   Multi-user session begin.
-                        // get the pid here.
-                        var pidBroker = GetPidFromLogLine(line);
-                        if (pidBroker > 0) {
-                            pids.Add(pidBroker);
-                        }
                         // if the service is not specified, then the database was started in shared memory, so nullify the hostname
                         if (string.IsNullOrEmpty(serviceName)) {
                             serviceName = null;
                             hostName = null;
                         }
                         return;
-                    case "5646":
-                        // SRV     1: (5646)  Started on port 3000 using TCP IPV4 address 127.0.0.1, pid 17372.
-                        var pidServer = GetPidFromLogLine(line);
-                        if (pidServer > 0) {
-                            pids.Add(pidServer);
-                        }
-                        continue;
                     case "4393":
                         // BROKER  0: (4393)  This server is licenced for local logins only.
                         // If not -H was specified when starting the db, the -H will equal to the current hostname.
@@ -1078,6 +1056,64 @@ namespace Oetools.Utilities.Openedge.Database {
                         continue;
                 }
             }
+        }
+
+        /// <summary>
+        /// Reads the pid of all started broker/server/sql server from a database log file and return them.
+        /// </summary>
+        /// <param name="logFilePath"></param>
+        /// <returns></returns>
+        internal HashSet<int> GetPidsFromLogFile(string logFilePath) {
+            if (!File.Exists(logFilePath)) {
+                return null;
+            }
+
+            int GetPidFromLogLine(string line) {
+                var idxStart = line.IndexOf('P');
+                if (idxStart > 0) {
+                    var idxEnd = line.IndexOf(' ', idxStart);
+                    if (idxEnd > 0 && int.TryParse(line.Substring(idxStart + 2, idxEnd - idxStart - 2), out int pid)) {
+                        return pid;
+                    }
+                }
+                return 0;
+            }
+
+            var pids = new HashSet<int>();
+
+            foreach (var line in new ReverseLineReader(logFilePath, Encoding)) {
+                if (string.IsNullOrEmpty(line)) {
+                    continue;
+                }
+                var idx = line.IndexOf('(');
+                var proNumber = idx > 0 && line.Length > idx + 6 ? line.Substring(idx + 1, 4) : null;
+                switch (proNumber) {
+                    case "333)":
+                        // BROKER  0: (333)   Multi-user session begin.
+                        var pidBroker = GetPidFromLogLine(line);
+                        if (pidBroker > 0 && !pids.Contains(pidBroker)) {
+                            pids.Add(pidBroker);
+                        }
+                        return pids;
+                    case "----":
+                        // SQLSRV2 1: (-----) SQL Server 11.7.04 started, configuration: ""db.virtualconfig""
+                        var pidSqlServer = GetPidFromLogLine(line);
+                        if (pidSqlServer > 0 && !pids.Contains(pidSqlServer)) {
+                            pids.Add(pidSqlServer);
+                        }
+                        continue;
+                    case "5646":
+                        // SRV     1: (5646)  Started on port 3000 using TCP IPV4 address 127.0.0.1, pid 17372.
+                        var pidServer = GetPidFromLogLine(line);
+                        if (pidServer > 0 && !pids.Contains(pidServer)) {
+                            pids.Add(pidServer);
+                        }
+                        continue;
+                    default:
+                        continue;
+                }
+            }
+            return pids;
         }
 
         /// <summary>
