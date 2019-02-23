@@ -17,7 +17,7 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
-namespace Oetools.Utilities.Openedge {
+namespace Oetools.Utilities.Openedge.Database {
     
     /// <summary>
     /// Represent the tables or sequences that were referenced in a given .r code file and thus needed to compile

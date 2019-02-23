@@ -19,7 +19,6 @@
 #endregion
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -155,7 +154,8 @@ namespace Oetools.Utilities.Openedge.Database {
             var mn = 1;
             var ma = nbUsers;
             var args = new UoeProcessArgs();
-            args.Append("-n", mn * ma + 1, "-Mi", ma, "-Ma", ma, "-Mn", mn, "-Mpb", mn).Append(options);
+            // note: according to the documentation, n should be mn * ma + 1, but whatever.
+            args.Append("-n", mn * ma, "-Mi", ma, "-Ma", ma, "-Mn", mn, "-Mpb", mn).Append(options);
 
             var connection = Start(targetDb, sharedMemoryMode ? null : "localhost", sharedMemoryMode ? null : GetNextAvailablePort().ToString(), args);
 

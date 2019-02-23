@@ -19,127 +19,92 @@
 #endregion
 
 using System.Collections.Generic;
+using Oetools.Utilities.Openedge.Database.Interfaces;
 
 namespace Oetools.Utilities.Openedge.Database {
 
-    /// <summary>
-    /// Represents an openedge database field.
-    /// </summary>
-    public class UoeDatabaseField {
+    /// <inheritdoc />
+    public class UoeDatabaseField : IUoeDatabaseField {
 
-        /// <summary>
-        /// Field name.
-        /// </summary>
+        /// <inheritdoc />
         public string Name { get; set; }
 
-        /// <summary>
-        /// Field type.
-        /// </summary>
+        /// <inheritdoc />
         public UoeDatabaseDataType DataType { get; set; }
 
-        /// <summary>
-        /// Format.
-        /// </summary>
+        /// <inheritdoc />
         public string Format { get; set; }
 
-        /// <summary>
-        /// Format attribute.
-        /// </summary>
-        /// <inheritdoc cref="UoeDatabaseTable.LabelAttribute"/>
+        /// <inheritdoc />
         public string FormatAttribute { get; set; }
 
-        /// <summary>
-        /// Order (increment 10 by 10).
-        /// </summary>
+        /// <inheritdoc />
         public int Order { get; set; }
 
-        /// <summary>
-        /// Position (stars at 2).
-        /// </summary>
+        /// <inheritdoc />
         public int Position { get; set; }
 
-        /// <summary>
-        /// Is field mandatory?
-        /// </summary>
+        /// <inheritdoc />
         public bool Mandatory { get; set; }
 
-        /// <summary>
-        /// Is field case sensitive?
-        /// </summary>
+        /// <inheritdoc />
         public bool CaseSensitive { get; set; }
 
-        /// <summary>
-        /// Extent (is the field an array, it is the size of this array).
-        /// </summary>
+        /// <inheritdoc />
         public int Extent { get; set; }
 
-        /// <summary>
-        /// Field is part of an index.
-        /// </summary>
-        public bool IsPartOfIndex { get; set; }
-
-        /// <summary>
-        /// Field is part of the primary key?
-        /// </summary>
-        public bool IsPartOfPrimaryKey { get; set; }
-
-        /// <summary>
-        /// The initial value.
-        /// </summary>
+        /// <inheritdoc />
         public string InitialValue { get; set; }
 
-        /// <summary>
-        /// Initial value attribute.
-        /// </summary>
-        /// <inheritdoc cref="UoeDatabaseTable.LabelAttribute"/>
+        /// <inheritdoc />
         public string InitialValueAttribute { get; set; }
 
-        /// <summary>
-        /// Sql width.
-        /// </summary>
+        /// <inheritdoc />
         public int Width { get; set; }
 
-        /// <summary>
-        /// The label.
-        /// </summary>
+        /// <inheritdoc />
         public string Label { get; set; }
 
-        /// <summary>
-        /// Label attribute.
-        /// </summary>
-        /// <inheritdoc cref="UoeDatabaseTable.LabelAttribute"/>
+        /// <inheritdoc />
         public string LabelAttribute { get; set; }
 
-        /// <summary>
-        /// Column label.
-        /// </summary>
+        /// <inheritdoc />
         public string ColumnLabel { get; set; }
 
-        /// <summary>
-        /// ColumnLabel attribute.
-        /// </summary>
-        /// <inheritdoc cref="UoeDatabaseTable.LabelAttribute"/>
+        /// <inheritdoc />
         public string ColumnLabelAttribute { get; set; }
 
-        /// <summary>
-        /// Description.
-        /// </summary>
+        /// <inheritdoc />
         public string Description { get; set; }
 
-        /// <summary>
-        /// The help.
-        /// </summary>
+        /// <inheritdoc />
         public string Help { get; set; }
 
-        /// <summary>
-        /// Help attribute.
-        /// </summary>
-        /// <inheritdoc cref="UoeDatabaseTable.LabelAttribute"/>
+        /// <inheritdoc />
         public string HelpAttribute { get; set; }
 
-        /// <summary>
-        /// The field triggers.
-        /// </summary>
-        public virtual IList<UoeDatabaseTrigger> Triggers { get; set; }
+        /// <inheritdoc />
+        public int Decimals { get; set; }
+
+        /// <inheritdoc />
+        public string ClobCharset { get; set; }
+
+        /// <inheritdoc />
+        public string ClobCollation { get; set; }
+
+        /// <inheritdoc />
+        public int ClobType { get; set; }
+
+        /// <inheritdoc />
+        public string LobSize { get; set; }
+
+        /// <inheritdoc />
+        public int LobBytes { get; set; }
+
+        /// <inheritdoc />
+        public string LobArea { get; set; }
+
+        /// <inheritdoc />
+        public virtual IList<IUoeDatabaseTrigger> Triggers { get; set; }
     }
 }

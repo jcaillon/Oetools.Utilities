@@ -20,50 +20,38 @@
 
 using System;
 using System.Collections.Generic;
+using Oetools.Utilities.Openedge.Database.Interfaces;
 
 namespace Oetools.Utilities.Openedge.Database {
 
-    /// <summary>
-    /// Represents an openedge database.
-    /// </summary>
-    public class UoeDatabase {
+    /// <inheritdoc />
+    public class UoeDatabase : IUoeDatabase {
 
-        /// <summary>
-        /// The datetime at which the database info was extracted.
-        /// </summary>
+        /// <inheritdoc />
         public DateTime ExtractionTime { get; set; }
 
-        /// <summary>
-        /// The logical name of the database at the moment it was extracted.
-        /// </summary>
+        /// <inheritdoc />
         public string LogicalName { get; set; }
 
-        /// <summary>
-        /// The physical name of the database at the moment if was extracted.
-        /// </summary>
+        /// <inheritdoc />
         public string PhysicalName { get; set; }
 
-        /// <summary>
-        /// The version of the database (format major.minor).
-        /// </summary>
-        /// <remarks>
-        /// _DbStatus._DbStatus-DbVers._DbStatus._DbStatus-DbVersMinor
-        /// </remarks>
+        /// <inheritdoc />
         public Version Version { get; set; }
 
-        /// <summary>
-        /// The database codepage.
-        /// </summary>
-        public string CodePage { get; set; }
+        /// <inheritdoc />
+        public DatabaseBlockSize BlockSize { get; set; }
 
-        /// <summary>
-        /// The database sequences.
-        /// </summary>
-        public virtual IList<UoeDatabaseSequence> Sequences { get; set; }
+        /// <inheritdoc />
+        public string Charset { get; set; }
 
-        /// <summary>
-        /// The database tables.
-        /// </summary>
-        public virtual IList<UoeDatabaseTable> Tables { get; set; }
+        /// <inheritdoc />
+        public string Collation { get; set; }
+
+        /// <inheritdoc />
+        public virtual IList<IUoeDatabaseSequence> Sequences { get; set; }
+
+        /// <inheritdoc />
+        public virtual IList<IUoeDatabaseTable> Tables { get; set; }
     }
 }

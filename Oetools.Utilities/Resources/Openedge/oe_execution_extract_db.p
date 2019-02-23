@@ -30,7 +30,7 @@ PROCEDURE program_to_run PRIVATE:
 
     DEFINE VARIABLE li_db AS INTEGER NO-UNDO.
 
-    &IF {&DatabaseExtractType} = "all" &THEN
+    &IF {&DatabaseExtractType} = "external_program" &THEN
     
         REPEAT li_db = 1 TO NUM-DBS:        
             CREATE ALIAS "ALIAS4DB" FOR DATABASE VALUE(LDBNAME(li_db)) NO-ERROR.

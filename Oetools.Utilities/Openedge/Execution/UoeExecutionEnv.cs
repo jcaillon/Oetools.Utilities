@@ -124,7 +124,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         /// <inheritdoc cref="AUoeExecutionEnv.TempDirectory"/>
         public override string TempDirectory {
-            get => _tempDirectory ?? Utils.CreateTempDirectory();
+            get => _tempDirectory ?? (_tempDirectory = Utils.CreateTempDirectory(Utils.GetRandomName()));
             set {
                 _tempIniFilePath = null;
                 _tempDirectory = value;

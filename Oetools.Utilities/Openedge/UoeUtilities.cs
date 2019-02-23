@@ -26,6 +26,7 @@ using System.Text.RegularExpressions;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Lib.ParameterStringParser;
+using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Exceptions;
 using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
@@ -372,6 +373,36 @@ namespace Oetools.Utilities.Openedge {
         public static Encoding GetProcessIoCodePageFromDlc(string dlcPath) {
             GetEncodingFromOpenedgeCodePage(GetProcessIoCodePageFromArgs(GetOpenedgeDefaultStartupArgs(dlcPath)), out Encoding foundEncoding);
             return foundEncoding;
+        }
+
+        /// <summary>
+        /// Returns a real database version from the internal version code.
+        /// </summary>
+        /// <param name="version"></param>
+        /// <param name="minorVersion"></param>
+        /// <param name="blockSize"></param>
+        /// <returns></returns>
+        public static Version GetDatabaseVersionFromInternalVersion(int version, int minorVersion, out DatabaseBlockSize blockSize) {
+            byte bs = 0;
+            while (version - 1024 > 0) {
+                bs++;
+                version -= 1024;
+            }
+            blockSize = (DatabaseBlockSize) bs;
+            switch (version) {
+                // https://knowledgebase.progress.com/articles/Article/P22074
+                case 78:
+                    return new Version(7, minorVersion);
+                case 83:
+                    return new Version(8, minorVersion);
+                case 91:
+                    return new Version(9, minorVersion);
+                case 150:
+                    return new Version(10, minorVersion);
+                case 173:
+                    return new Version(11, minorVersion);
+            }
+            return new Version(0, minorVersion);
         }
     }
 }

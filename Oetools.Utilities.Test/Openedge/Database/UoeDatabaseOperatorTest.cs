@@ -340,7 +340,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                 Assert.AreEqual(DatabaseBusyMode.MultiUser, ope.GetBusyMode(tgtDb));
 
             } finally {
-                ope.Stop(tgtDb);
+                ope.Kill(tgtDb);
             }
 
             Assert.AreEqual(DatabaseBusyMode.NotBusy, ope.GetBusyMode(tgtDb));
@@ -455,7 +455,7 @@ d ""schema Area"" .
                 Assert.IsFalse(ope.GetDatabaseConnection(db).SingleUser);
                 Assert.IsTrue(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).Service));
             } finally {
-                ope.Stop(db);
+                ope.Kill(db);
             }
 
             try {
@@ -465,7 +465,7 @@ d ""schema Area"" .
                 Assert.IsFalse(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).Service));
                 Assert.IsFalse(string.IsNullOrEmpty(ope.GetDatabaseConnection(db).HostName));
             } finally {
-                ope.Stop(db);
+                ope.Kill(db);
             }
         }
 
@@ -498,7 +498,7 @@ d ""schema Area"" .
                 Assert.IsFalse(cs.SingleUser);
                 Assert.IsTrue(string.IsNullOrEmpty(cs.Service));
             } finally {
-                ope.Stop(db);
+                ope.Kill(db);
             }
         }
 

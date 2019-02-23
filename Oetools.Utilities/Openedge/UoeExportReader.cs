@@ -41,6 +41,11 @@ namespace Oetools.Utilities.Openedge {
         private int _fieldStartPosition;
         private ReadType _type = ReadType.EndOfStream;
 
+        /// <summary>
+        /// Set to true if a record with value "?" or ? should return null.
+        /// </summary>
+        public bool QuestionMarkReturnsNull = false;
+
         public UoeExportReader(string inputString) {
             _stream = new OeStringStream(inputString);
         }
@@ -167,9 +172,13 @@ namespace Oetools.Utilities.Openedge {
             if (stripQuotes && endsWithQuote) {
                 _stream.Position++;
             }
-            // replace "" by " if needed
-            var quotePos = fieldValue.IndexOf('"', stripQuotes ? 0 : 1);
-            return quotePos >= 0 && quotePos < fieldValue.Length - (stripQuotes ? 1 : 2) ? fieldValue.Replace("\"\"", "\"") : fieldValue;
+            if (QuestionMarkReturnsNull) {
+                if (fieldValue.Length == 1 && fieldValue[0] == '?' || fieldValue.Length == 3 && fieldValue.Equals("\"?\"", StringComparison.Ordinal)) {
+                    return null;
+                }
+            }
+            // replace "" by "
+            return fieldValue.Replace("\"\"", "\"");
         }
 
 

@@ -50,7 +50,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             // stop dummy database
             if (TestHelper.GetDlcPath(out string dlcPath)) {
                 if (File.Exists(Path.Combine(TestClassFolder, "dummy.db"))) {
-                    new UoeDatabaseOperator(dlcPath).Stop(DummyDatabaseLocation);
+                    new UoeDatabaseOperator(dlcPath).Kill(DummyDatabaseLocation);
                 }
             }
             if (Directory.Exists(TestClassFolder)) {

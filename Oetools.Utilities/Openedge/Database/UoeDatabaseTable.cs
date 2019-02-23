@@ -19,102 +19,65 @@
 #endregion
 
 using System.Collections.Generic;
+using Oetools.Utilities.Openedge.Database.Interfaces;
 
 namespace Oetools.Utilities.Openedge.Database {
 
-    /// <summary>
-    /// Represents an openedge table.
-    /// </summary>
-    public class UoeDatabaseTable {
+    /// <inheritdoc />
+    public class UoeDatabaseTable : IUoeDatabaseTable {
 
-        /// <summary>
-        /// Table name.
-        /// </summary>
+        /// <inheritdoc />
         public string Name { get; set; }
 
-        /// <summary>
-        /// Dump name.
-        /// </summary>
+        /// <inheritdoc />
         public string DumpName { get; set; }
 
-        /// <summary>
-        /// Crc 16 value.
-        /// </summary>
+        /// <inheritdoc />
         public ushort Crc { get; set; }
 
-        /// <summary>
-        /// Label.
-        /// </summary>
+        /// <inheritdoc />
         public string Label { get; set; }
 
-        /// <summary>
-        /// Label string atttribute.
-        /// </summary>
-        /// <remarks>
-        /// L: left justify (default)
-        /// C: center
-        /// R: right
-        /// T: remove trailing spaces
-        /// U: do not translate the string
-        /// ###: number from 1 to 999 mas amount of space
-        /// </remarks>
+        /// <inheritdoc />
         public string LabelAttribute { get; set; }
 
-        /// <summary>
-        /// Description.
-        /// </summary>
+        /// <inheritdoc />
         public string Description { get; set; }
 
-        /// <summary>
-        /// Is the table hidden?
-        /// </summary>
+        /// <inheritdoc />
         public bool Hidden { get; set; }
 
-        /// <summary>
-        /// Is the table frozen?
-        /// </summary>
-        /// <remarks>let it go... let it goooOOOOo</remarks>
+        /// <inheritdoc />
         public bool Frozen { get; set; }
 
-        /// <summary>
-        /// The database area in which this table is stored.
-        /// </summary>
+        /// <inheritdoc />
         public string Area { get; set; }
 
-        /// <summary>
-        /// Table type.
-        /// </summary>
+        /// <inheritdoc />
         public UoeDatabaseTableType Type { get; set; }
 
-        /// <summary>
-        /// Validation expression.
-        /// </summary>
+        /// <inheritdoc />
         public string ValidationExpression { get; set; }
 
-        /// <summary>
-        /// Validation message.
-        /// </summary>
+        /// <inheritdoc />
         public string ValidationMessage { get; set; }
 
-        /// <summary>
-        /// Validation message attribute.
-        /// </summary>
-        /// <inheritdoc cref="LabelAttribute"/>
+        /// <inheritdoc />
         public string ValidationMessageAttribute { get; set; }
 
-        /// <summary>
-        /// The table fields.
-        /// </summary>
-        public virtual IList<UoeDatabaseField> Fields { get; set; }
+        /// <inheritdoc />
+        public string Replication { get; set; }
 
-        /// <summary>
-        /// The table triggers.
-        /// </summary>
-        public virtual IList<UoeDatabaseTrigger> Triggers { get; set; }
+        /// <inheritdoc />
+        public string Foreign { get; set; }
 
-        /// <summary>
-        /// The table triggers.
-        /// </summary>
-        public virtual IList<UoeDatabaseIndex> Indexes { get; set; }
+        /// <inheritdoc />
+        public virtual IList<IUoeDatabaseField> Fields { get; set; }
+
+        /// <inheritdoc />
+        public virtual IList<IUoeDatabaseTrigger> Triggers { get; set; }
+
+        /// <inheritdoc />
+        public virtual IList<IUoeDatabaseIndex> Indexes { get; set; }
     }
 }

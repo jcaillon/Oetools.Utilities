@@ -19,73 +19,39 @@
 #endregion
 
 using System.Collections.Generic;
+using Oetools.Utilities.Openedge.Database.Interfaces;
 
 namespace Oetools.Utilities.Openedge.Database {
 
-    /// <summary>
-    /// An openedge database index.
-    /// </summary>
-    public class UoeDatabaseIndex {
+    /// <inheritdoc />
+    public class UoeDatabaseIndex : IUoeDatabaseIndex {
 
-        /// <summary>
-        /// Name.
-        /// </summary>
+        /// <inheritdoc />
         public string Name { get; set; }
 
-        /// <summary>
-        /// Is the index active?
-        /// </summary>
+        /// <inheritdoc />
         public bool Active { get; set; }
 
-        /// <summary>
-        /// Is it a primary index?
-        /// </summary>
+        /// <inheritdoc />
         public bool Primary { get; set; }
 
-        /// <summary>
-        /// Is it a unique index?
-        /// </summary>
+        /// <inheritdoc />
         public bool Unique { get; set; }
 
-        /// <summary>
-        /// Is it a word index? (otherwise, binary).
-        /// </summary>
+        /// <inheritdoc />
         public bool Word { get; set; }
 
-        /// <summary>
-        /// The index Crc.
-        /// </summary>
+        /// <inheritdoc />
         public ushort Crc { get; set; }
 
-        /// <summary>
-        /// The database area in which this index is stored.
-        /// </summary>
+        /// <inheritdoc />
         public string Area { get; set; }
 
-        /// <summary>
-        /// Description.
-        /// </summary>
+        /// <inheritdoc />
         public string Description { get; set; }
 
-        /// <summary>
-        /// A list of fields which are part of this index.
-        /// </summary>
-        public virtual IList<UoeDatabaseIndexField> Fields { get; set; }
+        /// <inheritdoc />
+        public virtual IList<IUoeDatabaseIndexField> Fields { get; set; }
 
-        /// <summary>
-        /// A field in an index.
-        /// </summary>
-        public class UoeDatabaseIndexField {
-
-            /// <summary>
-            /// The associated field.
-            /// </summary>
-            public UoeDatabaseField Field { get; set; }
-
-            /// <summary>
-            /// Sort order, true if ascending.
-            /// </summary>
-            public bool Ascending { get; set; }
-        }
     }
 }

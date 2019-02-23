@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2019 - Julien Caillon (julien.caillon@gmail.com)
-// This file (UoeTrigger.cs) is part of Oetools.Utilities.
+// This file (IUoeDatabaseIndexField.cs) is part of Oetools.Utilities.
 //
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,23 +18,25 @@
 // ========================================================================
 #endregion
 
-using Oetools.Utilities.Openedge.Database.Interfaces;
+namespace Oetools.Utilities.Openedge.Database.Interfaces {
 
-namespace Oetools.Utilities.Openedge.Database {
+    /// <summary>
+    /// A field in an index.
+    /// </summary>
+    public interface IUoeDatabaseIndexField {
+        /// <summary>
+        /// The associated field.
+        /// </summary>
+        IUoeDatabaseField Field { get; set; }
 
-    /// <inheritdoc />
-    public class UoeDatabaseTrigger : IUoeDatabaseTrigger {
+        /// <summary>
+        /// Sort order, true if ascending.
+        /// </summary>
+        bool Ascending { get; set; }
 
-        /// <inheritdoc />
-        public UoeDatabaseTriggerEvent Event { get; set; }
-
-        /// <inheritdoc />
-        public string Procedure { get; set; }
-
-        /// <inheritdoc />
-        public bool Overridable { get; set; }
-
-        /// <inheritdoc />
-        public ushort Crc { get; set; }
+        /// <summary>
+        /// Abbreviate.
+        /// </summary>
+        bool Abbreviate { get; set; }
     }
 }

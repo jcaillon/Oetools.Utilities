@@ -1,7 +1,7 @@
 #region header
 // ========================================================================
 // Copyright (c) 2019 - Julien Caillon (julien.caillon@gmail.com)
-// This file (UoeTrigger.cs) is part of Oetools.Utilities.
+// This file (IUoeDatabaseTrigger.cs) is part of Oetools.Utilities.
 //
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,23 +18,30 @@
 // ========================================================================
 #endregion
 
-using Oetools.Utilities.Openedge.Database.Interfaces;
+namespace Oetools.Utilities.Openedge.Database.Interfaces {
 
-namespace Oetools.Utilities.Openedge.Database {
+    /// <summary>
+    /// Represents a database trigger.
+    /// </summary>
+    public interface IUoeDatabaseTrigger {
+        /// <summary>
+        /// Type of event.
+        /// </summary>
+        UoeDatabaseTriggerEvent Event { get; set; }
 
-    /// <inheritdoc />
-    public class UoeDatabaseTrigger : IUoeDatabaseTrigger {
+        /// <summary>
+        /// The procedure linked ot this trigger.
+        /// </summary>
+        string Procedure { get; set; }
 
-        /// <inheritdoc />
-        public UoeDatabaseTriggerEvent Event { get; set; }
+        /// <summary>
+        /// Is the trigger overridable?
+        /// </summary>
+        bool Overridable { get; set; }
 
-        /// <inheritdoc />
-        public string Procedure { get; set; }
-
-        /// <inheritdoc />
-        public bool Overridable { get; set; }
-
-        /// <inheritdoc />
-        public ushort Crc { get; set; }
+        /// <summary>
+        /// Trigger procedure crc.
+        /// </summary>
+        ushort Crc { get; set; }
     }
 }

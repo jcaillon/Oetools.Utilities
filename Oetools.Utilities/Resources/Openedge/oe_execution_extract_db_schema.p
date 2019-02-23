@@ -10,12 +10,12 @@ DEFINE INPUT PARAMETER ipc_candoTableType AS CHARACTER NO-UNDO.
 DEFINE INPUT PARAMETER ipc_candoFileName AS CHARACTER NO-UNDO.
 
 &SCOPED-DEFINE sep "~t"
-&SCOPED-DEFINE format_database "#D~t<YYYYMMDD>~t<HH:MM:SS>~t<logical_name>~t<physical_name>~t<proversion>~t<version.minor_version>~t<charset>~t<collation>"
+&SCOPED-DEFINE format_database "#D~t<YYYYMMDD HH:MM:SS>~t<logical_name>~t<physical_name>~t<version>~t<minor_version>~t<charset>~t<collation>"
 &SCOPED-DEFINE format_sequence "#S~t<name>~t<cycle?>~t<increment>~t<initial>~t<min>~t<max>"
 &SCOPED-DEFINE format_table    "#T~t<name>~t<dump_name>~t<crc>~t<label>~t<sa>~t<desc>~t<hidden?>~t<frozen?>~t<area>~t<type>~t<valid_expr>~t<valid_mess>~t<sa>~t<replication>~t<foreign>"
+&SCOPED-DEFINE format_field    "#F~t<name>~t<data_type>~t<format>~t<sa>~t<order>~t<pos>~t<mandatory?>~t<case_sensitive?>~t<extent>~t<initial>~t<sa>~t<width>~t<label>~t<sa>~t<column_label>~t<sa>~t<desc>~t<help>~t<sa>~t<decimals>~t<clob_charset>~t<clob_collation>~t<clob_type>~t<lob_size>~t<lob_bytes>~t<lob_area>"
 &SCOPED-DEFINE format_trigger  "#X~t<event>~t<field_name>~t<proc_name>~t<overridable?>~t<crc>"
 &SCOPED-DEFINE format_index    "#I~t<name>~t<active?>~t<primary?>~t<unique?>~t<word?>~t<crc>~t<area>~t<fields>~t<desc>"
-&SCOPED-DEFINE format_field    "#F~t<name>~t<data_type>~t<format>~t<sa>~t<order>~t<pos>~t<mandatory?>~t<case_sensitive?>~t<extent>~t<in_index?>~t<in_pk?>~t<initial>~t<sa>~t<width>~t<label>~t<sa>~t<column_label>~t<sa>~t<desc>~t<help>~t<sa>~t<decimals>~t<charset>~t<collation>~t<size>~t<bytes>"
 
 DEFINE VARIABLE gc_fieldList AS CHARACTER NO-UNDO.
 DEFINE VARIABLE gc_fieldListWithSort AS CHARACTER NO-UNDO.
@@ -34,12 +34,11 @@ PUT STREAM str_out UNFORMATTED {&format_database} SKIP.
 FIND FIRST ALIAS4DB._DbStatus NO-LOCK.
 FIND FIRST ALIAS4DB._Db NO-LOCK.
 PUT STREAM str_out UNFORMATTED "D" + {&sep} +
-    STRING(YEAR(TODAY), "9999") + STRING(MONTH(TODAY), "99") + STRING(DAY(TODAY), "99") + {&sep} +
-    STRING(TIME, "HH:MM:SS") + {&sep} +
+    STRING(YEAR(TODAY), "9999") + STRING(MONTH(TODAY), "99") + STRING(DAY(TODAY), "99") + "-" + STRING(TIME, "HH:MM:SS") + {&sep} +
     ipc_logicalName + {&sep} +
     QUOTER(ipc_physicalName) + {&sep} +
-    PROVERSION + {&sep} +
-    STRING(ALIAS4DB._DbStatus._DbStatus-DbVers) + "." + STRING(ALIAS4DB._DbStatus._DbStatus-DbVersMinor) + {&sep} +
+    STRING(ALIAS4DB._DbStatus._DbStatus-DbVers) + {&sep} +
+    STRING(ALIAS4DB._DbStatus._DbStatus-DbVersMinor) + {&sep} +
     QUOTER(ALIAS4DB._Db._Db-xl-name) + {&sep} +
     QUOTER(ALIAS4DB._Db._Db-coll-name)
     SKIP.
@@ -86,6 +85,48 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
         QUOTER(ALIAS4DB._File._For-Name)
         SKIP.
     PUT STREAM str_out UNFORMATTED "#" SKIP.
+       
+    /* Write fields information */
+    PUT STREAM str_out UNFORMATTED {&format_field} SKIP.
+    FOR EACH ALIAS4DB._Field NO-LOCK OF ALIAS4DB._File BY _Order:
+        FIND gb_storageObject NO-LOCK WHERE 
+            gb_storageObject._Object-Number = ALIAS4DB._Field._Fld-stlen AND
+            gb_storageObject._Object-type = 3 NO-ERROR.
+        IF AVAILABLE(gb_storageObject) THEN
+            FIND gb_area NO-LOCK WHERE gb_area._Area-Number = gb_storageObject._Area-number NO-ERROR.
+        PUT STREAM str_out UNFORMATTED
+            "F" + {&sep} +
+            ALIAS4DB._Field._Field-Name + {&sep} +
+            ALIAS4DB._Field._Data-Type + {&sep} +
+            QUOTER(ALIAS4DB._Field._Format) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Format-SA) + {&sep} +
+            STRING(ALIAS4DB._Field._Order) + {&sep} +
+            STRING(ALIAS4DB._Field._field-rpos) + {&sep} +
+            STRING(ALIAS4DB._Field._Mandatory, "1/0") + {&sep} +
+            STRING(ALIAS4DB._Field._Fld-case, "1/0") + {&sep} +
+            STRING(ALIAS4DB._Field._Extent) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Initial) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Initial-SA) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Width) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Label) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Label-SA) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Col-label) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Col-label-SA) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Desc) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Help) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Help-SA) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Decimals) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Charset) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Collation) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Attributes1) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Fld-misc2[1]) + {&sep} +
+            QUOTER(ALIAS4DB._Field._Fld-Misc3[1]) + {&sep} +
+            (IF AVAILABLE(gb_area) THEN gb_area._Area-name ELSE QUOTER("?"))
+            SKIP.
+        RELEASE gb_storageObject NO-ERROR.
+        RELEASE gb_area NO-ERROR.
+    END.
+    PUT STREAM str_out UNFORMATTED "#" SKIP.
 
     /* Write triggers information */
     PUT STREAM str_out UNFORMATTED {&format_trigger} SKIP.
@@ -130,7 +171,7 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
         FOR EACH ALIAS4DB._Index-Field NO-LOCK OF ALIAS4DB._Index,
             FIRST ALIAS4DB._Field NO-LOCK OF ALIAS4DB._Index-Field:
             ASSIGN gc_fieldList = gc_fieldList + ALIAS4DB._Field._Field-Name + ",".
-            ASSIGN gc_fieldListWithSort = gc_fieldListWithSort + ALIAS4DB._Field._Field-Name + STRING(ALIAS4DB._Index-Field._Ascending, "+/-") + STRING(ALIAS4DB._Index-Field._Abbreviate, "1/0") + ",".
+            ASSIGN gc_fieldListWithSort = gc_fieldListWithSort + STRING(ALIAS4DB._Index-Field._Ascending, "+/-") + STRING(ALIAS4DB._Index-Field._Abbreviate, "1/0") + ALIAS4DB._Field._Field-Name + ",".
         END.
 
         IF RECID(ALIAS4DB._Index) = ALIAS4DB._File._Prime-Index THEN
@@ -152,46 +193,6 @@ FOR EACH ALIAS4DB._File NO-LOCK WHERE CAN-DO(ipc_candoTableType, ALIAS4DB._File.
     END.
     PUT STREAM str_out UNFORMATTED "#" SKIP.
 
-    ASSIGN
-        gc_champIndex = RIGHT-TRIM(gc_champIndex, ",")
-        gc_champPK = RIGHT-TRIM(gc_champPK, ",")
-        .
-
-    /* Write fields information */
-    PUT STREAM str_out UNFORMATTED {&format_field} SKIP.
-    FOR EACH ALIAS4DB._Field NO-LOCK OF ALIAS4DB._File BY _Order:
-        PUT STREAM str_out UNFORMATTED
-            "F" + {&sep} +
-            ALIAS4DB._Field._Field-Name + {&sep} +
-            ALIAS4DB._Field._Data-Type + {&sep} +
-            QUOTER(ALIAS4DB._Field._Format) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Format-SA) + {&sep} +
-            STRING(ALIAS4DB._Field._Order) + {&sep} +
-            STRING(ALIAS4DB._Field._field-rpos) + {&sep} +
-            STRING(ALIAS4DB._Field._Mandatory, "1/0") + {&sep} +
-            STRING(ALIAS4DB._Field._Fld-case, "1/0") + {&sep} +
-            STRING(ALIAS4DB._Field._Extent) + {&sep} +
-            STRING(LOOKUP(ALIAS4DB._Field._Field-Name, gc_champIndex) > 0, "1/0") + {&sep} +
-            STRING(LOOKUP(ALIAS4DB._Field._Field-Name, gc_champPK) > 0, "1/0") + {&sep} +
-            QUOTER(ALIAS4DB._Field._Initial) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Initial-SA) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Width) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Label) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Label-SA) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Col-label) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Col-label-SA) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Desc) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Help) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Help-SA) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Decimals) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Charset) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Collation) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Fld-misc2[1]) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Fld-Misc3[1]) + {&sep} +
-            QUOTER(ALIAS4DB._Field._Help-SA)
-            SKIP.
-    END.
-    PUT STREAM str_out UNFORMATTED "#" SKIP.
 END.
 
 PUT STREAM str_out UNFORMATTED "#" SKIP.

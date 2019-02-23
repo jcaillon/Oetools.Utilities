@@ -32,13 +32,41 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// </summary>
     public abstract class UoeExecutionDbExtract : UoeExecution {
 
+        /// <inheritdoc />
         public override bool NeedDatabaseConnection => true;
 
         protected override bool ForceCharacterModeUse => true;
 
+        /// <summary>
+        /// Only the tables with a type that CAN-DO this value will be fetched.
+        /// Below is the equivalent progress code that will be used :
+        /// <c>CAN-DO(this_value, DB._FILE._Tbl-Type)</c>
+        /// </summary>
+        /// <example>
+        /// For instance, you can use the following value to fetch ALL the tables :*
+        /// Or just the user and system tables :T,S
+        /// Here is the list of all the possible values :
+        /// - T : User Data Table
+        /// - S : Virtual System Table
+        /// - V : SQL View
+        /// </example>
         public virtual string DatabaseExtractCandoTblType { get; set; } = "T";
 
+        /// <summary>
+        /// Only the tables with a name that CAN-DO this value will be fetched.
+        /// Below is the equivalent progress code that will be used :
+        /// <c>CAN-DO(this_value, DB._FILE._FILE-NAME)</c>
+        /// </summary>
+        /// <example>
+        /// Here is an example to fetch all user tables but only 4 particular system tables:_Sequence,_FILE,_INDEX,_FIELD,!_*,*
+        /// You have to set T,S in the table type CAN-DO for this example...
+        /// </example>
         public virtual string DatabaseExtractCandoTblName { get; set; } = "*";
+
+        /// <summary>
+        /// Path to the extracted path.
+        /// </summary>
+        public string DatabaseExtractionFilePath => _databaseExtractFilePath;
 
         protected virtual string DatabaseExtractType => null;
 

@@ -25,6 +25,7 @@ using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge;
+using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 
@@ -208,6 +209,18 @@ namespace Oetools.Utilities.Test.Openedge {
             File.WriteAllText(Path.Combine(TestFolder, "test.fileidlog"), fileContent, Encoding.Default);
             var l = UoeUtilities.GetReferencedFilesFromFileIdLog(Path.Combine(TestFolder, "test.fileidlog"), Encoding.Default, "");
             Assert.AreEqual(expected, string.Join(",", l));
+        }
+
+        [TestMethod]
+        [DataRow(8270, 7, 8)]
+        [DataRow(4179, 8, 4)]
+        [DataRow(2139, 9, 2)]
+        [DataRow(1174, 10, 1)]
+        [DataRow(8365, 11, 8)]
+        public void GetDatabaseVersionFromInternalVersion(int internalCode, int expectedVersion, int blockSize) {
+            var ver = UoeUtilities.GetDatabaseVersionFromInternalVersion(internalCode, 0, out DatabaseBlockSize bs);
+            Assert.AreEqual(expectedVersion, ver.Major);
+            Assert.AreEqual(blockSize, (byte) bs);
         }
 
     }
