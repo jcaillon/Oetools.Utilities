@@ -561,7 +561,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
                     Log?.Debug("The database analysis output file is not provided, generating it.");
 
-                    File.WriteAllText(dbAnalysisFilePath, GenerateAnalysisReport(databaseConnection.DatabaseLocation, databaseAccessStartupParameters), Encoding);
+                    File.WriteAllText(dbAnalysisFilePath, GenerateAnalysisReport(databaseConnection.DatabaseLocation, true, databaseAccessStartupParameters), Encoding);
                 }
 
                 File.WriteAllText(advisorFilePath, OpenedgeResources.GetOpenedgeAsStringFromZippedResources("advisor.p"), Encoding);
