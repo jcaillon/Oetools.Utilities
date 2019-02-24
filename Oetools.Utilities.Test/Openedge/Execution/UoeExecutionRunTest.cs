@@ -51,7 +51,7 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 return;
             }
             using (var exec = new UoeExecutionRun(env, "")) {
-                Assert.ThrowsException<UoeExecutionParametersException>(() => exec.Start(), "nothing to run");
+                Assert.ThrowsException<UoeExecutionParametersException>(() => exec.ExecuteNoWait(), "nothing to run");
             }
             env.Dispose();
         }
@@ -69,8 +69,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.RunSilently = true;
                 exec.WorkingDirectory = Path.Combine(TestFolder, "log");
                 exec.FullClientLogPath = "mylog.log";
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "no exceptions");
                 Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "log", "mylog.log")));
             }
@@ -78,8 +78,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             using (var exec = new UoeExecutionRun(env, Path.Combine(TestFolder, "test_run_full_client_log.p"))) {
                 exec.RunSilently = true;
                 exec.FullClientLogPath = Path.Combine(TestFolder, "nice.log");
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "no exceptions");
                 Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "nice.log")));
             }
@@ -98,8 +98,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.RunSilently = true;
                 exec.LogEntryTypes = "4GLMessages";
                 exec.FullClientLogPath = Path.Combine(TestFolder, "error.log");
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.IsTrue(exec.ExecutionHandledExceptions, "has exception");
                 Assert.AreEqual("4GLMessages", ((UoeExecutionOpenedgeException)exec.HandledExceptions[0]).ErrorMessage);
                 Assert.IsTrue(File.Exists(Path.Combine(TestFolder, "error.log")));

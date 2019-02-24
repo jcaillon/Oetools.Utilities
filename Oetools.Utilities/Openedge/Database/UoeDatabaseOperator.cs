@@ -65,7 +65,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// Path to the openedge installation folder
         /// </summary>
-        protected string DlcPath { get; }
+        protected string DlcDirectoryPath { get; }
 
         private ProcessIo _lastUsedProcess;
 
@@ -75,21 +75,21 @@ namespace Oetools.Utilities.Openedge.Database {
 
         private string ProUtilName => Utils.IsRuntimeWindowsPlatform ? "_proutil.exe" : "_proutil";
 
-        private string ProservePath => Path.Combine(DlcPath, "bin", Utils.IsRuntimeWindowsPlatform ? "_mprosrv.exe" : "_mprosrv");
+        private string ProservePath => Path.Combine(DlcDirectoryPath, "bin", Utils.IsRuntimeWindowsPlatform ? "_mprosrv.exe" : "_mprosrv");
 
         private string ProshutName => Utils.IsRuntimeWindowsPlatform ? "_mprshut.exe" : "_mprshut";
 
         /// <summary>
         /// New database utility.
         /// </summary>
-        /// <param name="dlcPath"></param>
+        /// <param name="dlcDirectoryPath"></param>
         /// <param name="encoding"></param>
         /// <exception cref="ArgumentException"></exception>
-        public UoeDatabaseOperator(string dlcPath, Encoding encoding = null) {
-            Encoding = encoding ?? UoeUtilities.GetProcessIoCodePageFromDlc(dlcPath);
-            DlcPath = dlcPath;
-            if (string.IsNullOrEmpty(dlcPath) || !Directory.Exists(dlcPath)) {
-                throw new ArgumentException($"Invalid dlc path {dlcPath.PrettyQuote()}.");
+        public UoeDatabaseOperator(string dlcDirectoryPath, Encoding encoding = null) {
+            Encoding = encoding ?? UoeUtilities.GetProcessIoCodePageFromDlc(dlcDirectoryPath);
+            DlcDirectoryPath = dlcDirectoryPath;
+            if (string.IsNullOrEmpty(dlcDirectoryPath) || !Directory.Exists(dlcDirectoryPath)) {
+                throw new ArgumentException($"Invalid dlc path {dlcDirectoryPath.PrettyQuote()}.");
             }
         }
 
@@ -137,9 +137,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             // create necessary directories
-            if (!Directory.Exists(targetDb.DirectoryPath)) {
-                Directory.CreateDirectory(targetDb.DirectoryPath);
-            }
+            Utils.CreateDirectoryIfNeeded(targetDb.DirectoryPath);
             CreateExtentsDirectories(targetDb, structureFilePath);
 
             var dbUtil = GetExecutable(DbUtilName);
@@ -191,12 +189,12 @@ namespace Oetools.Utilities.Openedge.Database {
 
             string emptyDirectoryPath;
             if (!string.IsNullOrEmpty(codePage)) {
-                emptyDirectoryPath = Path.Combine(DlcPath, "prolang", codePage);
+                emptyDirectoryPath = Path.Combine(DlcDirectoryPath, "prolang", codePage);
                 if (!Directory.Exists(emptyDirectoryPath)) {
                     throw new UoeDatabaseException($"Invalid codepage, the folder doesn't exist: {emptyDirectoryPath.PrettyQuote()}.");
                 }
             } else {
-                emptyDirectoryPath = DlcPath;
+                emptyDirectoryPath = DlcDirectoryPath;
             }
 
             var sourceDb = new UoeDatabaseLocation(Path.Combine(emptyDirectoryPath, $"empty{(int) blockSize}"));
@@ -219,9 +217,7 @@ namespace Oetools.Utilities.Openedge.Database {
         public void Copy(UoeDatabaseLocation targetDb, UoeDatabaseLocation sourceDb, bool newInstance = true, bool relativePath = true) {
             sourceDb.ThrowIfNotExist();
 
-            if (!Directory.Exists(targetDb.DirectoryPath)) {
-                Directory.CreateDirectory(targetDb.DirectoryPath);
-            }
+            Utils.CreateDirectoryIfNeeded(targetDb.DirectoryPath);
 
             var dbUtil = GetExecutable(DbUtilName);
             dbUtil.WorkingDirectory = targetDb.DirectoryPath;
@@ -603,10 +599,8 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             foreach (var file in ListDatabaseFiles(targetDb, false, structureFile)) {
-                var dir = Path.GetDirectoryName(file);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+                if (Utils.CreateDirectoryForFileIfNeeded(file)) {
                     Log?.Debug($"Creating directory: {file.PrettyQuote()}.");
-                    Directory.CreateDirectory(dir);
                 }
             }
         }
@@ -785,6 +779,56 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
+        /// Returns an analysis report. It is the combination of the output from proutil dbanalys, describe and iostats.
+        /// </summary>
+        /// <param name="targetDb"></param>
+        /// <param name="dbAnalysOnly"></param>
+        /// <param name="databaseAccessStartupParameters"></param>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public string GenerateAnalysisReport(UoeDatabaseLocation targetDb, bool dbAnalysOnly = false, ProcessArgs databaseAccessStartupParameters = null, ProcessArgs options = null) {
+            targetDb.ThrowIfNotExist();
+
+            var output = new StringBuilder();
+
+            Log?.Info($"Generating analysis report for the database {targetDb.FullPath.PrettyQuote()}.");
+
+            var proUtil = GetExecutable(ProUtilName);
+            var trimOutputLine = proUtil.TrimOutputLine;
+            var logStandardOutput = proUtil.LogStandardOutput;
+            proUtil.TrimOutputLine = false;
+            proUtil.LogStandardOutput = false;
+            proUtil.WorkingDirectory = targetDb.DirectoryPath;
+
+            if (!dbAnalysOnly) {
+                output.Append("=======================\nPROUTIL DBANALYS\n=======================\n\n");
+            }
+
+            var executionOk = proUtil.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "dbanalys", options, InternationalizationStartupParameters, databaseAccessStartupParameters));
+            output.Append(proUtil.BatchOutput);
+
+            if (!dbAnalysOnly) {
+                output.Append("\n\n=======================\nPROUTIL DESCRIBE\n=======================\n\n");
+                executionOk = executionOk && proUtil.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "describe", InternationalizationStartupParameters, databaseAccessStartupParameters));
+                output.Append(proUtil.BatchOutput);
+
+                output.Append("\n\n=======================\nPROUTIL IOSTATS\n=======================\n\n");
+                executionOk = executionOk && proUtil.TryExecute(new ProcessArgs().Append(targetDb.PhysicalName, "-C", "iostats", InternationalizationStartupParameters, databaseAccessStartupParameters));
+                output.Append(proUtil.BatchOutput);
+            }
+
+            proUtil.TrimOutputLine = trimOutputLine;
+            proUtil.LogStandardOutput = logStandardOutput;
+
+            if (!executionOk) {
+                throw new UoeDatabaseException($"Failed to generate the analysis report:\n{proUtil.BatchOutputString}");
+            }
+
+            return output.Replace("\r", "").ToString();
+        }
+
+        /// <summary>
         /// Rebuild the indexed of a database. By default, rebuilds all the active indexes.
         /// </summary>
         /// <param name="targetDb"></param>
@@ -831,9 +875,7 @@ namespace Oetools.Utilities.Openedge.Database {
                 throw new UoeDatabaseException("The data dump directory path can't be null.");
             }
             dumpDirectoryPath = dumpDirectoryPath.ToAbsolutePath();
-            if (!string.IsNullOrEmpty(dumpDirectoryPath) && !Directory.Exists(dumpDirectoryPath)) {
-                Directory.CreateDirectory(dumpDirectoryPath);
-            }
+            Utils.CreateDirectoryIfNeeded(dumpDirectoryPath);
 
             Log?.Info($"Dumping binary data of table {tableName} to directory {dumpDirectoryPath.PrettyQuote()} from {targetDb.FullPath.PrettyQuote()}.");
 
@@ -918,10 +960,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             targetBackupFile = targetBackupFile.ToAbsolutePath();
-            var dir = Path.GetDirectoryName(targetBackupFile);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
-                Directory.CreateDirectory(dir);
-            }
+            Utils.CreateDirectoryForFileIfNeeded(targetBackupFile);
 
             if (GetBusyMode(targetDb) == DatabaseBusyMode.NotBusy) {
                 Log?.Debug($"Backing up database {targetDb.FullPath.PrettyQuote()} in offline mode to file {targetBackupFile.PrettyQuote()}.");
@@ -1159,7 +1198,7 @@ namespace Oetools.Utilities.Openedge.Database {
 
         protected ProcessIo GetExecutable(string exeName) {
             if (!_processIos.ContainsKey(exeName)) {
-                var outputPath = Path.Combine(DlcPath, "bin", exeName);
+                var outputPath = Path.Combine(DlcDirectoryPath, "bin", exeName);
                 if (!File.Exists(outputPath)) {
                     throw new ArgumentException($"The openedge tool {exeName} does not exist in the expected path: {outputPath.PrettyQuote()}.");
                 }

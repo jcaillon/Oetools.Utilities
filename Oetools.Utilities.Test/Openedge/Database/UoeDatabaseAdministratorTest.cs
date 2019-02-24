@@ -118,6 +118,12 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
                 Assert.IsTrue(File.Exists(dfPathOut));
                 Assert.IsTrue(File.ReadAllText(dfPathOut).Contains("field1"));
+
+                var dumpOut = Path.Combine(TestFolder, "dump_custom.txt");
+                dataAdmin.DumpCustomInfoExtraction(UoeDatabaseConnection.NewSingleUserConnection(db), dumpOut);
+
+                Assert.IsTrue(File.Exists(dumpOut));
+                Assert.IsTrue(File.ReadAllText(dumpOut).Contains("field1"));
             }
         }
 
@@ -160,6 +166,25 @@ namespace Oetools.Utilities.Test.Openedge.Database {
 
         }
 
+        [TestMethod]
+        public void GenerateAdvisorReport() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            using (var ope = new UoeDatabaseAdministrator(dlcPath)) {
+                var db = GetDb("advisor");
+
+                ope.Create(db);
+                Assert.IsTrue(db.Exists());
+
+                var output = Path.Combine(TestFolder, "advisor.html");
+
+                ope.GenerateAdvisorReport(ope.GetDatabaseConnection(db), output);
+
+                Assert.IsTrue(File.Exists(output));
+            }
+        }
 
         [TestMethod]
         public void SequenceData() {

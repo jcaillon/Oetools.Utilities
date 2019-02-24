@@ -93,11 +93,13 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok14.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_stop_ok15.p"))
                 };
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.AreEqual(1, exec.HandledExceptions.Count, $"should have just 1 stop exception {string.Join(",", exec.HandledExceptions)}");
                 Assert.IsTrue(exec.HandledExceptions.Exists(e => e is UoeExecutionCompilationStoppedException), "stop exception");
             }
+
+            env.Dispose();
         }
 
         [TestMethod]
@@ -132,14 +134,16 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     new UoeFileToCompile(Path.Combine(TestFolder, "test_start_fail_proc15.p"))
                 };
                 try {
-                    exec.Start();
+                    exec.ExecuteNoWait();
                     Assert.Fail("The start throws an exception");
                 } catch (Exception e) {
                     Assert.IsNotNull(e);
                 }
-                exec.WaitForExecutionEnd();
+                exec.WaitForExit();
                 Assert.AreEqual(1, exec.HandledExceptions.Count, $"for the multi compilation, if a process fails to start we kill the others, so we should see a killed exception here {string.Join(",", exec.HandledExceptions)}");
             }
+
+            env.Dispose();
         }
 
         [TestMethod]
@@ -161,11 +165,13 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 for (int i = 1; i <= 15; i++) {
                     exec.FilesToCompile.Add(new UoeFileToCompile(Path.Combine(TestFolder, $"test_nb_proc{i}.p")));
                 }
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.AreEqual(8, exec.TotalNumberOfProcesses);
                 Assert.IsFalse(exec.ExecutionHandledExceptions, string.Join(",", exec.HandledExceptions));
             }
+
+            env.Dispose();
         }
     }
 }

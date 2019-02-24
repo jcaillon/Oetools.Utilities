@@ -26,11 +26,11 @@ using Oetools.Utilities.Openedge.Execution;
 namespace Oetools.Utilities.Test.Openedge.Execution {
 
     [TestClass]
-    public class UoeExecutionDbExtractSchemaTest {
+    public class UoeExecutionDbExtractDefinitionTest {
 
         private static string _testFolder;
 
-        protected static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeExecutionDbExtractSchemaTest)));
+        protected static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(UoeExecutionDbExtractDefinitionTest)));
 
         [ClassInitialize]
         public static void Init(TestContext context) {
@@ -50,9 +50,9 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             if (!GetEnvExecution(out UoeExecutionEnv env)) {
                 return;
             }
-            using (var exec = new UoeExecutionDbExtractSchema(env)) {
-                exec.Start();
-                exec.WaitForExecutionEnd();
+            using (var exec = new UoeExecutionDbExtractDefinition(env)) {
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
                 //Assert.AreEqual(0, exec.);
@@ -77,9 +77,9 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             }
 
             env.DatabaseConnections = new []{ UoeDatabaseConnection.NewSingleUserConnection(base1Db) };
-            using (var exec = new UoeExecutionDbExtractSchema(env)) {
-                exec.Start();
-                exec.WaitForExecutionEnd();
+            using (var exec = new UoeExecutionDbExtractDefinition(env)) {
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, exec.ExecutionHandledExceptions ? exec.HandledExceptions[0].ToString() : "ok");
                 Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
                 var db = exec.GetDatabases()[0];

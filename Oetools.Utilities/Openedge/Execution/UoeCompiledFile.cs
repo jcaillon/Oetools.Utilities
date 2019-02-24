@@ -172,7 +172,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             // read from xref (we need the table CRC from the environment)
             if (ienv is UoeExecutionEnv env && !analysisModeSimplifiedDatabaseReferences) {
                 if (File.Exists(CompilationXrefFilePath)) {
-                    foreach (var dbRef in UoeUtilities.GetDatabaseReferencesFromXrefFile(CompilationXrefFilePath, ienv.GetIoEncoding())) {
+                    foreach (var dbRef in UoeUtilities.GetDatabaseReferencesFromXrefFile(CompilationXrefFilePath, ienv.IoEncoding)) {
                         if (env.TablesCrc.ContainsKey(dbRef)) {
                             RequiredDatabaseReferences.Add(new UoeDatabaseReferenceTable {
                                 QualifiedName = dbRef,
@@ -200,7 +200,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                             });
                         }
                     }
-                }, ienv.GetIoEncoding());
+                }, ienv.IoEncoding);
             }
         }
 

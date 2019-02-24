@@ -42,6 +42,12 @@ namespace Oetools.Utilities.Lib {
         public event EventHandler<EventArgs> OnProcessExit;
 
         /// <summary>
+        /// Event called when the process received data from the output or standard stream.
+        /// <see cref="RedirectOutput"/> must be activated.
+        /// </summary>
+        public event EventHandler<ProcessOutputEventArgs> OnOutputReceived;
+
+        /// <summary>
         /// The working directory to use for this process
         /// </summary>
         public string WorkingDirectory { get; set; }
@@ -59,7 +65,15 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Cancellation token.
         /// </summary>
-        public CancellationToken? CancelToken { get; set; }
+        public CancellationToken? CancelToken {
+            get => _cancelToken;
+            set {
+                _cancelToken = value;
+                if (_cancelRegistration == null) {
+                    _cancelRegistration = _cancelToken?.Register(OnCancellation);
+                }
+            }
+        }
 
         /// <summary>
         /// A logger.
@@ -67,9 +81,20 @@ namespace Oetools.Utilities.Lib {
         public ILog Log { get; set; }
 
         /// <summary>
-        /// Use <see cref="string.Trim()"/> on each output line.
+        /// Use <see cref="string.Trim()"/> on each output line in standard and error string output.
+        /// <see cref="StandardOutputArray"/> and <see cref="ErrorOutputArray"/> still have the original value.
         /// </summary>
         public bool TrimOutputLine { get; set; }
+
+        /// <summary>
+        /// Log each line of the standard output in debug level in <see cref="Log"/>.
+        /// </summary>
+        public bool LogStandardOutput { get; set; } = true;
+
+        /// <summary>
+        /// Log each line of the standard output in debug level in <see cref="Log"/>.
+        /// </summary>
+        public bool LogErrorOutput { get; set; } = true;
 
         /// <summary>
         /// Standard output, to be called after the process exits
@@ -182,6 +207,7 @@ namespace Oetools.Utilities.Lib {
 
         private bool _exitedEventPublished;
         private CancellationTokenRegistration? _cancelRegistration;
+        private CancellationToken? _cancelToken;
 
         /// <summary>
         /// Constructor
@@ -193,12 +219,13 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Start the process synchronously, catch the exceptions
         /// </summary>
-        /// <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
+        /// <param name="arguments"></param>
         /// <param name="silent"></param>
+        /// <param name="timeoutMs"></param>
         /// <returns></returns>
-        public virtual bool TryExecute(ProcessArgs arguments = null, bool silent = true) {
+        public virtual bool TryExecute(ProcessArgs arguments = null, bool silent = true, int timeoutMs = 0) {
             try {
-                return Execute(arguments, silent) && ErrorOutputArray.Count == 0;
+                return Execute(arguments, silent, timeoutMs) && ErrorOutputArray.Count == 0;
             } catch (Exception e) {
                 ErrorOutputArray.Add(e.ToString());
                 return false;
@@ -208,14 +235,14 @@ namespace Oetools.Utilities.Lib {
         /// <summary>
         /// Start the process synchronously
         /// </summary>
-        /// <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
+        /// <param name="arguments"></param>
         /// <param name="silent"></param>
         /// <param name="timeoutMs"></param>
         /// <returns></returns>
         public virtual bool Execute(ProcessArgs arguments = null, bool silent = true, int timeoutMs = 0) {
-            ExecuteAsyncProcess(arguments, silent);
+            ExecuteNoWaitInternal(arguments, silent);
 
-            if (!WaitUntilProcessExits(timeoutMs)) {
+            if (!WaitForExitInternal(timeoutMs)) {
                 return false;
             }
 
@@ -225,16 +252,16 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Start the process asynchronously, use <see cref="OnProcessExit"/> event to know when the process is done
+        /// Start the process but does not wait for its ending.
+        /// Wait for the end with <see cref="WaitForExitInternal"/> or use the <see cref="OnProcessExit"/> event to know when the process is done.
         /// </summary>
-        /// <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
+        /// <param name="arguments"></param>
         /// <param name="silent"></param>
-        protected virtual void ExecuteAsyncProcess(ProcessArgs arguments = null, bool silent = true) {
+        protected virtual void ExecuteNoWaitInternal(ProcessArgs arguments = null, bool silent = true) {
             PrepareStart(arguments, silent);
 
             Log?.Debug($"Executing program:\n{ExecutedCommandLine}");
 
-            _cancelRegistration = CancelToken?.Register(OnCancellation);
             _process.Start();
 
             if (RedirectOutput) {
@@ -246,7 +273,9 @@ namespace Oetools.Utilities.Lib {
         }
 
         private void OnCancellation() {
-            Kill();
+            if (_process != null) {
+                Kill();
+            }
         }
 
         /// <summary>
@@ -260,11 +289,11 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
+        /// Wait for a process to end
         /// Returns true if the process has exited (can be false if timeout was reached)
         /// </summary>
         /// <param name="timeoutMs"></param>
-        /// <returns></returns>
-        protected virtual bool WaitUntilProcessExits(int timeoutMs) {
+        protected virtual bool WaitForExitInternal(int timeoutMs) {
             if (_process == null) {
                 return true;
             }
@@ -342,8 +371,9 @@ namespace Oetools.Utilities.Lib {
 
         protected virtual void OnProcessOnErrorDataReceived(object sender, DataReceivedEventArgs args) {
             if (!string.IsNullOrEmpty(args.Data)) {
+                OnOutputReceived?.Invoke(this, new ProcessOutputEventArgs(args.Data, true));
                 ErrorOutputArray.Add(args.Data);
-                if (Log != null) {
+                if (Log != null && LogErrorOutput) {
                     var line = TrimOutputLine ? args.Data?.Trim() : args.Data;
                     if (!string.IsNullOrEmpty(line)) {
                         Log.Debug(line);
@@ -354,8 +384,9 @@ namespace Oetools.Utilities.Lib {
 
         protected virtual void OnProcessOnOutputDataReceived(object sender, DataReceivedEventArgs args) {
             if (!string.IsNullOrEmpty(args.Data)) {
+                OnOutputReceived?.Invoke(this, new ProcessOutputEventArgs(args.Data, false));
                 StandardOutputArray.Add(args.Data);
-                if (Log != null) {
+                if (Log != null && LogStandardOutput) {
                     var line = TrimOutputLine ? args.Data?.Trim() : args.Data;
                     if (!string.IsNullOrEmpty(line)) {
                         Log.Debug(line);
@@ -370,7 +401,8 @@ namespace Oetools.Utilities.Lib {
                 // exited event is called twice when we WaitForExit(), better safe than sorry
                 _exitedEventPublished = true;
                 _cancelRegistration?.Dispose();
-                OnProcessExit?.Invoke(sender, e);
+                _cancelRegistration = null;
+                OnProcessExit?.Invoke(this, e);
             }
         }
     }

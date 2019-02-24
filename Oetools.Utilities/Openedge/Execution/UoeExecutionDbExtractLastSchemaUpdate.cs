@@ -29,7 +29,7 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// <summary>
     /// Get the datetime of the last update of databases schema.
     /// </summary>
-    public class UoeExecutionDbExtractLastSchemaUpdate : UoeExecutionDbExtract {
+    public class UoeExecutionDbExtractLastSchemaUpdate : AUoeExecutionDbExtract {
 
         public UoeExecutionDbExtractLastSchemaUpdate(AUoeExecutionEnv env) : base(env) { }
 
@@ -47,7 +47,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected override void ReadExtractionResults() {
             if (!string.IsNullOrEmpty(_databaseExtractFilePath) && File.Exists(_databaseExtractFilePath)) {
                 _lastSchemaUpdates = new Dictionary<string, DateTime>(StringComparer.CurrentCultureIgnoreCase);
-                using (var reader = new UoeExportReader(_databaseExtractFilePath, Env.GetIoEncoding())) {
+                using (var reader = new UoeExportReader(_databaseExtractFilePath, Env.IoEncoding)) {
                     string currentDatabaseName = null;
                     while (reader.ReadRecord(out List<string> fields, out int _, true)) {
                         if (fields.Count < 2) {

@@ -31,10 +31,11 @@ using Oetools.Utilities.Openedge.Execution.Exceptions;
 using Oetools.Utilities.Resources;
 
 namespace Oetools.Utilities.Openedge.Execution {
+
     /// <summary>
-    /// Get the datetime of the last update of databases schema.
+    /// Get database definition (the info necessary to recreate the database).
     /// </summary>
-    public class UoeExecutionDbExtractSchema : UoeExecutionDbExtract {
+    public class UoeExecutionDbExtractDefinition : AUoeExecutionDbExtract {
 
         /// <summary>
         /// List of databases dumped.
@@ -42,7 +43,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <returns></returns>
         public List<IUoeDatabase> GetDatabases() => _extractedDatabases;
 
-        public UoeExecutionDbExtractSchema(AUoeExecutionEnv env) : base(env) {
+        public UoeExecutionDbExtractDefinition(AUoeExecutionEnv env) : base(env) {
             _extractProgramPath = Path.Combine(_tempDir, $"dbextract_{DateTime.Now:HHmmssfff}.p");
         }
 
@@ -55,7 +56,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
         protected override void SetExecutionInfo() {
             base.SetExecutionInfo();
-            File.WriteAllText(_extractProgramPath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution_extract_db_schema.p"), Env.GetIoEncoding());
+            File.WriteAllText(_extractProgramPath, OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution_extract_db_schema.p"), Env.IoEncoding);
         }
 
         private string _extractProgramPath;
@@ -101,7 +102,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             var output = new List<IUoeDatabase>();
             IUoeDatabase currentDatabase = null;
             IUoeDatabaseTable currentTable = null;
-            using (var reader = new UoeExportReader(filePath, Env.GetIoEncoding())) {
+            using (var reader = new UoeExportReader(filePath, Env.IoEncoding)) {
                 reader.QuestionMarkReturnsNull = true;
                 while (reader.ReadRecord(out List<string> fields, out int _, true)) {
                     if (fields.Count < 2) {

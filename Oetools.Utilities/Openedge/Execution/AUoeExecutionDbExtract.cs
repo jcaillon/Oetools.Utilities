@@ -30,7 +30,7 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// <summary>
     ///     Allows to output a file containing the structure of the database
     /// </summary>
-    public abstract class UoeExecutionDbExtract : UoeExecution {
+    public abstract class AUoeExecutionDbExtract : UoeExecution {
 
         /// <inheritdoc />
         public override bool NeedDatabaseConnection => true;
@@ -63,18 +63,13 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// </example>
         public virtual string DatabaseExtractCandoTblName { get; set; } = "*";
 
-        /// <summary>
-        /// Path to the extracted path.
-        /// </summary>
-        public string DatabaseExtractionFilePath => _databaseExtractFilePath;
-
         protected virtual string DatabaseExtractType => null;
 
         protected virtual string DatabaseExtractExternalProgramPath => null;
 
         protected string _databaseExtractFilePath;
 
-        public UoeExecutionDbExtract(AUoeExecutionEnv env) : base(env) {
+        public AUoeExecutionDbExtract(AUoeExecutionEnv env) : base(env) {
             _databaseExtractFilePath = Path.Combine(_tempDir, "db.dump");
         }
 

@@ -81,7 +81,7 @@ namespace Oetools.Utilities.Openedge.Database {
         protected UoeProcessIo ProgresIo {
             get {
                 if (_progres == null) {
-                    _progres = new UoeProcessIo(DlcPath, true, null, Encoding) {
+                    _progres = new UoeProcessIo(DlcDirectoryPath, true, null, Encoding) {
                         CancelToken = CancelToken,
                         Log = Log
                     };
@@ -94,19 +94,15 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// Initialize a new instance.
         /// </summary>
-        /// <param name="dlcPath"></param>
+        /// <param name="dlcDirectoryPath"></param>
         /// <param name="encoding"></param>
-        public UoeDatabaseAdministrator(string dlcPath, Encoding encoding = null) : base(dlcPath, encoding) { }
+        public UoeDatabaseAdministrator(string dlcDirectoryPath, Encoding encoding = null) : base(dlcDirectoryPath, encoding) { }
 
         public void Dispose() {
             _progres?.Dispose();
             _progres = null;
-            if (!string.IsNullOrEmpty(_adminProcedurePath)) {
-                File.Delete(_adminProcedurePath);
-            }
-            if (!string.IsNullOrEmpty(_connectProcedurePath)) {
-                File.Delete(_connectProcedurePath);
-            }
+            Utils.DeleteFileIfNeeded(_adminProcedurePath);
+            Utils.DeleteFileIfNeeded(_connectProcedurePath);
         }
 
         /// <summary>
@@ -146,10 +142,12 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
         public UoeDatabaseConnection Start(UoeDatabaseLocation targetDb, int nbUsers, out HashSet<int> pids, bool sharedMemoryMode = true, UoeProcessArgs options = null) {
-            // in the shared memory case: there is only one process started:
+            // in the shared memory case: there is only one process (_mprosrv) started:
             // [2019/02/21@20:23:44.771+0100] P-14752      T-13820 I BROKER  0: (333)   Multi-user session begin.
-            // when serving in TCP mode, we also have other process (one for each server spawned by the broker)
+            // when serving in TCP mode, we also have other process (_mprosrv, one for each server spawned by the broker)
             // [2019/02/21@20:22:47.610+0100] P-17372      T-9240  I SRV     1: (5646)  Started on port 3000 using TCP IPV4 address 127.0.0.1, pid 17372.
+            // if the client connect for SQL, the broker can even spawn another type of servers (_sqlsrv2)
+            // [2019/02/21@20:22:47.610+0100] P-17372      T-9240  I SQLSRV2 1: (-----) SQL Server 11.7.04 started, configuration: ""db.virtualconfig""
 
             var mn = 1;
             var ma = nbUsers;
@@ -228,10 +226,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             dfDumpFilePath = dfDumpFilePath.ToAbsolutePath();
-            var dir = Path.GetDirectoryName(dfDumpFilePath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
-                Directory.CreateDirectory(dir);
-            }
+            Utils.CreateDirectoryForFileIfNeeded(dfDumpFilePath);
 
             Log?.Info($"Dumping schema definition to file {dfDumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
@@ -261,10 +256,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             incDfDumpFilePath = incDfDumpFilePath.ToAbsolutePath();
-            var dir = Path.GetDirectoryName(incDfDumpFilePath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
-                Directory.CreateDirectory(dir);
-            }
+            Utils.CreateDirectoryForFileIfNeeded(incDfDumpFilePath);
 
             var csList = databaseConnections.ToList();
             if (csList.Count != 2) {
@@ -319,10 +311,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             dumpFilePath = dumpFilePath.ToAbsolutePath();
-            var dir = Path.GetDirectoryName(dumpFilePath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
-                Directory.CreateDirectory(dir);
-            }
+            Utils.CreateDirectoryForFileIfNeeded(dumpFilePath);
 
             Log?.Info($"Dumping sequence data to file {dumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
@@ -400,10 +389,7 @@ namespace Oetools.Utilities.Openedge.Database {
             }
 
             dumpFilePath = dumpFilePath.ToAbsolutePath();
-            var dir = Path.GetDirectoryName(dumpFilePath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
-                Directory.CreateDirectory(dir);
-            }
+            Utils.CreateDirectoryForFileIfNeeded(dumpFilePath);
 
             var sqlSchema = GetExecutable(SqlSchemaName);
             sqlSchema.WorkingDirectory = TempFolder;
@@ -494,6 +480,117 @@ namespace Oetools.Utilities.Openedge.Database {
             }
         }
 
+        /// <summary>
+        /// Dump the database definition in a custom format, used internally by this library.
+        /// </summary>
+        /// <param name="databaseConnection"></param>
+        /// <param name="dumpFilePath"></param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void DumpCustomInfoExtraction(UoeDatabaseConnection databaseConnection, string dumpFilePath) {
+            if (string.IsNullOrEmpty(dumpFilePath)) {
+                throw new UoeDatabaseException("The dump file path can't be null.");
+            }
+
+            dumpFilePath = dumpFilePath.ToAbsolutePath();
+            Utils.CreateDirectoryForFileIfNeeded(dumpFilePath);
+
+            Log?.Info($"Dumping custom database information to file {dumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
+
+            using (var env = new UoeExecutionEnv()) {
+                env.DlcDirectoryPath = DlcDirectoryPath;
+                env.DatabaseConnections = databaseConnection.Yield();
+                using (var exec = new UoeExecutionDbExtractDefinitionNoRead(env, dumpFilePath)) {
+                    exec.CancelToken = CancelToken;
+                    exec.Execute();
+                    exec.ThrowIfExceptionsCaught();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Deletes all the data of a given table by dropping and recreating the table.
+        /// </summary>
+        /// <remarks>
+        /// https://knowledgebase.progress.com/articles/Article/Empty-a-Database-Table-without-truncate-area-000064070
+        /// </remarks>
+        /// <param name="databaseConnection"></param>
+        /// <param name="tableName"></param>
+        public void TruncateTableData(UoeDatabaseConnection databaseConnection, string tableName) {
+            Log?.Info($"Deleting all data for the table {tableName.PrettyQuote()} in the database {databaseConnection.ToString().PrettyQuote()}.");
+
+            var dumpFilePath = Path.Combine(TempFolder, $"{Utils.GetRandomName()}.df");
+            try {
+                DumpSchemaDefinition(databaseConnection, dumpFilePath, tableName);
+                File.WriteAllText(dumpFilePath, $"DROP TABLE {tableName}\n{File.ReadAllText(dumpFilePath, Encoding).Replace("\r", "")}", Encoding);
+                LoadSchemaDefinition(databaseConnection, dumpFilePath);
+            } finally {
+                Utils.DeleteFileIfNeeded(dumpFilePath);
+            }
+        }
+
+        /// <summary>
+        /// A wrapper around the Openedge database advisor.
+        /// </summary>
+        /// <remarks>
+        /// All credits goes to TheMadDBA: http://www.oehive.org/project/DatabaseAdvisor.
+        /// The embedded version is of Sun, 2015-08-02 21:19 and found here: http://practicaldba.com/downloads/db/advisor.p.
+        /// </remarks>
+        /// <param name="databaseConnection"></param>
+        /// <param name="htmlReportPath"></param>
+        /// <param name="dbAnalysisFilePath">Output of <see cref="UoeDatabaseOperator.GenerateAnalysisReport"/></param>
+        /// <param name="databaseAccessStartupParameters"></param>
+        /// <exception cref="UoeDatabaseException"></exception>
+        public void GenerateAdvisorReport(UoeDatabaseConnection databaseConnection, string htmlReportPath, string dbAnalysisFilePath = null, ProcessArgs databaseAccessStartupParameters = null) {
+            if (string.IsNullOrEmpty(htmlReportPath)) {
+                throw new UoeDatabaseException("The html report file path can't be null.");
+            }
+
+            htmlReportPath = htmlReportPath.ToAbsolutePath();
+            Utils.CreateDirectoryForFileIfNeeded(htmlReportPath);
+
+            var advisorFilePath = Path.Combine(TempFolder, $"advisor_{Utils.GetRandomName()}.p");
+            var startProcedureFilePath = Path.Combine(TempFolder, $"advisorstart_{Utils.GetRandomName()}.p");
+
+            try {
+                if (string.IsNullOrEmpty(dbAnalysisFilePath)) {
+                    if (!databaseConnection.DatabaseLocation.Exists()) {
+                        throw new UoeDatabaseException($"If the database analysis output file is not provided, the database must be local and exist. Database not found: {databaseConnection.DatabaseLocation.FullPath.PrettyQuote()}.");
+
+                    }
+                    dbAnalysisFilePath = Path.Combine(TempFolder, $"dbanalysis_{Utils.GetRandomName()}.out");
+
+                    Log?.Debug("The database analysis output file is not provided, generating it.");
+
+                    File.WriteAllText(dbAnalysisFilePath, GenerateAnalysisReport(databaseConnection.DatabaseLocation, databaseAccessStartupParameters), Encoding);
+                }
+
+                File.WriteAllText(advisorFilePath, OpenedgeResources.GetOpenedgeAsStringFromZippedResources("advisor.p"), Encoding);
+                File.WriteAllText(startProcedureFilePath, $"RUN {advisorFilePath.ProStringify()} (INPUT {dbAnalysisFilePath.ProStringify()}, INPUT {htmlReportPath.ProStringify()}).\nPUT UNFORMATTED SKIP \"OK\".\nQUIT. ", Encoding);
+
+                Log?.Info($"Generating advice report for the configuration of {databaseConnection.ToString().PrettyQuote()}.");
+
+                ProgresIo.WorkingDirectory = TempFolder;
+                var executionOk = ProgresIo.TryExecute(new ProcessArgs().Append(databaseConnection, "-p", startProcedureFilePath, ProExeCommandLineParameters));
+                if (!executionOk || !ProgresIo.BatchOutputString.EndsWith("OK")) {
+                    throw new UoeDatabaseException(ProgresIo.BatchOutputString);
+                }
+            } finally {
+                Utils.DeleteFileIfNeeded(advisorFilePath);
+                Utils.DeleteFileIfNeeded(startProcedureFilePath);
+                Utils.DeleteFileIfNeeded(dbAnalysisFilePath);
+            }
+        }
+
+        private class UoeExecutionDbExtractDefinitionNoRead : UoeExecutionDbExtractDefinition {
+
+            public UoeExecutionDbExtractDefinitionNoRead(AUoeExecutionEnv env, string dumpFilePath) : base(env) {
+                _databaseExtractFilePath = dumpFilePath;
+            }
+
+            protected override void ReadExtractionResults() { }
+        }
+
+
         private bool TryExecuteWithJdbcConnection(ProcessIo process, ProcessArgs arguments, UoeDatabaseConnection databaseConnection) {
             bool executionOk;
             var busyMode = GetBusyMode(databaseConnection.DatabaseLocation);
@@ -514,9 +611,9 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         private void StartDataAdministratorProgram(ProcessArgs args, string workingDirectory = null) {
-            args.Append("-p").Append(AdminProcedurePath);
+            args.Append("-p", AdminProcedurePath);
             if (!string.IsNullOrEmpty(workingDirectory)) {
-                args.Append("-T").Append(TempFolder);
+                args.Append("-T", TempFolder);
             }
             args.Append(ProExeCommandLineParameters);
 

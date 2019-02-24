@@ -1,7 +1,7 @@
-﻿#region header
+#region header
 // ========================================================================
-// Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
-// This file (UoeExecutionException.cs) is part of Oetools.Utilities.
+// Copyright (c) 2019 - Julien Caillon (julien.caillon@gmail.com)
+// This file (ProcessOutput.cs) is part of Oetools.Utilities.
 //
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,16 +17,29 @@
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
 #endregion
+
 using System;
 
-namespace Oetools.Utilities.Openedge.Execution.Exceptions {
+namespace Oetools.Utilities.Lib {
 
     /// <summary>
-    /// An exception that occured during an execution.
+    /// Event args for process output (write on standard/error stream).
     /// </summary>
-    public class UoeExecutionException : Exception {
-        protected UoeExecutionException() { }
-        internal UoeExecutionException(string message) : base(message) { }
-        internal UoeExecutionException(string message, Exception innerException) : base(message, innerException) { }
+    public class ProcessOutputEventArgs : EventArgs {
+
+        /// <summary>
+        /// The data string written in the output stream.
+        /// </summary>
+        public string Data { get; }
+
+        /// <summary>
+        /// Is the data coming from the error output stream? (standard stream otherwise).
+        /// </summary>
+        public bool FromErrorOutput { get; }
+
+        internal ProcessOutputEventArgs(string data, bool fromErrorOutput) {
+            Data = data;
+            FromErrorOutput = fromErrorOutput;
+        }
     }
 }

@@ -34,7 +34,7 @@ namespace Oetools.Utilities.Openedge.Execution {
     /// the window still appears in the taskbar. All the code between #if WINDOWSONLYBUILD in this class
     /// is made to hide this window from the taskbar in that case
     /// </remarks>
-    public class UoeProcessIo : ProcessIoAsync {
+    public class UoeProcessIo : ProcessIoNoWait {
 
         /// <summary>
         /// DLC path to use
@@ -63,9 +63,9 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <inheritdoc />
-        protected override bool WaitUntilProcessExits(int timeoutMs) {
+        protected override bool WaitForExitInternal(int timeoutMs) {
             RestoreSplashScreen();
-            return base.WaitUntilProcessExits(timeoutMs);
+            return base.WaitForExitInternal(timeoutMs);
         }
 
         /// <inheritdoc />

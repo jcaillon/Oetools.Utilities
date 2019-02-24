@@ -28,6 +28,7 @@ using Oetools.Utilities.Openedge.Database;
 
 namespace Oetools.Utilities.Openedge.Execution {
 
+    /// <inheritdoc cref="AUoeExecutionEnv" />
     public class UoeExecutionEnv : AUoeExecutionEnv, IDisposable {
 
         private string _iniFilePath;
@@ -37,8 +38,13 @@ namespace Oetools.Utilities.Openedge.Execution {
         private string _tempDirectory;
         private IEnumerable<UoeDatabaseConnection> _databaseConnections;
         private Version _proVersion;
+        private Dictionary<string, string> _tablesCrc;
+        private HashSet<string> _sequences;
+        private Encoding _ioEncoding;
+        private UoeProcessArgs _defaultStartUpArguments;
+        private UoeProcessArgs _proExeCommandLineParameters;
 
-        /// <inheritdoc cref="AUoeExecutionEnv.DlcDirectoryPath"/>
+        /// <inheritdoc />
         public override string DlcDirectoryPath {
             get => _dlcDirectoryPath ?? (_dlcDirectoryPath = UoeUtilities.GetDlcPathFromEnv());
             set {
@@ -48,7 +54,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.UseProgressCharacterMode"/>
+        /// <inheritdoc />
         public override bool UseProgressCharacterMode { get; set; }
 
         /// <summary>
@@ -56,7 +62,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// </summary>
         public bool DatabaseConnectionStringAppendMaxTryOne { get; set; } = true;
 
-        /// <inheritdoc cref="AUoeExecutionEnv.DatabaseConnections"/>
+        /// <inheritdoc />
         public override IEnumerable<UoeDatabaseConnection> DatabaseConnections {
             get {
                 if (DatabaseConnectionStringAppendMaxTryOne) {
@@ -69,22 +75,22 @@ namespace Oetools.Utilities.Openedge.Execution {
             set => _databaseConnections = value;
         }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.DatabaseAliases"/>
+        /// <inheritdoc />
         public override IEnumerable<IUoeExecutionDatabaseAlias> DatabaseAliases { get; set; }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.IniFilePath"/>
+        /// <inheritdoc />
         public override string IniFilePath {
             get {
                 if (_tempIniFilePath == null) {
                     if (!string.IsNullOrEmpty(_iniFilePath) && File.Exists(_iniFilePath)) {
-                        _tempIniFilePath = Path.Combine(TempDirectory, $"ini_{DateTime.Now:HHmmssfff}_{Path.GetRandomFileName()}.ini");
+                        _tempIniFilePath = Path.Combine(TempDirectory, $"ini_{Path.GetRandomFileName()}.ini");
 
                         // we need to copy the .ini but we must delete the PROPATH= part, as stupid as it sounds, if we leave a huge PROPATH
                         // in this file, it increases the compilation time by a stupid amount... unbelievable i know, but trust me, it does...
-                        var fileContent = Utils.ReadAllText(_iniFilePath, GetIoEncoding());
+                        var fileContent = Utils.ReadAllText(_iniFilePath, IoEncoding);
                         var regex = new Regex("^PROPATH=.*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
                         fileContent = regex.Replace(fileContent, @"PROPATH=");
-                        File.WriteAllText(_tempIniFilePath, fileContent, GetIoEncoding());
+                        File.WriteAllText(_tempIniFilePath, fileContent, IoEncoding);
                     } else {
                         return _iniFilePath;
                     }
@@ -100,19 +106,25 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.ProPathList"/>
+        /// <inheritdoc />
         public override List<string> ProPathList { get; set; }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.ProExeCommandLineParameters"/>
-        public override UoeProcessArgs ProExeCommandLineParameters { get; set; }
+        /// <inheritdoc />
+        public override UoeProcessArgs ProExeCommandLineParameters {
+            get => _proExeCommandLineParameters;
+            set {
+                _ioEncoding = null;
+                _proExeCommandLineParameters = value;
+            }
+        }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.PreExecutionProgramPath"/>
+        /// <inheritdoc />
         public override string PreExecutionProgramPath { get; set; }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.PostExecutionProgramPath"/>
+        /// <inheritdoc />
         public override string PostExecutionProgramPath { get; set; }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.CanProVersionUseNoSplash"/>
+        /// <inheritdoc />
         public override bool CanProVersionUseNoSplash {
             get {
                 if (!_canProVersionUseNoSplash.HasValue) {
@@ -122,7 +134,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.TempDirectory"/>
+        /// <inheritdoc />
         public override string TempDirectory {
             get => _tempDirectory ?? (_tempDirectory = Utils.CreateTempDirectory(Utils.GetRandomName()));
             set {
@@ -146,31 +158,23 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.IsProVersionHigherOrEqualTo"/>
+        /// <inheritdoc />
         public override bool IsProVersionHigherOrEqualTo(Version version) {
             return ProVersion != null && version != null && ProVersion.CompareTo(version) >= 0;
         }
 
-        /// <inheritdoc cref="AUoeExecutionEnv.GetIoEncoding"/>
-        public override Encoding GetIoEncoding() {
-            if (_ioEncoding == null) {
-                if (string.IsNullOrEmpty(CodePageName)) {
-                    _codePageName = UoeUtilities.GetProcessIoCodePageFromArgs(UoeUtilities.GetOpenedgeDefaultStartupArgs(DlcDirectoryPath));
+        /// <inheritdoc />
+        public override Encoding IoEncoding {
+            set => _ioEncoding = value;
+            get {
+                if (_defaultStartUpArguments == null) {
+                    _defaultStartUpArguments = UoeUtilities.GetOpenedgeDefaultStartupArgs(DlcDirectoryPath);
                 }
-                UoeUtilities.GetEncodingFromOpenedgeCodePage(CodePageName, out _ioEncoding);
-            }
-            return _ioEncoding;
-        }
-
-        /// <summary>
-        /// The code page to use for i/o with openedge processes.
-        /// Defaults to the one read in $DLC/startup.pf.
-        /// </summary>
-        public string CodePageName {
-            get => _codePageName;
-            set {
-                _ioEncoding = null;
-                _codePageName = value;
+                if (_ioEncoding == null) {
+                    var codePageName = UoeUtilities.GetProcessIoCodePageFromArgs(new UoeProcessArgs().Append(_defaultStartUpArguments).Append(ProExeCommandLineParameters) as UoeProcessArgs);
+                    UoeUtilities.GetEncodingFromOpenedgeCodePage(codePageName, out _ioEncoding);
+                }
+                return _ioEncoding;
             }
         }
 
@@ -192,16 +196,10 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        private Dictionary<string, string> _tablesCrc;
-
-        private HashSet<string> _sequences;
-        private Encoding _ioEncoding;
-        private string _codePageName;
-
-        private void InitDatabasesInfo() {
+        protected virtual void InitDatabasesInfo() {
             using (var exec = new UoeExecutionDbExtractTableCrcAndSequenceList(this)) {
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 _tablesCrc = exec.TablesCrc;
                 _sequences = exec.Sequences;
             }

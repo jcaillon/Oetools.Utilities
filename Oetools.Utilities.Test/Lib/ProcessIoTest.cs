@@ -52,5 +52,6 @@ namespace Oetools.Utilities.Test.Lib {
             Assert.IsTrue(process.ErrorOutputArray.Count > 0);
             Assert.IsTrue(process.StandardOutputArray.Count == 0);
         }
+
     }
 }

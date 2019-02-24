@@ -97,8 +97,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_error.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_ok.p"))
                 };
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"not ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(1, exec.CompiledFiles.Count(cf => cf.CompiledCorrectly), "expect having compiled the last file even if the file[1] has errors");
                 Assert.AreEqual(2, exec.CompiledFiles.ElementAt(1).CompilationProblems.Count, "expect to have compile the error file despite file[0] having warnings");
@@ -113,8 +113,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_error.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_ok.p"))
                 };
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.AreEqual(true, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(1, exec.HandledExceptions.Count, $"1 exception : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(typeof(UoeExecutionCompilationStoppedException), exec.HandledExceptions[0].GetType(), $"exception type : {string.Join("\n", exec.HandledExceptions)}");
@@ -133,8 +133,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_error.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "stop_compil_ok.p"))
                 };
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.AreEqual(true, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(1, exec.HandledExceptions.Count, $"1 exception : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(typeof(UoeExecutionCompilationStoppedException), exec.HandledExceptions[0].GetType(), $"exception type : {string.Join("\n", exec.HandledExceptions)}");
@@ -154,14 +154,14 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.UseProgressCharacterMode = false;
             using (var exec = GetOeExecutionCompile(env)) {
                 // nothing to compile exception
-                Assert.ThrowsException<UoeExecutionParametersException>(() => exec.Start(), "nothing to compile");
+                Assert.ThrowsException<UoeExecutionParametersException>(() => exec.ExecuteNoWait(), "nothing to compile");
             }
             using (var exec = GetOeExecutionCompile(env)) {
                exec.FilesToCompile = new PathList<UoeFileToCompile> {
                     new UoeFileToCompile("doesnotexist.p")
                 };
                 // file does not exist exception
-                Assert.ThrowsException<UoeExecutionParametersException>(() => exec.Start(), "a file does not exists");
+                Assert.ThrowsException<UoeExecutionParametersException>(() => exec.ExecuteNoWait(), "a file does not exists");
             }
             env.Dispose();
         }
@@ -206,8 +206,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.CompileWithXref = xref;
                 exec.CompileUseXmlXref = xmlxref;
                 exec.CompileInAnalysisMode = analyze;
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.IsTrue(exec.CompiledFiles != null && exec.CompiledFiles.Count == 1, "One file compiled");
                 var compiledFile = exec.CompiledFiles.First();
@@ -263,8 +263,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                         new UoeFileToCompile(Path.Combine(TestFolder, "witherrors.p")),
                         new UoeFileToCompile(Path.Combine(TestFolder, "witherrors_in_include.p"))
                     };
-                    exec.Start();
-                    exec.WaitForExecutionEnd();
+                    exec.ExecuteNoWait();
+                    exec.WaitForExit();
                     Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                     Assert.IsTrue(exec.CompiledFiles != null && exec.CompiledFiles.Count == 2, "two files compiled");
 
@@ -311,8 +311,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     exec.FilesToCompile = new PathList<UoeFileToCompile> {
                         new UoeFileToCompile(Path.Combine(TestFolder, "withwarnings_in_include.p"))
                     };
-                    exec.Start();
-                    exec.WaitForExecutionEnd();
+                    exec.ExecuteNoWait();
+                    exec.WaitForExit();
                     Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                     Assert.IsTrue(exec.CompiledFiles != null && exec.CompiledFiles.Count == 1, "1 file compiled");
 
@@ -356,8 +356,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     exec.FilesToCompile = new PathList<UoeFileToCompile> {
                         new UoeFileToCompile(Path.Combine(TestFolder, "withwarnings_in_include.p"))
                     };
-                    exec.Start();
-                    exec.WaitForExecutionEnd();
+                    exec.ExecuteNoWait();
+                    exec.WaitForExit();
                     Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                     Assert.IsTrue(exec.CompiledFiles != null && exec.CompiledFiles.Count == 1, "1 file compiled");
 
@@ -400,8 +400,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     new UoeFileToCompile(Path.Combine(TestFolder, "progression3.p")),
                     new UoeFileToCompile(Path.Combine(TestFolder, "progression4.p"))
                 };
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"not ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(4, exec.NumberOfFilesTreated, "NumberOfFilesTreated");
             }
@@ -427,8 +427,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.FilesToCompile = new PathList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "extraoptions.p"))
                 };
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.AreEqual(!executionSuccess, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(executionSuccess, exec.CompiledFiles.ElementAt(0).CompiledCorrectly);
             }
@@ -454,8 +454,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.FilesToCompile = new PathList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "compileoptions.p"))
                 };
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(compileSuccess, exec.CompiledFiles.ElementAt(0).CompiledCorrectly);
             }
@@ -478,8 +478,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                         CompiledPath = Path.Combine(TestFolder, "sourcepath.p")
                     }
                 };
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
 
@@ -517,8 +517,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.CompileWithListing = true;
                 exec.CompileWithPreprocess = true;
                 exec.CompileWithXref = true;
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
 
@@ -556,8 +556,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.FilesToCompile = new PathList<UoeFileToCompile> {
                     new UoeFileToCompile(Path.Combine(TestFolder, "ClassFail.p"))
                 };
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(2, exec.CompiledFiles.ElementAt(0).CompilationProblems.Count, $"exec.CompiledFiles[0].CompilationErrors : {string.Join("\n", exec.CompiledFiles.ElementAt(0).CompilationProblems)}");
@@ -598,8 +598,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.CompileWithXref = true;
                 exec.CompileWithPreprocess = true;
                 exec.CompilerMultiCompile = multiCompile;
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
 
@@ -649,8 +649,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                     new UoeFileToCompile(Path.Combine(TestFolder, "namespace", "cool", "Class1.cls"))
                 };
                 exec.CompileInAnalysisMode = true;
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), "all compile ok");
@@ -734,8 +734,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.CompileUseXmlXref = true;
                 exec.CompileInAnalysisMode = true;
                 exec.AnalysisModeSimplifiedDatabaseReferences = analysisModeSimplifiedDatabaseReferences;
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed procedure : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all procedures compile ok : {string.Join(",", exec.CompiledFiles.ElementAt(0).CompilationProblems?.Select(e => e.Message) ?? new List<string>())}");
@@ -805,8 +805,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.CompileUseXmlXref = true;
                 exec.CompileInAnalysisMode = true;
                 exec.AnalysisModeSimplifiedDatabaseReferences = analysisModeSimplifiedDatabaseReferences;
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
 
                 Assert.AreEqual(false, exec.ExecutionHandledExceptions, $"ExecutionFailed : {string.Join("\n", exec.HandledExceptions)}");
                 Assert.AreEqual(true, exec.CompiledFiles.All(c => c.CompiledCorrectly), $"all compile ok : {string.Join(",", exec.CompiledFiles.ElementAt(0).CompilationProblems?.Select(e => e.Message) ?? new List<string>())}");
@@ -843,8 +843,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.OnExecutionOk += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 2;
                 exec.OnExecutionException += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 4;
                 _iOeExecutionTestEvents = 0;
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ok");
                 Assert.AreEqual(3, _iOeExecutionTestEvents);
 
@@ -864,8 +864,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
                 exec.OnExecutionOk += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 2;
                 exec.OnExecutionException += execution => _iOeExecutionTestEvents = _iOeExecutionTestEvents + 4;
                 _iOeExecutionTestEvents = 0;
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.IsTrue(exec.ExecutionHandledExceptions, "errors");
                 Assert.AreEqual(5, _iOeExecutionTestEvents);
             }

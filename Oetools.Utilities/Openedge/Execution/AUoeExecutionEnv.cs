@@ -100,6 +100,6 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// The encoding to use for i/o with openedge processes.
         /// </summary>
-        public abstract Encoding GetIoEncoding();
+        public abstract Encoding IoEncoding { get; set; }
     }
 }

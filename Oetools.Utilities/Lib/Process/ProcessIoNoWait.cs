@@ -24,26 +24,21 @@ namespace Oetools.Utilities.Lib {
     /// <summary>
     /// Wrapper for async process.
     /// </summary>
-    public class ProcessIoAsync : ProcessIo, IDisposable {
+    public class ProcessIoNoWait : ProcessIo, IDisposable {
 
-        public ProcessIoAsync(string executablePath) : base(executablePath) { }
+        public ProcessIoNoWait(string executablePath) : base(executablePath) { }
 
         /// <summary>
-        /// Start the process, use <see cref="ProcessIo.OnProcessExit"/> event to know when the process is done
+        /// Start the process but does not wait for its ending.
+        /// Wait for the end with <see cref="WaitForExit"/> or use the <see cref="ProcessIo.OnProcessExit"/> event to know when the process is done.
         /// </summary>
-        ///  <param name="arguments">Each argument is expected to be quoted if necessary and double quotes escaped with a second double quote (use quoter).</param>
-        /// <param name="silent"></param>
-        public void ExecuteAsync(ProcessArgs arguments = null, bool silent = true) {
-            ExecuteAsyncProcess(arguments, silent);
+        public void ExecuteNoWait(ProcessArgs arguments = null, bool silent = true) {
+            ExecuteNoWaitInternal(arguments, silent);
         }
 
-        /// <summary>
-        /// Wait for a process to end
-        /// Returns true if the process has exited (can be false if timeout was reached)
-        /// </summary>
-        /// <param name="timeoutMs"></param>
+        /// <inheritdoc cref="ProcessIo.WaitForExitInternal"/>
         public bool WaitForExit(int timeoutMs = 0) {
-            return WaitUntilProcessExits(timeoutMs);
+            return WaitForExitInternal(timeoutMs);
         }
 
         public void Dispose() {

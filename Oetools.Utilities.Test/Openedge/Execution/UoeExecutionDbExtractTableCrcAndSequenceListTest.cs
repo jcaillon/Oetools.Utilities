@@ -72,8 +72,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             };
 
             using (var exec = new UoeExecutionDbExtractTableCrcAndSequenceList(env)) {
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
 

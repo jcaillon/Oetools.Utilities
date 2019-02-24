@@ -21,16 +21,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using Oetools.Utilities.Lib.Extension;
-using Oetools.Utilities.Resources;
 
 namespace Oetools.Utilities.Openedge.Execution {
 
     /// <summary>
     /// Get the the crc of all the tables and a list of sequences.
     /// </summary>
-    public class UoeExecutionDbExtractTableCrcAndSequenceList : UoeExecutionDbExtract {
+    public class UoeExecutionDbExtractTableCrcAndSequenceList : AUoeExecutionDbExtract {
 
         public UoeExecutionDbExtractTableCrcAndSequenceList(AUoeExecutionEnv env) : base(env) { }
 
@@ -64,7 +62,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (!string.IsNullOrEmpty(_databaseExtractFilePath) && File.Exists(_databaseExtractFilePath)) {
                 _tablesCrc = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
                 _sequences = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
-                using (var reader = new UoeExportReader(_databaseExtractFilePath, Env.GetIoEncoding())) {
+                using (var reader = new UoeExportReader(_databaseExtractFilePath, Env.IoEncoding)) {
                     string currentDatabaseName = null;
                     while (reader.ReadRecord(out List<string> fields, out int _, true)) {
                         if (fields.Count < 2) {

@@ -75,7 +75,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
         }
 
-        protected override void StartInternal() {
+        protected override void ExecuteNoWaitInternal() {
             CheckParameters();
 
             // ensure that each process will at least take in 10 files, starting a new process for 1 file to compile isn't efficient!
@@ -132,7 +132,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             // launch the compile process
             try {
                 foreach (var proExecutionCompile in _processes) {
-                    proExecutionCompile.Start();
+                    proExecutionCompile.ExecuteNoWait();
                 }
             } catch (Exception) {
                 Started = true;
@@ -148,18 +148,16 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (!HasBeenKilled) {
                 HasBeenKilled = true;
                 // wait for the execution to start all the processes
-                var d = DateTime.Now;
-                while (!Started && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
+                SpinWait.SpinUntil(() => Started, 10000);
                 try {
                     foreach (var proc in _processes) {
-                        proc.KillProcess();
+                        proc?.KillProcess();
                     }
                 } catch (Exception e) {
                     HandledExceptions.Add(new UoeExecutionException("Error when killing compilation processes.", e));
                 } finally {
                     // wait for all the processes to actually exit correctly and publish their events
-                    d = DateTime.Now;
-                    while (NumberOfProcessesRunning > 0 && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
+                    SpinWait.SpinUntil(() => NumberOfProcessesRunning <= 0, 10000);
                     PublishParallelCompilationResults();
                 }
             }
@@ -170,9 +168,8 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Returns true if the process has exited (can be false if timeout was reached)
         /// </summary>
         /// <param name="maxWait"></param>
-        /// <param name="cancelToken"></param>
         /// <returns></returns>
-        public override bool WaitForExecutionEnd(int maxWait = 0, CancellationToken? cancelToken = null) {
+        public override bool WaitForExit(int maxWait = 0) {
             if (!Started) {
                 return true;
             }
@@ -181,12 +178,13 @@ namespace Oetools.Utilities.Openedge.Execution {
             bool exited = true;
             foreach (var proc in _processes) {
                 var d = DateTime.Now;
-                exited = exited && proc.WaitForExecutionEnd(maxWait, cancelToken);
+                exited = exited && proc.WaitForExit(maxWait);
                 maxWait -= (int) DateTime.Now.Subtract(d).TotalMilliseconds;
                 if (hasMaxWait && maxWait <= 0) {
                     return false;
                 }
             }
+
             return exited;
         }
 

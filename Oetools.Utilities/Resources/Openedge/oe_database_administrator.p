@@ -25,6 +25,18 @@ ASSIGN
     ipc_path = ENTRY(2, SESSION:PARAMETER, "|").
 
 CASE ipc_code:
+    WHEN "dump-df" OR
+    WHEN "dump-d" OR
+    WHEN "load-d"    
+    THEN DO:
+        IF ENTRY(3, SESSION:PARAMETER, "|") <> "ALL" AND 
+            NOT CAN-FIND(FIRST DICTDB._File NO-LOCK WHERE DICTDB._File._File-Name = ENTRY(3, SESSION:PARAMETER, "|")) THEN DO:
+            PUT UNFORMATTED "Error, the table " + QUOTER(ENTRY(3, SESSION:PARAMETER, "|")) + " does not exist.".
+            QUIT.
+        END.            
+    END.
+END.
+CASE ipc_code:
     WHEN "dump-df" THEN DO:
         RUN prodict/dump_df.p PERSISTENT SET gh_proc (INPUT ENTRY(3, SESSION:PARAMETER, "|") /* "table,table"/"ALL" */, INPUT ipc_path, INPUT ?).
         RUN setSilent IN gh_proc (TRUE).
@@ -34,9 +46,9 @@ CASE ipc_code:
         RUN prodict/load_df_silent.p (INPUT ipc_path, INPUT ?, OUTPUT gc_error) NO-ERROR.
         IF ERROR-STATUS:ERROR OR gc_error > "" THEN DO:
             PUT UNFORMATTED "Error while loading the schema definition:" SKIP gc_error SKIP ERROR-STATUS:GET-MESSAGE(1).
+            RUN ReadFileIntoStandardOutput (INPUT LDBNAME("DICTDB") + ".e").
             QUIT.
         END.
-        RUN ReadFileIntoStandardOutput (INPUT LDBNAME("DICTDB") + ".e").
     END.
     WHEN "dump-inc" THEN DO:
         IF NUM-DBS < 2 THEN DO:
@@ -54,9 +66,9 @@ CASE ipc_code:
         RUN doDumpIncr IN gh_proc NO-ERROR.
         IF ERROR-STATUS:ERROR THEN DO:
             PUT UNFORMATTED "Error while dumping incremental schema definition:" SKIP ERROR-STATUS:GET-MESSAGE(1).
+            RUN ReadFileIntoStandardOutput (INPUT "incrdump.e").
             QUIT.
-        END.
-        RUN ReadFileIntoStandardOutput (INPUT "incrdump.e").
+        END.        
     END.
     WHEN "dump-d" THEN DO:
         RUN prodict/dump_d.p (INPUT ENTRY(3, SESSION:PARAMETER, "|") /* "_User"/"ALL" */, INPUT ipc_path /* folder path */, INPUT ?) NO-ERROR.
@@ -139,7 +151,8 @@ PROCEDURE ReadFileIntoStandardOutput:
     DEFINE INPUT PARAMETER ipc_file AS CHARACTER NO-UNDO.
     DEFINE VARIABLE lc_line AS CHARACTER NO-UNDO.
 
-    IF (SEARCH(ipc_file) = ?) THEN
+    FILE-INFORMATION:FILE-NAME = "./" + ipc_file.
+    IF NOT FILE-INFORMATION:FILE-TYPE MATCHES "*F*" THEN
         RETURN "".
 
     INPUT STREAM str_file FROM VALUE(ipc_file).
@@ -149,7 +162,7 @@ PROCEDURE ReadFileIntoStandardOutput:
     END.
     INPUT STREAM str_file CLOSE.
 
-    OS-DELETE VALUE(SEARCH(ipc_file)).
+    OS-DELETE VALUE(ipc_file).
 
     RETURN "".
 END PROCEDURE.

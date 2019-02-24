@@ -503,6 +503,21 @@ d ""schema Area"" .
         }
 
         [TestMethod]
+        public void Analysis() {
+            if (!TestHelper.GetDlcPath(out string dlcPath)) {
+                return;
+            }
+
+            var ope = new UoeDatabaseOperator(dlcPath);
+            var db = GetDb("analys");
+
+            ope.Create(db);
+            Assert.IsTrue(db.Exists());
+
+            Assert.IsTrue(ope.GenerateAnalysisReport(db).Length > 10);
+        }
+
+        [TestMethod]
         public void BinaryDumpLoadIdxRebuild() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
                 return;
@@ -545,6 +560,13 @@ d ""schema Area"" .
                     Assert.IsTrue(File.Exists(table1Path));
                     var dataContent = File.ReadAllText(table1Path);
                     Assert.IsTrue(dataContent.Contains("\"value1\" 1"));
+
+                    // truncate table
+                    dataAdmin.TruncateTableData(dataAdmin.GetDatabaseConnection(db), "table1");
+
+                    // dump empty data .d
+                    dataAdmin.DumpData(dataAdmin.GetDatabaseConnection(db), dataDirectory, "table1");
+                    Assert.IsFalse(File.ReadAllText(table1Path).Contains("\"value1\" 1"));
 
                 } finally {
                     Directory.Delete(dataDirectory, true);

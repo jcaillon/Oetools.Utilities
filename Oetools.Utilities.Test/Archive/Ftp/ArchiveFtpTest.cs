@@ -20,6 +20,7 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using FubarDev.FtpServer;
 using FubarDev.FtpServer.FileSystem.DotNet;
 using Microsoft.Extensions.DependencyInjection;
@@ -77,8 +78,7 @@ namespace Oetools.Utilities.Test.Archive.Ftp {
                 // Start the FTP server
                 ftpServer.Start();
 
-                var d = DateTime.Now;
-                while (!ftpServer.Ready && DateTime.Now.Subtract(d).TotalMilliseconds <= 3000) { }
+                SpinWait.SpinUntil(() => ftpServer.Ready, 5000);
 
                 FtpArchiver archiver = new FtpArchiver();
 

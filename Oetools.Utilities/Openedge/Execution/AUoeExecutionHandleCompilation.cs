@@ -263,7 +263,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             }
 
 
-            File.WriteAllText(_filesListPath, filesListcontent.ToString(), Env.GetIoEncoding());
+            File.WriteAllText(_filesListPath, filesListcontent.ToString(), Env.IoEncoding);
 
             SetPreprocessedVar("CompileListFilePath", _filesListPath.ProPreProcStringify());
             SetPreprocessedVar("CompileProgressionFilePath", _progressionFilePath.ProPreProcStringify());
@@ -296,7 +296,7 @@ namespace Oetools.Utilities.Openedge.Execution {
             if (!ExecutionFailed) {
                 try {
                     Parallel.ForEach(CompiledFiles, file => {
-                        file.ReadCompilationResults(Env.GetIoEncoding(), _processStartDir);
+                        file.ReadCompilationResults(Env.IoEncoding, _processStartDir);
                         file.ComputeRequiredDatabaseReferences(Env, AnalysisModeSimplifiedDatabaseReferences);
                     });
 

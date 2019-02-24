@@ -25,29 +25,28 @@ using System.Text;
 using System.Threading;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
-using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Execution.Exceptions;
 using Oetools.Utilities.Resources;
 
 namespace Oetools.Utilities.Openedge.Execution {
 
     /// <summary>
-    ///     Base class for all the progress execution (i.e. when we need to start a prowin process and do something)
+    /// Base class for all the progress execution (i.e. when we need to start a prowin process and do something)
     /// </summary>
     public abstract class UoeExecution : IDisposable {
 
         /// <summary>
-        ///     The action to execute just after the end of a prowin process
+        /// The action to execute just after the end of a prowin process
         /// </summary>
         public event Action<UoeExecution> OnExecutionEnd;
 
         /// <summary>
-        ///     The action to execute at the end of the process if it went well
+        /// The action to execute at the end of the process if it went well
         /// </summary>
         public event Action<UoeExecution> OnExecutionOk;
 
         /// <summary>
-        ///     The action to execute at the end of the process if something went wrong
+        /// The action to execute at the end of the process if something went wrong
         /// </summary>
         public event Action<UoeExecution> OnExecutionException;
 
@@ -69,10 +68,18 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// <summary>
         /// Cancellation token.
         /// </summary>
-        public CancellationToken? CancelToken { get; set; }
+        public CancellationToken? CancelToken {
+            get => _cancelToken;
+            set {
+                _cancelToken = value;
+                if (_process != null) {
+                    _process.CancelToken = _cancelToken;
+                }
+            }
+        }
 
         /// <summary>
-        ///     set to true if a the execution process has been killed
+        /// Set to true if a the execution process has been killed
         /// </summary>
         public bool HasBeenKilled { get; protected set; }
 
@@ -161,7 +168,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected string _propathFilePath;
 
         /// <summary>
-        ///     Parameters of the .exe call
+        /// Parameters of the .exe call
         /// </summary>
         protected ProcessArgs _exeArguments;
 
@@ -172,6 +179,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         protected bool _executed;
 
         protected bool _eventPublished;
+        private CancellationToken? _cancelToken;
 
         /// <summary>
         /// The process is considered to be running when it is <see cref="Started"/> and not <see cref="Ended"/>
@@ -210,14 +218,14 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <summary>
-        /// Starts the execution
+        /// Starts the execution and does not wait for its ending.
         /// </summary>
         /// <returns></returns>
         /// <exception cref="UoeExecutionException"></exception>
-        public void Start() {
+        public void ExecuteNoWait() {
             StartDateTime = DateTime.Now;
             try {
-                StartInternal();
+                ExecuteNoWaitInternal();
             } catch (Exception) {
                 Ended = true;
                 _eventPublished = true; // to not block the wait for the exit
@@ -234,7 +242,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// </summary>
         /// <returns></returns>
         /// <exception cref="UoeExecutionException"></exception>
-        protected virtual void StartInternal() {
+        protected virtual void ExecuteNoWaitInternal() {
             // check parameters
             CheckParameters();
 
@@ -247,7 +255,7 @@ namespace Oetools.Utilities.Openedge.Execution {
                 throw new UoeExecutionParametersException($"The propath used is too long (>{UoeConstants.MaximumPropathLength}) : {propath.PrettyQuote()}.");
             }
 
-            File.WriteAllText(_propathFilePath, propath, Env.GetIoEncoding());
+            File.WriteAllText(_propathFilePath, propath, Env.IoEncoding);
 
             // Set info
             SetExecutionInfo();
@@ -271,7 +279,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             runnerProgram.AppendLine(OpenedgeResources.GetOpenedgeAsStringFromResources(@"oe_execution.p"));
             AppendProgramToRun(runnerProgram);
-            File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.GetIoEncoding());
+            File.WriteAllText(_runnerPath, runnerProgram.ToString(), Env.IoEncoding);
 
             // Parameters
             _exeArguments = new ProcessArgs();
@@ -293,27 +301,26 @@ namespace Oetools.Utilities.Openedge.Execution {
             // start the process
             _process = new UoeProcessIo(Env.DlcDirectoryPath, userCharacterModeOfProgress, Env.CanProVersionUseNoSplash) {
                 WorkingDirectory = _processStartDir,
-                RedirectedOutputEncoding = Env.GetIoEncoding(),
+                RedirectedOutputEncoding = Env.IoEncoding,
                 CancelToken = CancelToken
             };
             _process.OnProcessExit += ProcessOnExited;
-            _process.ExecuteAsync(_exeArguments, SilentExecution);
+            _process.ExecuteNoWait(_exeArguments, SilentExecution);
         }
 
         /// <summary>
         /// Allows to kill the process of this execution
         /// </summary>
         public virtual void KillProcess() {
-            if (StartDateTime == null || _process == null) {
+            if (StartDateTime == null) {
                 return;
             }
             if (!HasBeenKilled) {
                 HasBeenKilled = true;
                 // wait for the execution to start and then kill it
-                var d = DateTime.Now;
-                while (!Started && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
+                SpinWait.SpinUntil(() => Started, 10000);
                 try {
-                    _process.Kill();
+                    _process?.Kill();
                 } catch (Exception e) {
                     HandledExceptions.Add(new UoeExecutionException("Error when killing the process.", e));
                 }
@@ -324,43 +331,52 @@ namespace Oetools.Utilities.Openedge.Execution {
         /// Synchronously wait for the execution to end
         /// Returns true if the process has exited (can be false if timeout was reached)
         /// </summary>
-        /// <param name="maxWait"></param>
-        /// <param name="cancelToken"></param>
-        public virtual bool WaitForExecutionEnd(int maxWait = 0, CancellationToken? cancelToken = null) {
+        /// <param name="maxWaitInMs"></param>
+        public virtual bool WaitForExit(int maxWaitInMs = 0) {
             if (!Started || _process == null) {
                 return true;
             }
 
-            if (cancelToken is CancellationToken nonNullCancelToken) {
-                var start = DateTime.Now;
-                var waitTime = maxWait > 500 || maxWait == 0 ? 500 : maxWait;
-                bool exited;
-                do {
-                    exited = _process.WaitForExit(waitTime);
-                } while (!exited && DateTime.Now.Subtract(start).TotalMilliseconds <= maxWait && !nonNullCancelToken.IsCancellationRequested);
+            if (maxWaitInMs > 0) {
+                var exited = _process.WaitForExit(maxWaitInMs);
                 if (!exited) {
                     return false;
                 }
             } else {
-                if (maxWait > 0) {
-                    var exited = _process.WaitForExit(maxWait);
-                    if (!exited) {
-                        return false;
-                    }
-                } else {
-                    _process.WaitForExit();
-                }
+                _process.WaitForExit();
             }
 
             // wait for the execution to really end
-            var d = DateTime.Now;
-            while (!_eventPublished && DateTime.Now.Subtract(d).TotalMilliseconds <= 10000) { }
+            SpinWait.SpinUntil(() => _eventPublished, 10000);
 
             return true;
         }
 
         /// <summary>
-        ///     Should throw an error if some parameters are incorrect
+        /// Starts the execution and wait for its ending (or timeout).
+        /// </summary>
+        /// <param name="maxWaitInMs"></param>
+        /// <returns></returns>
+        public virtual bool Execute(int maxWaitInMs = 0) {
+            ExecuteNoWait();
+            return WaitForExit(maxWaitInMs);
+        }
+
+        /// <summary>
+        /// Throws an exception if this execution caught exceptions.
+        /// </summary>
+        /// <exception cref="UoeExecutionGlobalException"></exception>
+        public virtual void ThrowIfExceptionsCaught() {
+            if (ExecutionFailed) {
+                throw new UoeExecutionGlobalException(HandledExceptions);
+            }
+            if (ExecutionHandledExceptions) {
+                throw new UoeExecutionGlobalException(HandledExceptions);
+            }
+        }
+
+        /// <summary>
+        /// Should throw an error if some parameters are incorrect
         /// </summary>
         /// <exception cref="UoeExecutionException"></exception>
         protected virtual void CheckParameters() {
@@ -375,24 +391,24 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <summary>
-        /// Method that appends the program_to_run procedure to the runned .p file
+        /// Method that appends the program_to_run procedure to the run .p file
         /// </summary>
         /// <param name="runnerProgram"></param>
         protected virtual void AppendProgramToRun(StringBuilder runnerProgram) {}
 
         /// <summary>
-        ///     Extra stuff to do before executing
+        /// Extra stuff to do before executing
         /// </summary>
         /// <exception cref="UoeExecutionException"></exception>
         protected virtual void SetExecutionInfo() { }
 
         /// <summary>
-        ///     Add stuff to the command line
+        /// Add stuff to the command line
         /// </summary>
         protected virtual void AppendProgressParameters(ProcessArgs args) { }
 
         /// <summary>
-        ///     set pre-processed variable for the runner program
+        /// Set pre-processed variable for the runner program
         /// </summary>
         protected void SetPreprocessedVar(string key, string value) {
             if (!PreprocessedVars.ContainsKey(key))
@@ -402,7 +418,7 @@ namespace Oetools.Utilities.Openedge.Execution {
         }
 
         /// <summary>
-        ///     Called by the process's thread when it is over, execute the ProcessOnExited event
+        /// Called by the process's thread when it is over, execute the ProcessOnExited event
         /// </summary>
         private void ProcessOnExited(object sender, EventArgs eventArgs) {
             try {
@@ -421,7 +437,7 @@ namespace Oetools.Utilities.Openedge.Execution {
 
             // if the db log file exists, then the connect statement failed
             if (File.Exists(_dbErrorLogPath)) {
-                HandledExceptions.AddRange(GetOpenedgeExceptions<UoeExecutionOpenedgeDbConnectionException>(_dbErrorLogPath));
+                HandledExceptions.AddRange(UoeExecutionOpenedgeException.GetFromTabbedLogFile<UoeExecutionOpenedgeDbConnectionException>(_dbErrorLogPath, Env.IoEncoding));
                 DatabaseConnectionFailed = true;
                 ExecutionFailed = NeedDatabaseConnection;
                 if (HandledExceptions.FirstOrDefault(e => {
@@ -452,10 +468,10 @@ namespace Oetools.Utilities.Openedge.Execution {
                 ExecutionFailed = true;
             } else if (new FileInfo(_errorLogPath).Length > 0) {
                 // else if the log isn't empty, something went wrong
-                HandledExceptions.AddRange(GetOpenedgeExceptions<UoeExecutionOpenedgeException>(_errorLogPath));
+                HandledExceptions.AddRange(UoeExecutionOpenedgeException.GetFromTabbedLogFile<UoeExecutionOpenedgeException>(_errorLogPath, Env.IoEncoding));
                 ExecutionFailed = false;
             } else if (_process.StandardOutputArray.Count > 0 || _process.ErrorOutputArray.Count > 0) {
-                // we do not put anything in the standard output, if there is something then it is a runtime error!
+                // we do not put anything in the standard output (PUT), if there is something then it is a runtime error!
                 // however, the execution went until the end
                 foreach (var output in _process.StandardOutputArray.Union(_process.ErrorOutputArray)) {
                     var ex = UoeExecutionOpenedgeException.GetFromString(output);
@@ -464,28 +480,6 @@ namespace Oetools.Utilities.Openedge.Execution {
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// Read the exceptions from a log file
-        /// </summary>
-        /// <param name="filePath"></param>
-        /// <returns></returns>
-        private List<UoeExecutionOpenedgeException> GetOpenedgeExceptions<T>(string filePath) where T : UoeExecutionOpenedgeException, new() {
-            var output = new List<UoeExecutionOpenedgeException>();
-            if (File.Exists(filePath)) {
-                Utils.ForEachLine(filePath, null, (i, line) => {
-                    var split = line.Split('\t');
-                    if (split.Length == 2) {
-                        var t = new T {
-                            ErrorNumber = int.Parse(split[0]),
-                            ErrorMessage = split[1].ProUnescapeSpecialChar()
-                        };
-                        output.Add(t);
-                    }
-                }, Env.GetIoEncoding());
-            }
-            return output;
         }
 
         /// <summary>

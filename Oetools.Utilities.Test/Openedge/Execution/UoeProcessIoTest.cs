@@ -130,7 +130,7 @@ END.
             _hasExited2 = false;
             process.OnProcessExit += (sender, args) => _hasExited2 = true;
 
-            process.ExecuteAsync(new ProcessArgs().Append("-p", "test.p").AppendFromQuotedArgs(parameters));
+            process.ExecuteNoWait(new ProcessArgs().Append("-p", "test.p").AppendFromQuotedArgs(parameters));
 
             if (kill) {
                 Task.Factory.StartNew(() => {

@@ -72,8 +72,8 @@ namespace Oetools.Utilities.Test.Openedge.Execution {
             env.DatabaseConnections = new []{ UoeDatabaseConnection.NewSingleUserConnection(base1Db), UoeDatabaseConnection.NewSingleUserConnection(base2Db) };
 
             using (var exec = new UoeExecutionDbExtractLastSchemaUpdate(env)) {
-                exec.Start();
-                exec.WaitForExecutionEnd();
+                exec.ExecuteNoWait();
+                exec.WaitForExit();
                 Assert.IsFalse(exec.ExecutionHandledExceptions, "ExecutionHandledExceptions");
                 Assert.IsFalse(exec.DatabaseConnectionFailed, "DbConnectionFailed");
 
