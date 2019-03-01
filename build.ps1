@@ -21,7 +21,7 @@ function Main {
 
 	Push-Location $PSScriptRoot
 	if ($TestOnly) {
-		Start-Tests
+		Start-Tests -AllTests $True
 	} else {
 		Start-Tests
 		New-ArtifactDir
@@ -38,17 +38,29 @@ function New-ArtifactDir {
 }
 
 function Start-Tests {
+	param ( 
+		[bool]
+		$AllTests = $False
+	)
 	if (-Not (Test-Exe("dotnet"))) {
         Throw "The executable dotnet was not found in your path."
 	}
-	
-	foreach ($file in Get-ChildItem -Path . -Recurse | Where-Object {$_.Name -like "*Test.csproj"}) {
+
+	if ($AllTests) {
+		foreach ($file in Get-ChildItem -Path . -Recurse | Where-Object {$_.Name -like "*.Test.csproj"}) {
+			Write-Host "@@@@@@@@@@@@@@@@@@@@@@@"
+			Write-Host "Testing assembly $($file.Name)"
+			Write-Host "@@@@@@@@@@@@@@@@@@@@@@@"
+			
+			iu dotnet test "$($file.FullName)" --verbosity "minimal"
+		}
+	} else {
 		Write-Host "@@@@@@@@@@@@@@@@@@@@@@@"
-		Write-Host "Testing assembly $($file.Name)"
+		Write-Host "Testing assembly"
 		Write-Host "@@@@@@@@@@@@@@@@@@@@@@@"
-		
-		iu dotnet test "$($file.FullName)" --verbosity "minimal"
+		iu dotnet test "Oetools.Utilities.Test/Oetools.Utilities.Test.csproj" --verbosity "minimal"
 	}
+
 }
 
 function Publish-NugetPackage {

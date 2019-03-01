@@ -47,9 +47,9 @@ namespace Oetools.Utilities.Test.Lib {
                         cancel.Cancel();
                     });
                     var d = DateTime.Now;
-                    process.WaitForExit(2000);
+                    process.WaitForExit(5000);
                     Assert.IsTrue(process.Killed, "killed");
-                    Assert.IsTrue(DateTime.Now.Subtract(d).TotalMilliseconds < 500, "it should have waited for the cancel and not for 2000ms (note that it has a rough precision...)");
+                    Assert.IsTrue(DateTime.Now.Subtract(d).TotalMilliseconds < 3000, "it should have waited for the cancel and not for 5000ms (note that it has a rough precision...)");
                 }
             }
         }
