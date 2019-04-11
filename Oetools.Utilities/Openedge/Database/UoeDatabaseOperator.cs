@@ -98,7 +98,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         /// <returns></returns>
         /// <param name="targetDb">Path to the target database</param>
-        /// <param name="structureFilePath">Path to the .st file, a prostrct create will be executed with it to create the database</param>
+        /// <param name="structureFilePath">Path to the .st file to validate</param>
         /// <exception cref="UoeDatabaseException"></exception>
         public void ValidateStructureFile(UoeDatabaseLocation targetDb, string structureFilePath) {
             structureFilePath = structureFilePath?.ToAbsolutePath();
