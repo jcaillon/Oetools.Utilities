@@ -319,7 +319,7 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Appends the files from a new structure description (.st) file to a database.
+        /// Appends the extents from a new structure description (.st) file to a database.
         /// </summary>
         /// <param name="targetDb"></param>
         /// <param name="structureFilePath"></param>
@@ -361,7 +361,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Removes storage areas or extents within storage areas.
         /// </summary>
         /// <param name="targetDb"></param>
-        /// <param name="extentToken">Indicates the type of extent to remove. Specify one of the following: d, bi, ai, tl</param>
+        /// <param name="extentToken">Indicates the type of extent to remove. Specify one of the following: d, bi, ai, tl.</param>
         /// <param name="storageArea">Specifies the name of the storage area to remove.</param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <exception cref="UoeDatabaseException"></exception>
@@ -782,7 +782,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// Returns an analysis report. It is the combination of the output from proutil dbanalys, describe and iostats.
         /// </summary>
         /// <param name="targetDb"></param>
-        /// <param name="dbAnalysOnly"></param>
+        /// <param name="dbAnalysOnly">Only generate the db analysis (dbanalys).</param>
         /// <param name="databaseAccessStartupParameters"></param>
         /// <param name="options"></param>
         /// <returns></returns>
@@ -829,14 +829,14 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Rebuild the indexed of a database. By default, rebuilds all the active indexes.
+        /// Rebuild the indexes of a database. By default, rebuilds all the active indexes.
         /// </summary>
         /// <param name="targetDb"></param>
-        /// <param name="options">defaults to `activeindexes`.</param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
+        /// <param name="options">defaults to `activeindexes`.</param>
         /// <returns></returns>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void RebuildIndexes(UoeDatabaseLocation targetDb, ProcessArgs options = null, ProcessArgs databaseAccessStartupParameters = null) {
+        public void RebuildIndexes(UoeDatabaseLocation targetDb, ProcessArgs databaseAccessStartupParameters = null, ProcessArgs options = null) {
             if (options == null) {
                 options = new ProcessArgs().Append("activeindexes");
             }
@@ -860,7 +860,7 @@ namespace Oetools.Utilities.Openedge.Database {
         /// </summary>
         /// <param name="targetDb"></param>
         /// <param name="dumpDirectoryPath"></param>
-        /// <param name="tableName"></param>
+        /// <param name="tableName">A single table name to dump</param>
         /// <param name="databaseAccessStartupParameters">Database access/encryption parameters:  [[-userid username [-password passwd ]] | [ -U username -P passwd] ] [-Passphrase].</param>
         /// <param name="options"></param>
         /// <returns></returns>
@@ -988,7 +988,7 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Restores a full or incremental backup of a database (or verifies the integrity of a database backup).
+        /// Restores a full or incremental backup of a database.
         /// </summary>
         /// <param name="targetDb"></param>
         /// <param name="backupFile"></param>
