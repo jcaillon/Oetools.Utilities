@@ -358,7 +358,7 @@ namespace Oetools.Utilities.Openedge.Database {
         }
 
         /// <summary>
-        /// Removes storage areas or extents within storage areas.
+        /// Removes storage areas or extents.
         /// </summary>
         /// <param name="targetDb"></param>
         /// <param name="extentToken">Indicates the type of extent to remove. Specify one of the following: d, bi, ai, tl.</param>

@@ -20,6 +20,7 @@
 
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database;
 using Oetools.Utilities.Openedge.Database.Exceptions;
 
@@ -120,7 +121,7 @@ namespace Oetools.Utilities.Test.Openedge.Database {
                 Assert.IsTrue(File.ReadAllText(dfPathOut).Contains("field1"));
 
                 var dumpOut = Path.Combine(TestFolder, "dump_custom.txt");
-                dataAdmin.DumpCustomInfoExtraction(UoeDatabaseConnection.NewSingleUserConnection(db), dumpOut);
+                dataAdmin.GetDatabaseDefinition(UoeDatabaseConnection.NewSingleUserConnection(db).Yield(), dumpOut);
 
                 Assert.IsTrue(File.Exists(dumpOut));
                 Assert.IsTrue(File.ReadAllText(dumpOut).Contains("field1"));

@@ -25,6 +25,7 @@ using System.Text;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Openedge.Database.Exceptions;
+using Oetools.Utilities.Openedge.Database.Interfaces;
 using Oetools.Utilities.Openedge.Execution;
 using Oetools.Utilities.Resources;
 
@@ -483,26 +484,27 @@ namespace Oetools.Utilities.Openedge.Database {
         /// <summary>
         /// Dump the database definition in a custom format, used internally by this library.
         /// </summary>
-        /// <param name="databaseConnection"></param>
+        /// <param name="databaseConnections"></param>
         /// <param name="dumpFilePath"></param>
         /// <exception cref="UoeDatabaseException"></exception>
-        public void DumpCustomInfoExtraction(UoeDatabaseConnection databaseConnection, string dumpFilePath) {
-            if (string.IsNullOrEmpty(dumpFilePath)) {
-                throw new UoeDatabaseException("The dump file path can't be null.");
+        public List<IUoeDatabase> GetDatabaseDefinition(IEnumerable<UoeDatabaseConnection> databaseConnections, string dumpFilePath = null) {
+            if (!string.IsNullOrEmpty(dumpFilePath)) {
+                dumpFilePath = dumpFilePath.ToAbsolutePath();
+                Utils.CreateDirectoryForFileIfNeeded(dumpFilePath);
+
+                Log?.Info($"Dumping custom database information to file {dumpFilePath.PrettyQuote()} from {new ProcessArgs().Append(databaseConnections).ToQuotedArgs().PrettyQuote()}.");
+            } else {
+                Log?.Info($"Dumping custom database information from {databaseConnections.ToString().PrettyQuote()}.");
             }
-
-            dumpFilePath = dumpFilePath.ToAbsolutePath();
-            Utils.CreateDirectoryForFileIfNeeded(dumpFilePath);
-
-            Log?.Info($"Dumping custom database information to file {dumpFilePath.PrettyQuote()} from {databaseConnection.ToString().PrettyQuote()}.");
 
             using (var env = new UoeExecutionEnv()) {
                 env.DlcDirectoryPath = DlcDirectoryPath;
-                env.DatabaseConnections = databaseConnection.Yield();
-                using (var exec = new UoeExecutionDbExtractDefinitionNoRead(env, dumpFilePath)) {
+                env.DatabaseConnections = databaseConnections;
+                using (var exec = new UoeExecutionDbExtractDefinitionWithDumpFile(env, dumpFilePath)) {
                     exec.CancelToken = CancelToken;
                     exec.Execute();
                     exec.ThrowIfExceptionsCaught();
+                    return exec.GetDatabases();
                 }
             }
         }
@@ -581,13 +583,13 @@ namespace Oetools.Utilities.Openedge.Database {
             }
         }
 
-        private class UoeExecutionDbExtractDefinitionNoRead : UoeExecutionDbExtractDefinition {
+        private class UoeExecutionDbExtractDefinitionWithDumpFile : UoeExecutionDbExtractDefinition {
 
-            public UoeExecutionDbExtractDefinitionNoRead(AUoeExecutionEnv env, string dumpFilePath) : base(env) {
-                _databaseExtractFilePath = dumpFilePath;
+            public UoeExecutionDbExtractDefinitionWithDumpFile(AUoeExecutionEnv env, string dumpFilePath) : base(env) {
+                if (!string.IsNullOrEmpty(dumpFilePath)) {
+                    _databaseExtractFilePath = dumpFilePath;
+                }
             }
-
-            protected override void ReadExtractionResults() { }
         }
 
 

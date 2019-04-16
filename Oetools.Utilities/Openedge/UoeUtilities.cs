@@ -23,6 +23,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Schema;
 using Oetools.Utilities.Lib;
 using Oetools.Utilities.Lib.Extension;
 using Oetools.Utilities.Lib.ParameterStringParser;
@@ -37,6 +39,49 @@ namespace Oetools.Utilities.Openedge {
     /// Utilities for openedge.
     /// </summary>
     public static class UoeUtilities {
+
+        /// <summary>
+        /// Uses the progress tool _bprowsdldoc to generate an html documentation from a .wsdl webservice descriptor.
+        /// </summary>
+        /// <param name="dlcDirectoryPath"></param>
+        /// <param name="wsdlPath"></param>
+        /// <param name="outputDirectory"></param>
+        /// <param name="bindings"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
+        public static string GenerateWsdlDoc(string dlcDirectoryPath, string wsdlPath, string outputDirectory, bool bindings) {
+            var toolPath = Path.Combine(dlcDirectoryPath, "bin", Utils.IsRuntimeWindowsPlatform ? "_bprowsdldoc.exe" : "_bprowsdldoc");
+            if (!File.Exists(toolPath)) {
+                throw new ArgumentException($"The openedge tool _bprowsdldoc does not exist in the expected path: {toolPath.PrettyQuote()}.");
+            }
+            var process = new ProcessIo(toolPath);
+            var args = new ProcessArgs();
+            if (bindings) {
+                args.Append("-b");
+            }
+            args.Append(wsdlPath).Append(outputDirectory);
+            process.TryExecute(args);
+            return process.BatchOutputString;
+        }
+
+        /// <summary>
+        /// Uses the openedge tool to generate a dataset definition from an .xsd file.
+        /// </summary>
+        /// <param name="dlcDirectoryPath"></param>
+        /// <param name="xsdPath"></param>
+        /// <param name="outputFile"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
+        public static string GenerateDatasetDefinition(string dlcDirectoryPath, string xsdPath, string outputFile) {
+            var toolPath = Path.Combine(dlcDirectoryPath, "bin", Utils.IsRuntimeWindowsPlatform ? "xsdto4gl.exe" : "xsdto4gl");
+            if (!File.Exists(toolPath)) {
+                throw new ArgumentException($"The openedge tool xsdto4gl does not exist in the expected path: {toolPath.PrettyQuote()}.");
+            }
+            var process = new ProcessIo(toolPath);
+            var args = new ProcessArgs().Append(xsdPath).Append("-output").Append(outputFile);
+            process.TryExecute(args);
+            return process.BatchOutputString;
+        }
 
         /// <summary>
         /// Reads an openedge log file (that should contain the FILEID trace type) and output all the files
