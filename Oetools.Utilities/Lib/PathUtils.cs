@@ -153,8 +153,12 @@ namespace Oetools.Utilities.Lib {
             if (string.IsNullOrEmpty(absolute) || string.IsNullOrEmpty(pathToDelete)) {
                 return absolute;
             }
-            var relative = absolute.Replace(pathToDelete, startAtDot ? "." : "");
-            return relative.Length == absolute.Length ? absolute : relative.TrimStartDirectorySeparator();
+            var relative = absolute.Replace(pathToDelete, "");
+
+            if (relative.Length == absolute.Length) {
+                return absolute;
+            }
+            return startAtDot ? $".{Path.DirectorySeparatorChar}{relative.TrimStartDirectorySeparator()}" : relative.TrimStartDirectorySeparator();
         }
 
         /// <summary>
@@ -447,13 +451,17 @@ namespace Oetools.Utilities.Lib {
         }
 
         /// <summary>
-        /// Returns the longest valid (and existing) directory in a string, return null if nothing matches
+        /// Returns the longest valid (and existing) directory in a string, return the current directory if nothing matches
         /// </summary>
         /// <remarks>
         /// for instance
         /// - C:\windows\(any|thing)\(.*)
         /// will return
         /// - C:\windows
+        /// and
+        /// - **.p
+        /// will return
+        /// - the current directory
         /// </remarks>
         /// <param name="inputWildCardPath"></param>
         /// <returns></returns>
