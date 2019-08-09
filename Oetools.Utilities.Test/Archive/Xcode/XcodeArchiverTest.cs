@@ -45,7 +45,7 @@ namespace Oetools.Utilities.Test.Archive.Xcode {
 
         [TestMethod]
         public void Test() {
-            var archiver = Archiver.NewXcodeArchiver();
+            var archiver = UoeArchiver.NewXcodeArchiver();
             
             archiver.SetKey("progress");
             archiver.SetEncodeMode(true);

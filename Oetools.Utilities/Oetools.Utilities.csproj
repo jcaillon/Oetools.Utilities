@@ -45,11 +45,7 @@
     <ProjectReference Include="..\CabinetManager\CabinetManager\CabinetManager.csproj" />
     <ProjectReference Include="..\DotUtilities\DotUtilities\DotUtilities.csproj" />
   </ItemGroup>
-
-  <ItemGroup Label="Specific ProjectReferences" Condition=" '$(TargetFramework)' == 'net461' ">
-    <Reference Include="System.IO.Compression" />
-  </ItemGroup>
-
+  
   <ItemGroup Label="Resources">
     <EmbeddedResource Include="Resources\Openedge\*" />
   </ItemGroup>

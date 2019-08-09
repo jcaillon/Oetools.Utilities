@@ -26,10 +26,11 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Oetools.Utilities.Archive;
+using DotUtilities;
+using DotUtilities.Archive;
+using DotUtilities.Extensions;
+using DotUtilities.Process;
 using Oetools.Utilities.Archive.Prolib;
-using Oetools.Utilities.Lib;
-using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Test.Archive.Prolib {
 

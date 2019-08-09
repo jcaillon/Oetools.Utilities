@@ -21,7 +21,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using Oetools.Utilities.Lib;
+using DotUtilities;
 
 namespace Oetools.Utilities.Resources {
 

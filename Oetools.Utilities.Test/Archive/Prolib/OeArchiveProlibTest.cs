@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ArchiveProlibTest.cs) is part of Oetools.Utilities.Test.
-// 
+//
 // Oetools.Utilities.Test is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities.Test is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities.Test. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -21,15 +21,14 @@
 using System;
 using System.IO;
 using System.Text;
+using DotUtilities.Archive;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Oetools.Utilities.Archive;
-using Oetools.Utilities.Archive.Prolib;
 
 namespace Oetools.Utilities.Test.Archive.Prolib {
-    
+
     [TestClass]
     public class OeArchiveProlibTest : ArchiveTest {
-        
+
         private static string _testFolder;
         private static string TestFolder => _testFolder ?? (_testFolder = TestHelper.GetTestFolder(nameof(OeArchiveProlibTest)));
 
@@ -45,7 +44,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
                 Directory.Delete(TestFolder, true);
             }
         }
-        
+
         [TestMethod]
         public void Test() {
             if (!TestHelper.GetDlcPath(out string dlcPath)) {
@@ -53,7 +52,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
             }
 
             OeProlibArchiver archiver;
-            
+
             try {
                 archiver = new OeProlibArchiver(dlcPath, Encoding.Default);
             } catch (ArchiverException e) {
@@ -63,9 +62,9 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
 
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.pl"));
             listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2.pl")));
-            
+
             //WholeTest(archiver, listFiles);
         }
-        
+
     }
 }

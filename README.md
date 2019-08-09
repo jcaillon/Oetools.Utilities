@@ -30,6 +30,7 @@ Details/help on [how to build this project](docs/BUILD.md).
 ## Submodules
 
 - [CabinetManager](https://github.com/jcaillon/CabinetManager).
+- [DotUtilities](https://github.com/jcaillon/DotUtilities).
 
 ## Thanks
 

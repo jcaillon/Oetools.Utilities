@@ -1,3 +1,6 @@
 [submodule "CabinetManager"]
 	path = CabinetManager
 	url = ../CabinetManager.git
+[submodule "DotUtilities"]
+	path = DotUtilities
+	url = ../DotUtilities.git

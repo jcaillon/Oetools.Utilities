@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ProLibrary.cs) is part of WinPL.
-// 
+//
 // WinPL is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // WinPL is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with WinPL. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -24,12 +24,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using Oetools.Utilities.Lib;
-using Oetools.Utilities.Lib.Extension;
+using DotUtilities;
+using DotUtilities.Extensions;
 using Oetools.Utilities.Openedge;
 
 namespace Oetools.Utilities.Archive.Prolib.Core {
-    
+
     /// <summary>
     /// An openedge library (aka prolib aka .pl file).
     /// </summary>
@@ -43,7 +43,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         private const int FileEntriesMaxBlockSize = 512;
         private const byte SkipUntilNextFileEntry = 0xFE;
         private const int DataBufferSize = 1024 * 1024;
-        
+
         public ProLibrary(string filePath, CancellationToken? cancelToken) {
             FilePath = filePath;
             _cancelToken = cancelToken;
@@ -55,7 +55,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         }
 
         private BinaryReader _reader;
-        
+
         private readonly CancellationToken? _cancelToken;
         private string _encodingName;
         private string _filePathToWrite;
@@ -90,20 +90,20 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                 }
             }
         }
-        
+
         public Encoding CodePage { get; private set; } = Encoding.Default;
-        
+
         /// <summary>
         /// Crc value for this library header.
         /// </summary>
         private ushort HeaderCrc { get; set; }
-        
+
         /// <summary>
         /// The number of file entries. Can be different than the actual number of files( if there are empty files.
         /// Should not be used to determine the number of files.
         /// </summary>
         private ushort NbOfEntries { get; set; }
-        
+
         /// <summary>
         /// The offset in this file stream at which to find the first file entry info.
         /// </summary>
@@ -117,14 +117,14 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <summary>
         /// The list of files in this lib.
         /// </summary>
-        public List<ProLibraryFileEntry> Files { get; } = new List<ProLibraryFileEntry>();        
-        
+        public List<ProLibraryFileEntry> Files { get; } = new List<ProLibraryFileEntry>();
+
         /// <summary>
         /// The total header length.
         /// </summary>
         private int HeaderLength => 2 + MaxCodePageNameLength + 2 + 2 + (Is64Bits ? sizeof(long) : sizeof(uint)) + HeaderExtraBytesLength;
 
-        
+
         /// <summary>
         /// Total files size.
         /// </summary>
@@ -137,12 +137,12 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                 return total;
             }
         }
-        
+
         /// <summary>
         /// This prolib file size.
         /// </summary>
         public long FileSize { get; set; }
-        
+
         /// <summary>
         /// Returns true if this prolib exists.
         /// </summary>
@@ -152,7 +152,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// Is this prolib a 64 bits version.
         /// </summary>
         public bool Is64Bits => Version >= ProLibraryVersion.V11Standard;
-        
+
         /// <summary>
         /// Add a new external file to this prolib.
         /// </summary>
@@ -161,11 +161,11 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <exception cref="ProLibraryException"></exception>
         public void AddExternalFile(string sourcePath, string relativePathInPl) {
             relativePathInPl = relativePathInPl.ToCleanRelativePathUnix();
-            
+
             if (Files.Count + 1 > ushort.MaxValue) {
                 throw new ProLibraryException($"The prolib would exceed the maximum number of files in a single file: {ushort.MaxValue}.");
             }
-            
+
             // remove existing files with the same name
             DeleteFile(relativePathInPl);
 
@@ -184,7 +184,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                 Type = relativePathInPl.EndsWith(UoeConstants.ExtR, StringComparison.OrdinalIgnoreCase) ? ProLibraryFileType.Rcode : ProLibraryFileType.Other
             });
         }
-        
+
         /// <summary>
         /// Extracts a file to an external path.
         /// </summary>
@@ -193,25 +193,25 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// <returns>true if the file was actually extracted, false if it does not exist</returns>
         public bool ExtractToFile(string relativePathInPl, string extractionPath) {
             relativePathInPl = relativePathInPl.ToCleanRelativePathUnix();
-            
+
             var fileToExtract = Files.FirstOrDefault(file => file.RelativePath.Equals(relativePathInPl, StringComparison.OrdinalIgnoreCase));
             if (fileToExtract == null) {
                 return false;
             }
-                       
+
             try {
                 long totalNumberOfBytes = fileToExtract.Size;
                 long totalNumberOfBytesDone = 0;
                 _reader.BaseStream.Position = fileToExtract.Offset;
-            
+
                 using (Stream targetStream = File.OpenWrite(extractionPath)) {
                     var dataBlockBuffer = new byte[DataBufferSize];
                     long bytesLeftToRead;
                     int nbBytesRead;
-                
-                    while ((bytesLeftToRead = totalNumberOfBytes - totalNumberOfBytesDone) > 0 && 
+
+                    while ((bytesLeftToRead = totalNumberOfBytes - totalNumberOfBytesDone) > 0 &&
                         (nbBytesRead = _reader.Read(dataBlockBuffer, 0, (int) Math.Min(bytesLeftToRead, dataBlockBuffer.Length))) > 0) {
-                    
+
                         totalNumberOfBytesDone += nbBytesRead;
                         targetStream.Write(dataBlockBuffer, 0, nbBytesRead);
                         OnProgress?.Invoke(this, ProLibrarySaveEventArgs.New(relativePathInPl, totalNumberOfBytesDone, totalNumberOfBytes));
@@ -257,7 +257,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             fileToMove.RelativePath = newRelativePathInPl;
             return true;
         }
-        
+
         /// <summary>
         /// Save this instance of <see cref="ProLibrary"/> to <see cref="FilePath"/>.
         /// </summary>
@@ -306,7 +306,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                 ReadProlibStructure(_reader);
             }
         }
-        
+
         /// <summary>
         /// Read data from <see cref="FilePath"/> to fill this <see cref="ProLibrary"/>.
         /// </summary>
@@ -321,18 +321,18 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             if (!Enum.IsDefined(typeof(ProLibraryVersion), version)) {
                 throw new ProLibraryException($"Unknown library version {version}.");
             }
-            
+
             Version = (ProLibraryVersion) version;
-            
+
             var codePageNameData = reader.ReadBytes(MaxCodePageNameLength).ToList();
             var idx = codePageNameData.FindIndex(b => b == 0);
             CodePageName = Encoding.ASCII.GetString((idx > 0 ? codePageNameData.Take(idx) : codePageNameData).ToArray());
-            
+
             HeaderCrc = reader.ReadUInt16Be();
             NbOfEntries = reader.ReadUInt16Be();
             FirstFileEntryOffset = Is64Bits ? reader.ReadUInt64Be() : reader.ReadUInt32Be();
             HeaderExtraBytes = reader.ReadBytes(HeaderExtraBytesLength);
-            
+
             // check CRC
             var computedHeaderCrc = GetHeaderCrc();
             if (HeaderCrc != 0 && computedHeaderCrc != HeaderCrc) {
@@ -347,7 +347,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
 
             // remove all "non" files
             Files.RemoveAll(f => f.Type == ProLibraryFileType.FakeFile || f.RelativePathSize == 0);
-            
+
             // reset the extra bytes to have a clean file. For some reasons, prolib put non null bytes in there sometimes.
             _headerExtraBytes = null;
         }
@@ -356,17 +356,17 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             if (FirstFileEntryOffset == 0) {
                 return;
             }
-            
+
             // start reading file entries
             if (FirstFileEntryOffset > FileSize) {
                 throw new ProLibraryException($"Bad first entry offset, the offset is {FirstFileEntryOffset} but the total size of this prolib is {FileSize}.");
             }
-            
+
             reader.BaseStream.Position = FirstFileEntryOffset;
 
             do {
                 _cancelToken?.ThrowIfCancellationRequested();
-                
+
                 var fileEntry = new ProLibraryFileEntry(this);
                 var fileStatus = reader.ReadByte();
                 switch (fileStatus) {
@@ -413,14 +413,14 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         }
 
         private void WriteData(BinaryWriter writer) {
-            
+
             long totalNumberOfBytes = TotalSizeFromFiles;
             long totalNumberOfBytesDone = 0;
-            
+
             foreach (var file in Files) {
                 _cancelToken?.ThrowIfCancellationRequested();
                 var fileOffset = writer.BaseStream.Position;
-                
+
                 if (!string.IsNullOrEmpty(file.FilePath)) {
                     if (!File.Exists(file.FilePath)) {
                         throw new ProLibraryException($"Missing source file : {file.FilePath}.");
@@ -438,7 +438,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                             _cancelToken?.ThrowIfCancellationRequested();
                         }
                     }
-                } else {                   
+                } else {
                     var dataBlockBuffer = new byte[DataBufferSize];
                     long bytesLeftToRead;
                     int nbBytesRead;
@@ -446,8 +446,8 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                     _reader.BaseStream.Position = file.Offset;
                     long numberOfBytes = file.Size;
                     long numberOfBytesDone = 0;
-                
-                    while ((bytesLeftToRead = numberOfBytes - numberOfBytesDone) > 0 && 
+
+                    while ((bytesLeftToRead = numberOfBytes - numberOfBytesDone) > 0 &&
                         (nbBytesRead = _reader.Read(dataBlockBuffer, 0, (int) Math.Min(bytesLeftToRead, dataBlockBuffer.Length))) > 0) {
 
                         numberOfBytesDone += nbBytesRead;
@@ -485,7 +485,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                 writer.Write(new byte[FileEntriesMaxBlockSize - fileEntriesBlockSize - 1]);
             }
         }
-        
+
         private void WriteHeaderAfterCrc(BinaryWriter writer) {
             writer.WriteUInt16Be(NbOfEntries);
             if (Is64Bits) {
@@ -495,7 +495,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             }
             writer.Write(HeaderExtraBytes);
         }
-        
+
         private ushort GetHeaderCrc() {
             using (var memStream = new MemoryStream()) {
                 using (var writer = new BinaryWriter(memStream)) {
@@ -504,6 +504,6 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
                 }
             }
         }
-        
+
     }
 }

@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (ProLibraryFile.cs) is part of WinPL.
-// 
+//
 // WinPL is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // WinPL is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with WinPL. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -20,33 +20,33 @@
 
 using System;
 using System.IO;
-using Oetools.Utilities.Lib;
-using Oetools.Utilities.Lib.Extension;
+using DotUtilities;
+using DotUtilities.Extensions;
 using Oetools.Utilities.Openedge;
 
 namespace Oetools.Utilities.Archive.Prolib.Core {
-    
+
     /// <summary>
     /// A file entry inside a prolib.
     /// </summary>
     internal class ProLibraryFileEntry {
-        
+
         private const byte FileEntryExtraBytesLengthx32 = 8;
         private const byte FileEntryExtraBytesLengthx64 = 24;
-        
+
         private const uint FakeFileSizex32 = 0x13;
         private const uint FakeFileSizex64 = 0x27;
-        
+
         /// <summary>
         /// The file path outside of the .pl (if it exists).
         /// </summary>
         public string FilePath { get; set; }
-        
+
         /// <summary>
         /// Length of <see cref="RelativePath"/>.
         /// </summary>
         public byte RelativePathSize { get; private set; }
-        
+
         /// <summary>
         /// Path inside the cab, including path separator characters and the file name.
         /// </summary>
@@ -77,17 +77,17 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         /// The file type.
         /// </summary>
         public ProLibraryFileType Type { get; set; }
-        
+
         /// <summary>
         /// The file size.
         /// </summary>
         public uint Size { get; set; }
-        
+
         /// <summary>
         /// The time at which the file was packed into the .pl.
         /// </summary>
         public DateTime? PackTime { get; set; }
-        
+
         /// <summary>
         /// The time stamp of this file (last write time).
         /// </summary>
@@ -99,7 +99,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
         }
 
         private ProLibrary Parent { get; }
-        
+
         /// <summary>
         /// Each file entry ends with a set number of null bytes (they seem useless), this gets the number of null bytes to add at the end of the file entry.
         /// </summary>
@@ -138,17 +138,17 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             PackTime = reader.ReadUInt32Be().GetDatetimeFromUint();
             LastWriteTime = reader.ReadUInt32Be().GetDatetimeFromUint();
             FileEntryExtraBytes = reader.ReadBytes(NumberOfNullsAfterFileEntry);
-            
+
             if (reader.BaseStream.Position - initialOffset != FileEntryLength) {
                 throw new ProLibraryException($"Bad file entry, we expected a file entry length of {FileEntryLength} and got {reader.BaseStream.Position - initialOffset}.");
             }
-            
+
             // check CRC
             var computedCrc = GetFileCrc();
             if (Crc != 0 && computedCrc != Crc) {
                 throw new ProLibraryException($"Bad file CRC, expected {Crc} but found {computedCrc} for file {RelativePath}, the library might be corrupted.");
             }
-            
+
             // reset the extra bytes to have a clean file. For some reasons, prolib put non null bytes in there sometimes.
             FileEntryExtraBytes = null;
         }
@@ -161,7 +161,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             writer.WriteUInt16Be(GetFileCrc());
             WriteFileEntryAfterCrc(writer);
         }
-        
+
         private void WriteFileEntryAfterCrc(BinaryWriter writer) {
             if (Parent.Is64Bits) {
                 writer.WriteUInt64Be(Offset);
@@ -174,7 +174,7 @@ namespace Oetools.Utilities.Archive.Prolib.Core {
             writer.WriteUInt32Be(LastWriteTime?.GetUintFromDateTime() ?? 0);
             writer.Write(FileEntryExtraBytes);
         }
-        
+
         private ushort GetFileCrc() {
             using (var memStream = new MemoryStream()) {
                 using (var writer = new BinaryWriter(memStream)) {

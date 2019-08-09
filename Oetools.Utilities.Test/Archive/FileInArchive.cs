@@ -1,4 +1,4 @@
-﻿using Oetools.Utilities.Archive;
+﻿using DotUtilities.Archive;
 
 namespace Oetools.Utilities.Test.Archive {
     public class FileInArchive : IFileInArchiveToExtract, IFileInArchiveToDelete, IFileToArchive, IFileInArchiveToMove, IFileInArchiveToCheck {

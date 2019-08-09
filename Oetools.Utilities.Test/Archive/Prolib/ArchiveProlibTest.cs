@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using DotUtilities.Archive;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Oetools.Utilities.Archive;
 using Oetools.Utilities.Archive.Prolib.Core;
@@ -51,7 +52,7 @@ namespace Oetools.Utilities.Test.Archive.Prolib {
 
         [TestMethod]
         public void Test() {
-            IArchiverFullFeatured archiver = Archiver.NewProlibArchiver();
+            IArchiverFullFeatured archiver = UoeArchiver.NewProlibArchiver();
 
             var listFiles = GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test1.pl"));
             listFiles.AddRange(GetPackageTestFilesList(TestFolder, Path.Combine(TestFolder, "archives", "test2.pl")));

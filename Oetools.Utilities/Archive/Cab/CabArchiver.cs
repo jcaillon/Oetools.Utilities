@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (CabArchiver.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -23,11 +23,12 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using CabinetManager;
-using Oetools.Utilities.Lib;
-using Oetools.Utilities.Lib.Extension;
+using DotUtilities;
+using DotUtilities.Archive;
+using DotUtilities.Extensions;
 
 namespace Oetools.Utilities.Archive.Cab {
-    
+
     /// <summary>
     /// Allows CRUD operations on windows cabinet files.
     /// </summary>
@@ -36,7 +37,7 @@ namespace Oetools.Utilities.Archive.Cab {
         private CabCompressionLevel _compressionLevel = CabCompressionLevel.None;
 
         private readonly ICabManager _cabManager;
-        
+
         internal CabArchiver() {
             _cabManager = CabManager.New();
         }
@@ -135,10 +136,10 @@ namespace Oetools.Utilities.Archive.Cab {
             if (filesIn == null) {
                 return 0;
             }
-            
+
             var files = filesIn.ToList();
             files.ForEach(f => f.Processed = false);
-            
+
             _cabManager.OnProgress += CabManagerOnProgress;
             try {
                 List<CabFile> parameterFiles;
@@ -178,22 +179,22 @@ namespace Oetools.Utilities.Archive.Cab {
                 _cabManager.OnProgress -= CabManagerOnProgress;
             }
         }
-        
+
         private void CabManagerOnProgress(object sender, ICabProgressionEventArgs e) {
             if (e.EventType == CabEventType.GlobalProgression) {
                 OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(e.CabPath, e.RelativePathInCab, e.PercentageDone));
             }
         }
-        
+
         private enum Action {
             Archive,
             Extract,
             Delete,
             Move
         }
-        
+
         private class CabFile : IFileInCabToDelete, IFileInCabToExtract, IFileToAddInCab, IFileInCabToMove {
-            
+
             public string CabPath { get; private set; }
             public string RelativePathInCab { get; private set; }
             public bool Processed { get; set; }

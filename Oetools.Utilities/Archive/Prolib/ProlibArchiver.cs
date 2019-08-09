@@ -2,17 +2,17 @@
 // ========================================================================
 // Copyright (c) 2018 - Julien Caillon (julien.caillon@gmail.com)
 // This file (FileSystemArchiver.cs) is part of Oetools.Utilities.
-// 
+//
 // Oetools.Utilities is a free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Oetools.Utilities is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Oetools.Utilities. If not, see <http://www.gnu.org/licenses/>.
 // ========================================================================
@@ -22,12 +22,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DotUtilities;
+using DotUtilities.Archive;
+using DotUtilities.Extensions;
 using Oetools.Utilities.Archive.Prolib.Core;
-using Oetools.Utilities.Lib;
-using Oetools.Utilities.Lib.Extension;
 
 namespace Oetools.Utilities.Archive.Prolib {
-    
+
     /// <summary>
     /// In that case, a folder on the file system represents an archive.
     /// </summary>
@@ -36,7 +37,7 @@ namespace Oetools.Utilities.Archive.Prolib {
         private string _codePage;
         private ProLibraryVersion _version;
         private ProlibVersion _prolibVersion = ProlibVersion.Default;
-        
+
         /// <inheritdoc cref="IProlibArchiver.SetProlibVersion"/>
         public void SetProlibVersion(ProlibVersion version) {
             _prolibVersion = version;
@@ -57,7 +58,7 @@ namespace Oetools.Utilities.Archive.Prolib {
 
         /// <inheritdoc cref="IArchiver.OnProgress"/>
         public event EventHandler<ArchiverEventArgs> OnProgress;
-        
+
         /// <inheritdoc />
         public int CheckFileSet(IEnumerable<IFileInArchiveToCheck> filesToCheck) {
             int total = 0;
@@ -86,7 +87,7 @@ namespace Oetools.Utilities.Archive.Prolib {
             }
             return total;
         }
-        
+
         /// <inheritdoc cref="IArchiver.ArchiveFileSet"/>
         public int ArchiveFileSet(IEnumerable<IFileToArchive> filesToArchive) {
             return DoAction(filesToArchive, Action.Archive);
@@ -124,21 +125,21 @@ namespace Oetools.Utilities.Archive.Prolib {
         public int MoveFileSet(IEnumerable<IFileInArchiveToMove> filesToMove) {
             return DoAction(filesToMove, Action.Move);
         }
-        
+
         private void OnProgressionEvent(object sender, ProLibrarySaveEventArgs e) {
             if (sender is ProLibrary library) {
                 OnProgress?.Invoke(this, ArchiverEventArgs.NewProgress(library.FilePath, e.RelativePathInPl, Math.Round(e.TotalBytesDone / (double) e.TotalBytesToProcess * 100, 2)));
             }
         }
-        
+
         private int DoAction(IEnumerable<IFileArchivedBase> filesIn, Action action) {
             if (filesIn == null) {
                 return 0;
             }
-            
+
             var files = filesIn.ToList();
             files.ForEach(f => f.Processed = false);
-            
+
             int nbFilesProcessed = 0;
             foreach (var plGroupedFiles in files.GroupBy(f => f.ArchivePath)) {
                 if (action != Action.Archive && !File.Exists(plGroupedFiles.Key)) {
@@ -208,7 +209,7 @@ namespace Oetools.Utilities.Archive.Prolib {
             }
             return nbFilesProcessed;
         }
-        
+
         private enum Action {
             Archive,
             Extract,
